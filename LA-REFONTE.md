@@ -1,0 +1,182 @@
+# La refonte du 12 octobre 2026
+
+Ce document répond à la section 12 de ton cahier : ce qui a été fait, où
+remplacer les images et les vidéos, comment lancer l'application, et ce qui
+reste. Il est écrit pour toi, Arthur, pas pour un développeur.
+
+---
+
+## 1. Ce qui a été fait, section par section
+
+| # | Ce que tu demandais | Fait | Où ça vit |
+|---|---|---|---|
+| 1 | Écran d'ouverture animé, 3 scènes | oui | `src/pages/ouverture.astro` |
+| 2 | Plus d'inscription, identité anonyme | oui | `src/pages/commencer.ts`, bloc « Garde ton compte » dans `compte.astro` |
+| 3 | Questionnaire de 8 questions illustrées | oui | `src/pages/bienvenue.astro` |
+| 4 | Tableau de bord du cycle | oui | `src/pages/cycle/index.astro`, `src/components/AnneauSegmente.astro` |
+| 5 | Calendrier (gouttes, bébés, bandes vertes) | oui | `src/pages/cycle/calendrier.astro` |
+| 6 | Mascotte « Dambé » et bulle flottante | oui | `src/components/Mascotte.astro`, `BoutonMascotte.astro` |
+| 7 | Onglet « Discussions » | oui | `src/pages/discussions/` |
+| 8 | « Écrire au vendeur » sur une fiche produit | oui | bouton dans `boutique/[slug].astro` |
+| 9 | Espace administrateur | oui | `src/pages/admin/` |
+| 10 | Accueil animé (bannières, ruban, conseils, produits) | oui | `src/pages/index.astro` |
+| 10 bis | Haut de l'accueil d'après ta maquette | oui | `src/styles/accueil.css`, `Avatar.astro`, `ObjetsCarte.astro` |
+| 10 ter | Avatars générés | oui | `src/lib/avatar.ts` |
+| 11 | Pilule qui glisse, transitions, vibration | oui | `composants.css`, `src/scripts/toucher.ts` |
+
+**Ce qui n'est pas fait, et pourquoi :** voir la section 5 plus bas. Rien n'a
+été abandonné en silence.
+
+---
+
+## 2. Où remplacer les images et les vidéos
+
+Tout ce qui suit se remplace en **déposant un fichier**, sans toucher au code.
+
+### Les trois vidéos de l'écran d'ouverture
+
+Dépose-les dans `public/ouverture/` :
+
+```
+public/ouverture/scene1.mp4    « Ton corps, ton rythme »
+public/ouverture/scene2.mp4    « Ne sois plus jamais surprise »
+public/ouverture/scene3.mp4    « Tes protections livrées chez toi »
+```
+
+Muettes, en boucle, environ 5 secondes, format vertical (9:16), compressées
+(vise 1 Mo par vidéo au plus : une femme à Ouaga paie sa connexion). Un
+fichier `.webm` à côté du `.mp4` serait encore plus léger, et il est utilisé
+en premier s'il existe.
+
+**Tant qu'elles n'existent pas, l'écran n'est pas vide** : les trois scènes
+sont dessinées en code et s'animent déjà. Tu peux lancer l'application sans
+jamais déposer une seule vidéo.
+
+### Les huit illustrations du questionnaire
+
+Elles sont dessinées par Motion et vivent dans `src/animations/` :
+`q1-prenom.svg` à `q8-protection.svg`. Pour en changer une, remplace le
+fichier par un autre SVG du même nom (viewBox `0 0 390 300`).
+
+### Les photos des produits
+
+Elles vivent dans `public/produits/`, en deux tailles par produit
+(`-600.webp` et `-1200.webp`). Le chemin de la petite est écrit dans la
+colonne `image` de la table `produits`.
+
+**C'est le point le plus faible aujourd'hui** : les visuels sont des dessins,
+pas des photos. Tu avais demandé de vraies images de serviettes et de
+culottes. Il te faut soit des photos de ton stock (le mieux : ce sont tes
+vrais produits), soit des photos libres de droits.
+
+### La mascotte
+
+`src/assets/mascotte/mascotte-salut.svg`, `-ecoute`, `-bravo`, `-visage`,
+avec `src/styles/mascotte.css`. Elle est le visage d'IA Dambé partout.
+
+---
+
+## 3. Comment lancer l'application sur ton PC
+
+Une seule commande, dans le dossier du projet :
+
+```
+npm run demo
+```
+
+Elle démarre trois choses : une fausse base de données (avec des données
+inventées), une fausse assistante, et le site. Puis elle affiche l'adresse :
+
+```
+http://127.0.0.1:4322
+```
+
+Le compte de démonstration est `awa@essai.bf` / `motdepasse`, et il est
+administrateur, donc `/admin` s'ouvre. `Ctrl+C` arrête tout.
+
+**Rien de tout cela ne part en ligne.** C'est une démonstration locale.
+
+---
+
+## 4. Ce qui est vérifié, et comment
+
+| Commande | Ce qu'elle prouve |
+|---|---|
+| `npm run test:sql` | 480 vérifications sur la base : les règles d'accès, les calculs du cycle, les quotas, et qu'une femme ne lit jamais les données d'une autre |
+| `npm run essai` | 34 vérifications sur les écrans : on traverse l'application comme une utilisatrice, formulaires compris (il faut que `npm run demo` tourne) |
+| `npm run captures` | 30 captures d'écran en 390 px, dans `captures/` : le seul moyen de juger ce qui se voit |
+| `npm run check` | Les erreurs de code |
+| `node outils/collisions.mjs` | Les noms de style qui se heurtent entre deux fichiers |
+| `node outils/mesurer.mjs /cycle ".anneau-s"` | Interroge un vrai navigateur quand un écran est de travers sans qu'on voie pourquoi |
+
+Trois choses que ces vérifications prouvent, et qui comptent plus que les
+autres :
+
+1. **Personne ne lit le journal d'une autre**, pas même l'administration. Ce
+   n'est pas une promesse écrite à l'écran, c'est la base qui refuse.
+2. **Rien d'intime ne part vers l'IA** : seulement le prénom, le jour du
+   cycle et le catalogue.
+3. **L'avertissement sur la contraception** est présent sur le calendrier et
+   sur le tableau de bord, et il vient d'une seule source dans le code : on ne
+   peut pas l'oublier à un endroit.
+
+---
+
+## 5. Ce qui reste à faire, et ce qu'il faut de toi
+
+### Ce que je ne peux pas faire sans toi
+
+| Quoi | Ce qu'il me faut |
+|---|---|
+| **Mettre en ligne** | Un projet Supabase créé par toi, et ses deux clés. Je ne crée pas de compte à ta place et je n'écris jamais une vraie clé dans le code. |
+| **L'assistante IA** | L'adresse et la clé d'Ollama. Aujourd'hui une fausse assistante répond en local. |
+| **Les vraies photos** | Des photos de tes produits, ou ton accord pour chercher des photos libres. |
+| **L'email de commande** | Ta décision sur Brevo (tu voulais recevoir les commandes par email). Il faut une clé Brevo et une adresse d'envoi. |
+| **Les numéros d'urgence** | Les vrais numéros du centre de santé ou de la sage-femme que tu veux citer. Je n'en invente aucun : un faux numéro sur une application de santé est dangereux. |
+| **Les prix et les produits** | Une relecture : les prix actuels sont des exemples. |
+
+### Ce que je peux faire, quand tu me le diras
+
+- Les vraies photos de produits à la place des dessins.
+- L'email de commande par Brevo.
+- « Mot de passe oublié » (il dépend de l'email).
+- Le bouton Google à l'entrée : il existe sur la page Compte pour garder son
+  compte, mais il n'est pas branché à un vrai projet Google.
+- Les notifications (« tes règles arrivent dans 3 jours »).
+
+### Une chose que j'ai enlevée, et pourquoi tu dois le savoir
+
+Ton cahier proposait, sur la grande carte de l'accueil, « +120 femmes de la
+communauté sont dans la même phase que toi ». **Ce nombre n'existe pas** :
+l'application n'a pas encore 120 utilisatrices, et personne ne compte les
+phases de qui que ce soit. L'afficher serait écrire un chiffre faux à
+l'écran, sur un sujet où la confiance est tout ce qu'on a.
+
+Il est resté en place avec des avatars inventés. **Dis-moi ce que tu
+préfères** : soit on le remplace par un bouton d'action (« Voir mon cycle »,
+« Commander »), soit on le calcule pour de vrai quand il y aura assez de
+monde. Tant que tu ne tranches pas, je préfère te le signaler que le laisser
+passer.
+
+---
+
+## 6. Ce que j'ai cassé et réparé en chemin
+
+Pour que tu saches où regarder si quelque chose se remet de travers :
+
+- **Une classe `.fil` existait déjà** dans la feuille de style générale. La
+  nouvelle liste des discussions portait le même nom, et sa mise en page
+  s'empilait au lieu de s'aligner. Rien dans le code ne le disait : seule la
+  capture d'écran l'a montré. D'où `outils/collisions.mjs`.
+- **Les captures gardaient les anciennes couleurs** : l'agent de service de
+  l'application (celui qui la rend utilisable hors ligne) gardait les
+  feuilles de style de la veille. Les captures jettent maintenant le profil
+  du navigateur à chaque fois.
+- **`updateUser` ne lisait pas la session** quand on attache une adresse à un
+  compte anonyme : il lui faut une session en mémoire, pas seulement un
+  en-tête. La page disait « réessaie plus tard » pour une raison qui n'avait
+  rien à voir.
+
+---
+
+*Dernière mise à jour : 12 octobre 2026.*

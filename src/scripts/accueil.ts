@@ -75,3 +75,7 @@ if (aReveler.length > 0) {
     aReveler.forEach((e) => oeil.observe(e));
   }
 }
+
+// Ce fichier est un module : sans cette ligne, TypeScript le traite comme un
+// script global, et deux fichiers qui nomment la meme constante se heurtent.
+export {};
