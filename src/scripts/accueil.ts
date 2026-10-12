@@ -48,10 +48,31 @@ if (rail && points) {
     rail.addEventListener('pointerdown', rendre, { passive: true });
     rail.addEventListener('touchstart', rendre, { passive: true });
 
+    // La bande est-elle encore à l'écran ? Si elle a défilé plus bas, le
+    // carrousel n'a aucune raison de continuer à tourner dans son dos.
+    let visible = true;
+    new IntersectionObserver(
+      (entrees) => {
+        visible = entrees[0]?.isIntersecting ?? true;
+      },
+      { threshold: 0.2 },
+    ).observe(rail);
+
     setInterval(() => {
-      if (!libre || document.hidden) return;
+      if (!libre || !visible || document.hidden) return;
       tour = (tour + 1) % cartes.length;
-      cartes[tour].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+
+      // On fait glisser LA BANDE, pas la page.
+      //
+      // Avant, on demandait à la carte de se mettre en vue
+      // (`scrollIntoView`). Mais quand Arthur avait défilé plus bas, la bande
+      // n'était plus à l'écran : le navigateur remontait toute la page pour
+      // la montrer, à chaque changement d'image. Défaut trouvé par Arthur le
+      // 12 octobre 2026, en se servant de l'application.
+      //
+      // `scrollTo` sur la bande ne touche jamais au défilement vertical de la
+      // page, quoi qu'il arrive.
+      rail.scrollTo({ left: cartes[tour].offsetLeft - rail.offsetLeft, behavior: 'smooth' });
     }, 4200);
   }
 }
