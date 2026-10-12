@@ -1,0 +1,54 @@
+<svg class="md-mascotte md-mascotte-bravo" viewBox="0 0 200 220" role="img" aria-label="Mousso, la femme au foulard rose de Mousso Dambé, sourit et lève le pouce : bravo" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <clipPath id="md-clip-m-bravo"><circle cx="100" cy="118" r="94"/></clipPath>
+    <clipPath id="md-clip-m-bravo-haut"><path d="M24 220C24 186 38 163 68 153C80 148 90 145 100 145C110 145 120 148 132 153C162 163 176 186 176 220Z"/></clipPath>
+  </defs>
+  <circle class="md-m-disque" cx="100" cy="118" r="94"/>
+  <g class="md-m-entre">
+    <g clip-path="url(#md-clip-m-bravo)">
+      <path class="md-m-haut" d="M24 220C24 186 38 163 68 153C80 148 90 145 100 145C110 145 120 148 132 153C162 163 176 186 176 220Z"/>
+      <g clip-path="url(#md-clip-m-bravo-haut)">
+        <rect class="md-m-bande1" x="20" y="186" width="160" height="5"/>
+        <rect class="md-m-bande2" x="20" y="195" width="160" height="10"/>
+        <rect class="md-m-bande1" x="20" y="209" width="160" height="5"/>
+        <path class="md-m-motif" d="M40 196L44 200L40 204L36 200ZM60 196L64 200L60 204L56 200ZM80 196L84 200L80 204L76 200ZM100 196L104 200L100 204L96 200ZM120 196L124 200L120 204L116 200ZM140 196L144 200L140 204L136 200ZM160 196L164 200L160 204L156 200Z"/>
+      </g>
+    </g>
+    <g class="md-m-content">
+      <path class="md-m-peau-o" d="M89 116V144C92 155 108 155 111 144V116Z"/>
+      <path class="md-m-trait md-m-s-perle" stroke-width="3.6" stroke-dasharray="0 5.2" d="M87 147Q100 160 113 147"/>
+      <ellipse class="md-m-peau-o" cx="71" cy="97" rx="5" ry="7"/>
+      <ellipse class="md-m-peau-o" cx="129" cy="97" rx="5" ry="7"/>
+      <circle class="md-m-trait md-m-s-rose-f" stroke-width="2.6" cx="70" cy="111" r="6.5"/>
+      <circle class="md-m-trait md-m-s-rose-f" stroke-width="2.6" cx="130" cy="111" r="6.5"/>
+      <path class="md-m-peau" d="M100 58C119 58 130 72 130 92C130 111 118 129 100 129C82 129 70 111 70 92C70 72 81 58 100 58Z"/>
+      <path class="md-m-trait md-m-s-encre" stroke-width="2.2" d="M80 82.4Q87 77.8 94 81.2M106 81.2Q113 77.8 120 82.4"/>
+      <path class="md-m-trait md-m-s-encre" stroke-width="2.4" d="M82 95.5Q87 89.6 92 95.5M82 95.5L79.4 94M108 95.5Q113 89.6 118 95.5M118 95.5L120.6 94"/>
+      <path class="md-m-trait md-m-s-peau-o" stroke-width="2.2" d="M94.8 105.4Q100 108.8 105.2 105.4"/>
+      <path class="md-m-levre-b" d="M87.5 110.6Q100 113.6 112.5 110.6Q109 121.6 100 122Q91 121.6 87.5 110.6Z"/>
+      <path class="md-m-blanc" d="M90.4 112Q100 114.4 109.6 112Q109 114.8 107.4 115.8Q100 117 92.6 115.8Q91 114.8 90.4 112Z"/>
+      <path class="md-m-trait md-m-s-peau-o" stroke-width="1.2" d="M85.6 109.2Q86.6 111 88.2 111.4M114.4 109.2Q113.4 111 111.8 111.4"/>
+      <path class="md-m-rose" d="M66 92C58 62 70 30 100 28C130 30 142 62 134 92C131 78 122 68 100 67C78 68 69 78 66 92Z"/>
+      <path class="md-m-trait md-m-s-blanc" stroke-width="3" d="M70 76Q100 46 130 76"/>
+      <path class="md-m-trait md-m-s-encre" stroke-width="3" d="M74 63Q100 38 126 63"/>
+      <path class="md-m-trait md-m-s-blanc" stroke-width="2.6" stroke-dasharray="0 6" d="M80 50Q100 30 120 50"/>
+      <g class="md-m-noeud">
+        <path class="md-m-rose-f" d="M104 34C108 14 126 4 142 10C138 22 124 32 110 38Z"/>
+        <path class="md-m-rose" d="M98 36C90 18 74 12 62 18C68 28 82 36 94 40Z"/>
+        <path class="md-m-trait md-m-s-encre" stroke-width="2" d="M111 31C118 22 128 16 137 13"/>
+        <ellipse class="md-m-rose-f" cx="101" cy="35" rx="9" ry="7"/>
+      </g>
+    </g>
+    <g class="md-m-pouce">
+      <path class="md-m-trait md-m-s-haut" stroke-width="21" d="M140 163L162 170"/>
+      <path class="md-m-trait md-m-s-peau" stroke-width="13" d="M162 170L161 138"/>
+      <path class="md-m-trait md-m-s-peau" stroke-width="9" d="M155.4 121L154.2 104.5"/>
+      <rect class="md-m-peau" x="150.5" y="114" width="23" height="27" rx="8"/>
+      <path class="md-m-trait md-m-s-peau-o" stroke-width="1.3" d="M159.6 114.6Q157.6 117 158.2 120"/>
+      <path class="md-m-trait md-m-s-peau-o" stroke-width="1.3" d="M157 122.4H170.6M157 128.6H170.8M157 134.8H170.2"/>
+    </g>
+    <path class="md-m-eclat md-m-eclat-1 md-m-rose" d="M38 52Q38 64 50 64Q38 64 38 76Q38 64 26 64Q38 64 38 52Z"/>
+    <path class="md-m-eclat md-m-eclat-2 md-m-rose-f" d="M24 96Q24 103 31 103Q24 103 24 110Q24 103 17 103Q24 103 24 96Z"/>
+    <path class="md-m-eclat md-m-eclat-3 md-m-rose" d="M182 86Q182 94 190 94Q182 94 182 102Q182 94 174 94Q182 94 182 86Z"/>
+  </g>
+</svg>

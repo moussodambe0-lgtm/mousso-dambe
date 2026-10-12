@@ -1,0 +1,80 @@
+---
+/**
+ * L'avatar d'une utilisatrice.
+ *
+ * Dessiné sur le serveur à partir d'une graine : zéro octet de JavaScript, et
+ * le même visage sur l'accueil, dans le compte, dans les discussions et dans
+ * l'administration.
+ *
+ * `morph` pose un nom de transition partagé entre deux pages : le navigateur
+ * fait alors grandir l'avatar de l'en-tête vers le grand avatar du compte,
+ * sans une ligne de script. C'est la transition demandée par Arthur, obtenue
+ * gratuitement.
+ */
+import { avatar, graineDe } from '../lib/avatar';
+
+interface Props {
+  graine?: string;
+  prenom?: string;
+  identifiant?: string;
+  taille?: number;
+  contour?: boolean;
+  morph?: boolean;
+  titre?: string;
+}
+
+const {
+  graine,
+  prenom = '',
+  identifiant = '',
+  taille = 48,
+  contour = true,
+  morph = false,
+  titre,
+} = Astro.props;
+
+const vraieGraine = graine && graine.length >= 3 ? graine : graineDe(prenom || 'amie', identifiant || 'sansnom');
+const dessin = avatar(vraieGraine, titre ?? (prenom ? `Avatar de ${prenom}` : 'Avatar'));
+---
+
+<span
+  class:list={['avatar', contour && 'avatar-contour', morph && 'avatar-morph']}
+  data-taille={taille}
+  set:html={dessin}
+/>
+
+<style>
+  .avatar {
+    display: block;
+    width: var(--taille, 48px);
+    height: var(--taille, 48px);
+    flex: none;
+    border-radius: 50%;
+    overflow: hidden;
+  }
+
+  .avatar-contour {
+    box-shadow: 0 0 0 2px #fff, 0 0 0 3.5px var(--bordure);
+  }
+
+  .avatar :global(svg) {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* La transition d'une page à l'autre : le navigateur relie les deux
+     avatars qui portent ce nom et fait grandir l'un vers l'autre. */
+  .avatar-morph {
+    view-transition-name: avatar-utilisatrice;
+  }
+
+  /* Les tailles servies, posées en classes plutôt qu'en style en ligne, que
+     la politique de sécurité du contenu refuse. */
+  .avatar[data-taille='32'] { --taille: 32px; }
+  .avatar[data-taille='38'] { --taille: 38px; }
+  .avatar[data-taille='44'] { --taille: 44px; }
+  .avatar[data-taille='48'] { --taille: 48px; }
+  .avatar[data-taille='56'] { --taille: 56px; }
+  .avatar[data-taille='132'] { --taille: 132px; }
+</style>

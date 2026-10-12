@@ -1,0 +1,196 @@
+---
+/**
+ * Les objets qui flottent sur les cartes vedettes de l'accueil.
+ *
+ * Repris du code de référence d'Arthur : dessinés en SVG avec des dégradés
+ * radiaux et des ombres portées, ce qui donne le relief sans charger une
+ * image. Ils débordent volontairement de la carte, en haut à droite.
+ *
+ * Les dégradés sont autorisés ici : ils FONT l'objet. Le DESIGN.md interdit
+ * les dégradés décoratifs posés sur des fonds et des boutons, pas les objets
+ * dessinés.
+ *
+ * Arthur pourra les remplacer par de vraies images 3D en déposant des PNG
+ * dans `public/accueil/` et en changeant ce composant.
+ */
+interface Props {
+  nom: 'cycle' | 'boutique' | 'conseil';
+}
+
+const { nom } = Astro.props;
+const PETALES = [0, 72, 144, 216, 288];
+---
+
+{
+  nom === 'cycle' && (
+    <svg class="objets" viewBox="0 0 170 190" aria-hidden="true">
+      <defs>
+        <radialGradient id="o-goutte" cx=".35" cy=".35" r=".8">
+          <stop offset="0" stop-color="#FF8A9A" />
+          <stop offset=".5" stop-color="#E5233F" />
+          <stop offset="1" stop-color="#8E0B20" />
+        </radialGradient>
+        <radialGradient id="o-bille" cx=".35" cy=".3" r=".8">
+          <stop offset="0" stop-color="#FFE7EE" />
+          <stop offset=".6" stop-color="#F7A9BC" />
+          <stop offset="1" stop-color="#D9728D" />
+        </radialGradient>
+        <linearGradient id="o-anneau" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#FFE27A" />
+          <stop offset="1" stop-color="#F59E0B" />
+        </linearGradient>
+        <radialGradient id="o-lune" cx=".4" cy=".35" r=".8">
+          <stop offset="0" stop-color="#FFFFFF" />
+          <stop offset="1" stop-color="#B9A6F5" />
+        </radialGradient>
+      </defs>
+      <ellipse cx="96" cy="176" rx="46" ry="7" fill="#000" opacity=".1" />
+      <g class="flotte-2">
+        <circle cx="138" cy="44" r="20" fill="none" stroke="url(#o-anneau)" stroke-width="12" />
+        <path d="M126 34a16 16 0 0 1 18 -6" stroke="#fff" stroke-opacity=".7" stroke-width="3" fill="none" stroke-linecap="round" />
+      </g>
+      <g class="flotte-1">
+        <path d="M92 22C92 22 54 70 54 102a38 38 0 0 0 76 0C130 70 92 22 92 22Z" fill="url(#o-goutte)" />
+        <ellipse cx="74" cy="96" rx="7" ry="16" fill="#fff" opacity=".45" transform="rotate(-18 74 96)" />
+        <circle cx="80" cy="124" r="4" fill="#fff" opacity=".3" />
+      </g>
+      <g class="flotte-3">
+        <circle cx="142" cy="140" r="20" fill="url(#o-bille)" />
+        <ellipse cx="135" cy="132" rx="6" ry="4" fill="#fff" opacity=".7" />
+      </g>
+      <g class="flotte-2">
+        <path d="M40 150a18 18 0 1 0 22 -24a14 14 0 1 1 -22 24Z" fill="url(#o-lune)" />
+      </g>
+    </svg>
+  )
+}
+
+{
+  nom === 'boutique' && (
+    <svg class="objets" viewBox="0 0 170 190" aria-hidden="true">
+      <defs>
+        <linearGradient id="o-colis" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#FFFFFF" />
+          <stop offset="1" stop-color="#E8DDF5" />
+        </linearGradient>
+        <linearGradient id="o-cote" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stop-color="#CDBDEB" />
+          <stop offset="1" stop-color="#B09AE0" />
+        </linearGradient>
+        <radialGradient id="o-serviette" cx=".4" cy=".35" r=".8">
+          <stop offset="0" stop-color="#FFFFFF" />
+          <stop offset="1" stop-color="#FFC5D3" />
+        </radialGradient>
+      </defs>
+      <ellipse cx="92" cy="178" rx="50" ry="7" fill="#000" opacity=".1" />
+      <g class="flotte-1">
+        <path d="M48 70L102 56L140 74L86 90Z" fill="#fff" />
+        <path d="M48 70L86 90V160L48 142Z" fill="url(#o-colis)" />
+        <path d="M86 90L140 74V144L86 160Z" fill="url(#o-cote)" />
+        <path d="M60 104q12 -10 22 4" stroke="#E5233F" stroke-width="5" stroke-linecap="round" fill="none" />
+      </g>
+      <g class="flotte-3">
+        <rect x="112" y="18" width="46" height="26" rx="13" fill="url(#o-serviette)" transform="rotate(-24 135 31)" />
+        <rect x="121" y="25" width="28" height="12" rx="6" fill="#fff" opacity=".8" transform="rotate(-24 135 31)" />
+      </g>
+      <g class="flotte-2">
+        <circle cx="34" cy="48" r="15" fill="#7C5CE0" />
+        <path d="M28 54 L40 42" stroke="#fff" stroke-width="2.4" stroke-linecap="round" />
+        <circle cx="30" cy="44" r="2.6" fill="#fff" />
+        <circle cx="38" cy="52" r="2.6" fill="#fff" />
+      </g>
+    </svg>
+  )
+}
+
+{
+  nom === 'conseil' && (
+    <svg class="objets" viewBox="0 0 170 190" aria-hidden="true">
+      <defs>
+        <radialGradient id="o-petale" cx=".4" cy=".3" r=".8">
+          <stop offset="0" stop-color="#FFF4F7" />
+          <stop offset="1" stop-color="#FF9BB3" />
+        </radialGradient>
+        <radialGradient id="o-coeur" cx=".4" cy=".35" r=".7">
+          <stop offset="0" stop-color="#FFE9A8" />
+          <stop offset="1" stop-color="#F5A623" />
+        </radialGradient>
+        <linearGradient id="o-verre" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#E3F6FF" stop-opacity=".9" />
+          <stop offset="1" stop-color="#9ED8F5" stop-opacity=".9" />
+        </linearGradient>
+      </defs>
+      <ellipse cx="94" cy="178" rx="46" ry="7" fill="#000" opacity=".1" />
+      <g class="flotte-1">
+        <g class="tourne">
+          {PETALES.map((a) => (
+            <ellipse cx="96" cy="44" rx="15" ry="24" fill="url(#o-petale)" transform={`rotate(${a} 96 70)`} />
+          ))}
+        </g>
+        <circle cx="96" cy="70" r="14" fill="url(#o-coeur)" />
+      </g>
+      <g class="flotte-3">
+        <path d="M60 112h40l-6 62h-28Z" fill="url(#o-verre)" />
+        <path d="M63 132h34l-4 40h-26Z" fill="#5BB8E8" opacity=".6" />
+        <rect x="66" y="118" width="5" height="40" rx="2.5" fill="#fff" opacity=".7" />
+      </g>
+      <g class="flotte-2">
+        <path d="M140 120c0 0-14 17-14 27a14 14 0 0 0 28 0c0-10-14-27-14-27Z" fill="#7CCBF2" />
+      </g>
+    </svg>
+  )
+}
+
+<style>
+  .objets {
+    position: absolute;
+    right: -6px;
+    top: -24px;
+    z-index: 1;
+    width: 170px;
+    height: 190px;
+    pointer-events: none;
+  }
+
+  .flotte-1 {
+    animation: flotte 4.2s ease-in-out infinite;
+  }
+
+  .flotte-2 {
+    animation: flotte 3.6s 0.6s ease-in-out infinite reverse;
+  }
+
+  .flotte-3 {
+    animation: flotte 5s 1.1s ease-in-out infinite;
+  }
+
+  .tourne {
+    transform-origin: 96px 70px;
+    animation: tourne 14s linear infinite;
+  }
+
+  @keyframes flotte {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-8px);
+    }
+  }
+
+  @keyframes tourne {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .flotte-1,
+    .flotte-2,
+    .flotte-3,
+    .tourne {
+      animation: none;
+    }
+  }
+</style>

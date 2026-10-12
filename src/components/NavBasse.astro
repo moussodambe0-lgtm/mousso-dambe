@@ -1,33 +1,48 @@
 ---
 /**
  * La barre basse : cinq onglets, dans l'ordre voulu par Arthur le 12 octobre
- * 2026. Dambé est au MILIEU, à la place où le pouce tombe naturellement, et
+ * 2026. L'onglet du milieu est à la place où le pouce tombe naturellement, et
  * le compte a quitté le coin de l'accueil pour venir ici, aligné avec le
  * reste.
  *
- * Elle porte « IA Dambé » et non « Dambé » : une utilisatrice qui lit un
- * prénom ne devine pas qu'elle parle à une machine. Le dire est une question
- * d'honnêteté autant que de compréhension.
+ * L'onglet du milieu s'appelle « Discussions » depuis la section 7 de son
+ * cahier : il mène à la liste où IA Dambé est épinglée au-dessus de la
+ * conversation avec la boutique. On ne perd pas la mention « IA » pour
+ * autant : elle est portée par la ligne d'IA Dambé dans la liste et par le
+ * titre de sa page. Une utilisatrice qui lit un prénom ne devine pas qu'elle
+ * parle à une machine, et le dire est une question d'honnêteté.
+ *
+ * La pilule qui glisse sous l'onglet actif (section 11) est entièrement en
+ * CSS : la barre porte la position en attribut, une règle place la pilule.
+ * Zéro octet de JavaScript, et elle est juste même si rien ne se charge.
  */
 import Icone from './Icone.astro';
 
 interface Props {
-  actif: 'accueil' | 'cycle' | 'dambe' | 'boutique' | 'compte';
+  actif: 'accueil' | 'cycle' | 'discussions' | 'boutique' | 'compte';
   panier?: number;
+  /** Messages de la boutique non lus, pour la pastille de l'onglet. */
+  messages?: number;
 }
 
-const { actif, panier = 0 } = Astro.props;
+const { actif, panier = 0, messages = 0 } = Astro.props;
 
 const ONGLETS = [
   { id: 'accueil', lien: '/', icone: 'accueil', libelle: 'Accueil' },
   { id: 'cycle', lien: '/cycle', icone: 'cycle', libelle: 'Mon cycle' },
-  { id: 'dambe', lien: '/dambe', icone: 'dambe', libelle: 'IA Dambé' },
+  { id: 'discussions', lien: '/discussions', icone: 'dambe', libelle: 'Discussions' },
   { id: 'boutique', lien: '/boutique', icone: 'boutique', libelle: 'Boutique' },
   { id: 'compte', lien: '/compte', icone: 'compte', libelle: 'Mon compte' },
 ] as const;
+
+const place = Math.max(
+  0,
+  ONGLETS.findIndex((o) => o.id === actif),
+);
 ---
 
-<nav class="nav-basse" aria-label="Navigation principale">
+<nav class="nav-basse" aria-label="Navigation principale" data-place={place}>
+  <span class="nav-pilule" aria-hidden="true"></span>
   {
     ONGLETS.map((o) => (
       <a class="nav-item" href={o.lien} aria-current={actif === o.id ? 'page' : undefined}>
@@ -37,6 +52,12 @@ const ONGLETS = [
             <span class="nav-pastille">
               {panier}
               <span class="lecture-seule">articles dans ton panier</span>
+            </span>
+          )}
+          {o.id === 'discussions' && messages > 0 && (
+            <span class="nav-pastille">
+              {messages}
+              <span class="lecture-seule">messages non lus</span>
             </span>
           )}
         </span>

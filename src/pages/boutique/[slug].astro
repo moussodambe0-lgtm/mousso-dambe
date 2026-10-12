@@ -155,9 +155,20 @@ if (!moi && !avaitUnCookie) {
         <div class="place-barre"></div>
 
         <div class="barre-action">
-          {/* Un seul bouton : la quantité se règle dans le panier, avec des
-              plus et des moins qui se comprennent sans rien lire. Trois
-              chiffres alignés ici se lisaient comme une pagination. */}
+          {/* Deux actions, et une seule qui remplit la largeur. « Écrire au
+              vendeur » (section 8 du cahier d'Arthur) est à côté du panier et
+              non à sa place : la plupart achètent sans écrire, mais celle qui
+              hésite sur une taille ou un quartier de livraison ne doit pas
+              aller chercher ailleurs. Le lien emporte le produit, qui sera
+              attaché en haut de son message. */}
+          <a
+            class="btn btn-contour ecrire-vendeur"
+            href={`/discussions/boutique?produit=${produit.slug}`}
+            aria-label="Écrire au vendeur à propos de ce produit"
+          >
+            <Icone nom="bulles" taille={19} />
+            <span class="lecture-seule">Écrire au vendeur</span>
+          </a>
           <button class="btn btn-rose btn-plein" type="submit" name="quantite" value="1" disabled={rupture}>
             {rupture ? 'Bientôt de retour' : `Mettre au panier · ${prix(produit.prix_cfa)} F`}
           </button>
@@ -168,6 +179,18 @@ if (!moi && !avaitUnCookie) {
 </Base>
 
 <style>
+  /* Le bouton « Écrire au vendeur » : un carré à côté du grand bouton, pour
+     que « Mettre au panier » garde toute la place qu'il peut. */
+  .ecrire-vendeur {
+    display: grid;
+    place-items: center;
+    width: 52px;
+    height: 52px;
+    flex: none;
+    padding: 0;
+    border-radius: 16px;
+  }
+
   .visuel-haut {
     position: relative;
     height: 260px;

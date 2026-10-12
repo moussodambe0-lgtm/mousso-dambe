@@ -1,0 +1,113 @@
+---
+/**
+ * MOUSSO, LA MASCOTTE.
+ *
+ * Section 6 du cahier d'Arthur, et sa décision du 12 octobre 2026 : la
+ * mascotte est « la dame seulement ». Pas une goutte avec des yeux, une femme
+ * de Ouagadougou au foulard noué. Elle est le visage d'IA Dambé.
+ *
+ * Les dessins viennent de Motion (12 octobre 2026) : quatre poses en SVG, et
+ * une feuille de style qui ne fait bouger que `transform` et `opacity`, joue
+ * l'entrée une fois, puis laisse seulement les yeux cligner. Tout est posé
+ * dans la page, donc aucune requête réseau et rien à attendre sur une 3G.
+ *
+ * Les états demandés dans le cahier, et ce qu'ils rendent ici :
+ *   neutre, ecoute, reflechit  -> elle écoute, la tête acquiesce
+ *   sourit, salut, coucou      -> elle fait signe de la main
+ *   bravo, celebre             -> elle lève le pouce, avec des éclats
+ *   visage                     -> son visage seul, en rond (listes, avatars)
+ *
+ * Les SVG de Motion portent des identifiants fixes pour leurs masques. Deux
+ * mascottes du même état sur une page produisent donc deux fois le même
+ * identifiant : le navigateur prend le premier, et comme le masque est
+ * identique, le dessin reste juste.
+ */
+import '../styles/mascotte.css';
+import salut from '../assets/mascotte/mascotte-salut.svg?raw';
+import ecoute from '../assets/mascotte/mascotte-ecoute.svg?raw';
+import bravo from '../assets/mascotte/mascotte-bravo.svg?raw';
+import visage from '../assets/mascotte/mascotte-visage.svg?raw';
+
+export type EtatMascotte =
+  | 'neutre'
+  | 'ecoute'
+  | 'reflechit'
+  | 'sourit'
+  | 'salut'
+  | 'coucou'
+  | 'bravo'
+  | 'celebre'
+  | 'visage';
+
+interface Props {
+  etat?: EtatMascotte;
+  taille?: number;
+  /** Remplace l'étiquette du dessin, ou la retire quand elle est décorative. */
+  titre?: string | null;
+  classe?: string;
+}
+
+const { etat = 'sourit', taille = 120, titre, classe = '' } = Astro.props;
+
+const DESSINS: Record<EtatMascotte, string> = {
+  neutre: ecoute,
+  ecoute,
+  reflechit: ecoute,
+  sourit: salut,
+  salut,
+  coucou: salut,
+  bravo,
+  celebre: bravo,
+  visage,
+};
+
+let dessin = DESSINS[etat] ?? salut;
+
+// L'étiquette accessible : celle de Motion par défaut, la nôtre si on en
+// donne une, et aucune (plus aria-hidden) quand le dessin est décoratif.
+if (titre === null) {
+  dessin = dessin
+    .replace(/role="img"/, 'role="presentation" aria-hidden="true"')
+    .replace(/ aria-label="[^"]*"/, '');
+} else if (titre) {
+  dessin = dessin.replace(/aria-label="[^"]*"/, `aria-label="${titre.replace(/"/g, '&quot;')}"`);
+}
+---
+
+<span class:list={['mascotte', classe]} data-taille={taille} set:html={dessin} />
+
+<style>
+  .mascotte {
+    display: block;
+    width: var(--m-taille, 120px);
+    flex: none;
+    line-height: 0;
+  }
+
+  .mascotte :global(svg) {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-width: none;
+  }
+
+  /* Le visage seul est carré : on lui donne sa hauteur, sinon il se laisse
+     étirer par la grille qui l'entoure. */
+  .mascotte :global(.md-mascotte-visage) {
+    width: 100%;
+    height: 100%;
+    aspect-ratio: 1;
+  }
+
+  .mascotte[data-taille='32'] { --m-taille: 32px; }
+  .mascotte[data-taille='38'] { --m-taille: 38px; }
+  .mascotte[data-taille='44'] { --m-taille: 44px; }
+  .mascotte[data-taille='48'] { --m-taille: 48px; }
+  .mascotte[data-taille='52'] { --m-taille: 52px; }
+  .mascotte[data-taille='56'] { --m-taille: 56px; }
+  .mascotte[data-taille='64'] { --m-taille: 64px; }
+  .mascotte[data-taille='88'] { --m-taille: 88px; }
+  .mascotte[data-taille='120'] { --m-taille: 120px; }
+  .mascotte[data-taille='160'] { --m-taille: 160px; }
+  .mascotte[data-taille='200'] { --m-taille: 200px; }
+</style>

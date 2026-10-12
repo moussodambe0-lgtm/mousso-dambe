@@ -58,6 +58,11 @@ const ECRANS = [
   { nom: '17-confidentialite', url: '/confidentialite', connectee: true },
   { nom: '18-panier-vide', url: '/panier?vide=1', connectee: false },
   { nom: '19-introuvable', url: '/cette-page-nexiste-pas', connectee: true },
+  { nom: '20-discussions', url: '/discussions', connectee: true },
+  { nom: '21-fil-boutique', url: '/discussions/boutique', connectee: true },
+  { nom: '22-fil-boutique-produit', url: '/discussions/boutique?produit=culotte-flux-abondant', connectee: true },
+  { nom: '23-admin-messages', url: '/admin', connectee: true },
+  { nom: '24-admin-commandes', url: '/admin?vue=commandes', connectee: true },
 ];
 
 /** Se connecte comme le ferait un téléphone, et récupère le cookie de session. */

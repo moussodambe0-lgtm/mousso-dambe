@@ -1,0 +1,523 @@
+---
+/**
+ * LA CONVERSATION AVEC LA BOUTIQUE.
+ *
+ * Sections 7 et 8 du cahier d'Arthur. Un formulaire qui se poste, comme pour
+ * IA Dambé : la page revient avec le message déjà en place. C'est moins joli
+ * qu'une messagerie qui se remplit toute seule, et c'est le seul moyen que ça
+ * marche quand la connexion tombe entre deux messages.
+ *
+ * Deux façons d'arriver ici :
+ *   - par l'onglet Discussions, pour écrire ;
+ *   - depuis une fiche produit, avec `?produit=slug`, et alors la carte du
+ *     produit est attachée en haut et le message est pré-rempli (modifiable).
+ *
+ * Le rafraîchissement régulier demandé dans le cahier est fait par un
+ * en-tête `Refresh` et une seule ligne de script : la page se recharge toutes
+ * les vingt secondes tant qu'elle est ouverte et visible.
+ */
+import Base from '../../layouts/Base.astro';
+import Icone from '../../components/Icone.astro';
+import Alerte from '../../components/Alerte.astro';
+import { clientSession, baseConfiguree } from '../../lib/supabase';
+import { visiteuse, lirePanier, comptePanier } from '../../lib/session';
+import { prixComplet, heureCourte, dateLongue, messageErreur } from '../../lib/format';
+
+if (!baseConfiguree()) return Astro.redirect('/', 302);
+const moi = await visiteuse(Astro);
+if (!moi) return Astro.redirect('/connexion', 302);
+
+const client = clientSession(Astro)!;
+const panier = comptePanier(lirePanier(Astro));
+
+let erreur = '';
+
+if (Astro.request.method === 'POST') {
+  const f = await Astro.request.formData();
+  const texte = String(f.get('texte') ?? '').trim();
+  const slug = String(f.get('produit') ?? '').trim() || null;
+  const tel = String(f.get('telephone') ?? '').trim();
+
+  // Le téléphone, demandé une seule fois et facultatif : il sert à rappeler.
+  if (tel && !moi.telephone) {
+    await client.rpc('changer_telephone', { p_telephone: tel });
+  }
+
+  if (texte.length < 1) {
+    erreur = 'Écris ton message.';
+  } else {
+    const { data, error } = await client.rpc('ecrire_a_la_boutique', {
+      p_texte: texte,
+      p_produit_slug: slug,
+    });
+    if (error || !data?.ok) {
+      erreur = messageErreur(data?.erreur);
+    } else {
+      return Astro.redirect('/discussions/boutique', 303);
+    }
+  }
+}
+
+// Le produit attaché, s'il y en a un, et seulement s'il est en vente.
+const slugDemande = Astro.url.searchParams.get('produit') ?? '';
+let produit: { slug: string; nom: string; prix_cfa: number; image: string | null } | null = null;
+if (slugDemande) {
+  const { data } = await client
+    .from('produits')
+    .select('slug, nom, prix_cfa, image')
+    .eq('slug', slugDemande)
+    .eq('publie', true)
+    .maybeSingle();
+  produit = data ?? null;
+}
+
+const { data: fil } = await client.rpc('mon_fil');
+const messages = (fil?.messages ?? []) as {
+  id: string;
+  de: 'elle' | 'boutique';
+  texte: string;
+  quand: string;
+  lu: boolean;
+  produit: { slug: string; nom: string; prix_cfa: number; image: string | null } | null;
+}[];
+
+// Ouvrir la conversation, c'est l'avoir lue.
+if (fil?.fil) await client.rpc('marquer_lu', { p_fil: fil.fil });
+
+// Les jours servent de séparateurs dans le fil.
+let jourPrecedent = '';
+const lignes = messages.map((m) => {
+  const jour = (m.quand ?? '').slice(0, 10);
+  const nouveauJour = jour !== jourPrecedent;
+  jourPrecedent = jour;
+  return { ...m, jour, nouveauJour };
+});
+
+const brouillon = produit ? 'Bonjour, je suis intéressée par ce produit.' : '';
+---
+
+<Base titre="Boutique Mousso Dambé" nav="discussions" panier={panier}>
+  <main class="conversation">
+    <header class="barre">
+      <a class="retour" href="/discussions" aria-label="Retour aux discussions">
+        <Icone nom="retour" taille={22} />
+      </a>
+      <span class="visage"><Icone nom="boutique" taille={20} /></span>
+      <span class="qui">
+        <b>Boutique Mousso Dambé</b>
+        <span>On répond nous-mêmes, pas un robot</span>
+      </span>
+    </header>
+
+    <div class="fil-messages">
+      {
+        lignes.length === 0 && (
+          <div class="vide">
+            <span class="vide-rond"><Icone nom="bulles" taille={26} /></span>
+            <h2>Écris-nous</h2>
+            <p>
+              Une taille, un délai, un quartier de livraison, un prix. On te répond en français ou en mooré, du lundi
+              au samedi.
+            </p>
+          </div>
+        )
+      }
+
+      {
+        lignes.map((m) => (
+          <>
+            {m.nouveauJour && <p class="jour">{dateLongue(m.jour)}</p>}
+            <div class:list={['ligne', m.de === 'elle' ? 'de-moi' : 'de-eux']}>
+              <div class="bulle">
+                {m.produit && (
+                  <a class="carte-jointe" href={`/boutique/${m.produit.slug}`}>
+                    {m.produit.image ? (
+                      <img
+                        src={m.produit.image}
+                        alt=""
+                        width="48"
+                        height="48"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <span class="carte-sans-image"><Icone nom="paquet" taille={20} /></span>
+                    )}
+                    <span>
+                      <b>{m.produit.nom}</b>
+                      <span class="carte-prix">{prixComplet(m.produit.prix_cfa)}</span>
+                    </span>
+                  </a>
+                )}
+                <p class="texte">{m.texte}</p>
+                <span class="pied">
+                  {heureCourte(m.quand)}
+                  {m.de === 'elle' && (
+                    <span class:list={['coches', m.lu && 'coches-lues']} aria-label={m.lu ? 'Lu' : 'Envoyé'}>
+                      <Icone nom="coche" taille={13} epaisseur={2.6} />
+                      {m.lu && <Icone nom="coche" taille={13} epaisseur={2.6} />}
+                    </span>
+                  )}
+                </span>
+              </div>
+            </div>
+          </>
+        ))
+      }
+    </div>
+
+    {erreur && <div class="dans-la-page"><Alerte type="erreur" texte={erreur} /></div>}
+
+    <form class="ecrire" method="post">
+      {
+        produit && (
+          <div class="jointe-brouillon">
+            {produit.image ? (
+              <img src={produit.image} alt="" width="44" height="44" />
+            ) : (
+              <span class="carte-sans-image"><Icone nom="paquet" taille={18} /></span>
+            )}
+            <span>
+              <b>{produit.nom}</b>
+              <span class="carte-prix">{prixComplet(produit.prix_cfa)}</span>
+            </span>
+            <a class="enlever" href="/discussions/boutique" aria-label="Enlever le produit">
+              <Icone nom="croix" taille={16} />
+            </a>
+            <input type="hidden" name="produit" value={produit.slug} />
+          </div>
+        )
+      }
+
+      {
+        !moi.telephone && (
+          <label class="tel">
+            <span>Ton numéro, pour qu'on puisse te rappeler (facultatif)</span>
+            <input type="tel" name="telephone" inputmode="tel" autocomplete="tel" placeholder="70 00 00 00" />
+          </label>
+        )
+      }
+
+      <div class="zone-ecriture">
+        <label class="lecture-seule" for="texte">Ton message</label>
+        <textarea
+          id="texte"
+          name="texte"
+          rows="1"
+          maxlength="2000"
+          required
+          placeholder="Ton message..."
+          autocomplete="off">{brouillon}</textarea>
+        <button class="envoyer" type="submit" aria-label="Envoyer">
+          <Icone nom="envoyer" taille={20} />
+        </button>
+      </div>
+    </form>
+  </main>
+</Base>
+
+<script>
+  import '../../scripts/conversation';
+</script>
+
+<style>
+  .conversation {
+    display: flex;
+    flex-direction: column;
+    min-height: 100dvh;
+    padding-bottom: 96px;
+  }
+
+  /* --- La barre du haut --- */
+  .barre {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    gap: var(--e2);
+    padding: var(--e3) var(--e4);
+    border-bottom: 1px solid var(--bordure);
+    background: var(--surface);
+  }
+
+  .retour {
+    display: flex;
+    margin-left: -6px;
+    color: var(--encre);
+  }
+
+  .visage {
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    flex: none;
+    border-radius: 50%;
+    background: var(--encre);
+    color: var(--rose-clair);
+  }
+
+  .qui b {
+    display: block;
+    font-size: 15px;
+    line-height: 1.2;
+  }
+
+  .qui span {
+    font-size: 11.5px;
+    color: var(--texte-3);
+  }
+
+  /* --- Le fil --- */
+  .fil-messages {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: var(--e2);
+    padding: var(--e4) var(--e4) var(--e3);
+  }
+
+  .jour {
+    align-self: center;
+    margin: var(--e2) 0;
+    padding: 3px 10px;
+    border-radius: var(--r-ronde);
+    background: var(--surface-douce);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--texte-2);
+  }
+
+  .ligne {
+    display: flex;
+  }
+
+  .de-moi {
+    justify-content: flex-end;
+  }
+
+  .bulle {
+    max-width: 82%;
+    padding: 10px 13px;
+    border-radius: 18px;
+    font-size: 14.5px;
+    line-height: 1.45;
+    animation: bulle-arrive 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
+
+  .de-moi .bulle {
+    border-bottom-right-radius: 6px;
+    background: var(--rose);
+    color: #fff;
+  }
+
+  .de-eux .bulle {
+    border: 1px solid var(--bordure);
+    border-bottom-left-radius: 6px;
+    background: var(--surface);
+  }
+
+  .texte {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  .pied {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 4px;
+    margin-top: 3px;
+    font-size: 10.5px;
+    opacity: 0.7;
+  }
+
+  .coches {
+    display: flex;
+  }
+
+  .coches :global(svg):last-child {
+    margin-left: -7px;
+  }
+
+  .coches-lues {
+    opacity: 1;
+  }
+
+  /* --- La carte produit attachée --- */
+  .carte-jointe,
+  .jointe-brouillon {
+    display: flex;
+    align-items: center;
+    gap: var(--e2);
+    margin-bottom: 8px;
+    padding: 7px;
+    border-radius: 13px;
+    background: rgba(255, 255, 255, 0.22);
+    color: inherit;
+  }
+
+  .de-eux .carte-jointe {
+    background: var(--surface-douce);
+  }
+
+  .carte-jointe img,
+  .jointe-brouillon img {
+    border-radius: 9px;
+    object-fit: cover;
+  }
+
+  .carte-sans-image {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    flex: none;
+    border-radius: 9px;
+    background: var(--surface-douce);
+    color: var(--rose);
+  }
+
+  .carte-jointe b,
+  .jointe-brouillon b {
+    display: block;
+    font-size: 13px;
+    line-height: 1.2;
+  }
+
+  .carte-prix {
+    font-size: 12px;
+    opacity: 0.85;
+  }
+
+  /* --- Le vide --- */
+  .vide {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--e2);
+    margin: auto 0;
+    padding: var(--e6) var(--e3);
+    text-align: center;
+  }
+
+  .vide-rond {
+    display: grid;
+    place-items: center;
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    background: var(--surface-douce);
+    color: var(--rose);
+  }
+
+  .vide h2 {
+    font-size: 18px;
+  }
+
+  .vide p {
+    max-width: 290px;
+    font-size: 13.5px;
+    color: var(--texte-2);
+    line-height: 1.5;
+  }
+
+  /* --- Écrire --- */
+  .dans-la-page {
+    padding: 0 var(--e4);
+  }
+
+  .ecrire {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: calc(68px + env(safe-area-inset-bottom, 0px));
+    z-index: 10;
+    max-width: 480px;
+    margin: 0 auto;
+    padding: var(--e2) var(--e4) var(--e3);
+    border-top: 1px solid var(--bordure);
+    background: var(--surface);
+  }
+
+  .jointe-brouillon {
+    position: relative;
+    margin-bottom: var(--e2);
+    background: var(--surface-douce);
+  }
+
+  .enlever {
+    margin-left: auto;
+    padding: 6px;
+    color: var(--texte-3);
+  }
+
+  .tel {
+    display: block;
+    margin-bottom: var(--e2);
+  }
+
+  .tel span {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 12px;
+    color: var(--texte-2);
+  }
+
+  .tel input {
+    width: 100%;
+  }
+
+  .zone-ecriture {
+    display: flex;
+    align-items: flex-end;
+    gap: var(--e2);
+  }
+
+  .zone-ecriture textarea {
+    flex: 1;
+    min-height: 46px;
+    max-height: 140px;
+    padding: 12px 14px;
+    border: 1px solid var(--bordure);
+    border-radius: 23px;
+    background: var(--surface-douce);
+    font-family: var(--texte);
+    font-size: 15px;
+    line-height: 1.35;
+    resize: none;
+  }
+
+  .envoyer {
+    display: grid;
+    place-items: center;
+    width: 46px;
+    height: 46px;
+    flex: none;
+    border: none;
+    border-radius: 50%;
+    background: var(--rose);
+    color: #fff;
+  }
+
+  .envoyer:active {
+    transform: scale(0.93);
+  }
+
+  @keyframes bulle-arrive {
+    from {
+      opacity: 0;
+      transform: translateY(8px) scale(0.97);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .bulle {
+      animation: none;
+    }
+  }
+</style>

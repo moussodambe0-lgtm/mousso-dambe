@@ -1,0 +1,265 @@
+---
+/**
+ * L'onglet DISCUSSIONS.
+ *
+ * Section 7 du cahier d'Arthur : une liste à la façon d'une messagerie. IA
+ * Dambé est épinglée tout en haut avec son badge « IA », et en dessous vient
+ * la conversation avec la boutique.
+ *
+ * Ce que cet écran ne montre pas, volontairement : la réponse de l'IA. On
+ * n'affiche que l'aperçu de la question posée, et seulement les 90 premiers
+ * caractères. Une liste de discussions se regarde dans un taxi, par-dessus
+ * l'épaule de quelqu'un, et une question sur des douleurs ou sur une
+ * grossesse n'a pas à s'étaler là.
+ */
+import Base from '../../layouts/Base.astro';
+import Icone from '../../components/Icone.astro';
+import Mascotte from '../../components/Mascotte.astro';
+import { clientSession, baseConfiguree } from '../../lib/supabase';
+import { visiteuse, lirePanier, comptePanier } from '../../lib/session';
+import { quandCourt } from '../../lib/format';
+
+if (!baseConfiguree()) return Astro.redirect('/', 302);
+const moi = await visiteuse(Astro);
+if (!moi) return Astro.redirect('/connexion', 302);
+
+const client = clientSession(Astro)!;
+const panier = comptePanier(lirePanier(Astro));
+
+const { data } = await client.rpc('mes_discussions');
+const ia = (data?.ia ?? null) as { apercu: string; quand: string; combien: number } | null;
+const boutique = (data?.boutique ?? null) as {
+  fil: string;
+  apercu: string;
+  apercu_de: 'elle' | 'boutique';
+  quand: string;
+  non_lus: number;
+} | null;
+---
+
+<Base titre="Discussions" nav="discussions" panier={panier} messages={boutique?.non_lus ?? 0}>
+  <main class="page">
+    <header class="tete">
+      <h1>Discussions</h1>
+      <p class="sous">Tes échanges avec IA Dambé et avec la boutique.</p>
+    </header>
+
+    <ul class="causeries">
+      {/* --- IA Dambé, épinglée --- */}
+      <li class="apparait">
+        <a class="causerie causerie-ia" href="/dambe">
+          <span class="causerie-visage">
+            <Mascotte etat="visage" taille={52} titre="IA Dambé" />
+          </span>
+          <span class="causerie-corps">
+            <span class="causerie-haut">
+              <span class="causerie-nom">
+                IA Dambé
+                <span class="badge-ia">IA</span>
+              </span>
+              <span class="causerie-epingle" aria-label="Conversation épinglée">
+                <Icone nom="epingle" taille={14} />
+              </span>
+            </span>
+            <span class="causerie-apercu">
+              {
+                ia
+                  ? `Tu as demandé : ${ia.apercu}`
+                  : "Pose-lui une question sur tes règles, ton corps, nos produits. Elle répond sans juger."
+              }
+            </span>
+          </span>
+        </a>
+      </li>
+
+      {/* --- La boutique --- */}
+      <li class="apparait" data-ordre="2">
+        <a class="causerie" href="/discussions/boutique">
+          <span class="causerie-visage causerie-visage-boutique">
+            <Icone nom="boutique" taille={24} />
+          </span>
+          <span class="causerie-corps">
+            <span class="causerie-haut">
+              <span class="causerie-nom">Boutique Mousso Dambé</span>
+              {boutique?.quand && <span class="causerie-heure">{quandCourt(boutique.quand)}</span>}
+            </span>
+            <span class="causerie-bas">
+              <span class:list={['causerie-apercu', boutique && boutique.non_lus > 0 && 'causerie-apercu-gras']}>
+                {
+                  boutique?.apercu
+                    ? `${boutique.apercu_de === 'elle' ? 'Toi : ' : ''}${boutique.apercu}`
+                    : 'Écris-nous pour une commande, une taille, une livraison. On répond nous-mêmes.'
+                }
+              </span>
+              {
+                boutique && boutique.non_lus > 0 && (
+                  <span class="causerie-nombre">
+                    {boutique.non_lus}
+                    <span class="lecture-seule">messages non lus</span>
+                  </span>
+                )
+              }
+            </span>
+          </span>
+        </a>
+      </li>
+    </ul>
+
+    <p class="note apparait" data-ordre="3">
+      La boutique voit ton prénom, ton téléphone et ce que tu lui écris. Elle ne voit jamais ton calendrier, ton
+      journal, ni ce que tu demandes à IA Dambé.
+    </p>
+
+    <div class="espace"></div>
+  </main>
+</Base>
+
+<style>
+  .tete {
+    padding: var(--e5) 0 var(--e4);
+  }
+
+  .tete h1 {
+    font-size: 26px;
+    font-weight: 800;
+  }
+
+  .sous {
+    margin-top: 4px;
+    font-size: 14px;
+    color: var(--texte-2);
+  }
+
+  .causeries {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--e2);
+  }
+
+  .causerie {
+    display: flex;
+    gap: var(--e3);
+    align-items: center;
+    padding: var(--e3);
+    border: 1px solid var(--bordure);
+    border-radius: 20px;
+    background: var(--surface);
+    color: var(--encre);
+    transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .causerie:active {
+    transform: scale(0.98);
+  }
+
+  /* La conversation épinglée se distingue par son fond, pas par un cadre de
+     plus : il y a déjà l'épingle et le badge pour le dire. */
+  .causerie-ia {
+    border-color: transparent;
+    background: var(--surface-douce);
+  }
+
+  .causerie-visage {
+    display: grid;
+    place-items: center;
+    width: 52px;
+    height: 52px;
+    flex: none;
+    border-radius: 50%;
+    background: #fff;
+  }
+
+  .causerie-visage-boutique {
+    background: var(--encre);
+    color: var(--rose-clair);
+  }
+
+  .causerie-corps {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .causerie-haut {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--e2);
+  }
+
+  .causerie-nom {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 15.5px;
+    font-weight: 700;
+  }
+
+  .badge-ia {
+    padding: 2px 7px;
+    border-radius: var(--r-ronde);
+    background: var(--rose);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.4px;
+  }
+
+  .causerie-epingle {
+    display: flex;
+    color: var(--texte-3);
+  }
+
+  .causerie-heure {
+    flex: none;
+    font-size: 11.5px;
+    color: var(--texte-3);
+  }
+
+  .causerie-bas {
+    display: flex;
+    align-items: center;
+    gap: var(--e2);
+  }
+
+  .causerie-apercu {
+    display: block;
+    flex: 1;
+    min-width: 0;
+    margin-top: 3px;
+    font-size: 13px;
+    color: var(--texte-2);
+    line-height: 1.35;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .causerie-apercu-gras {
+    color: var(--encre);
+    font-weight: 600;
+  }
+
+  .causerie-nombre {
+    display: grid;
+    place-items: center;
+    min-width: 20px;
+    height: 20px;
+    flex: none;
+    padding: 0 6px;
+    border-radius: var(--r-ronde);
+    background: var(--rose);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  .note {
+    margin-top: var(--e5);
+    font-size: 12.5px;
+    color: var(--texte-3);
+    line-height: 1.5;
+  }
+</style>

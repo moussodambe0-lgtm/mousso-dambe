@@ -1,0 +1,635 @@
+---
+/**
+ * L'ESPACE D'ARTHUR.
+ *
+ * Section 9 du cahier : la boîte de réception et les commandes, utilisables
+ * sur un téléphone, parce que c'est là qu'il les lira.
+ *
+ * Qui entre ici : seulement une ligne de la table `administrateurs`. Aucun
+ * mot de passe n'est écrit dans le code, aucune adresse n'est privilégiée, et
+ * la page n'est même pas une page à part : c'est la base qui refuse de
+ * répondre à quelqu'un d'autre. Si Arthur perd son accès, il se le rend avec
+ * une ligne de SQL ; si quelqu'un trouve l'adresse de cette page, il voit un
+ * écran qui lui dit non.
+ *
+ * Ce que cet écran ne peut pas montrer, par construction : le calendrier, le
+ * journal et les questions posées à IA Dambé. Les fonctions appelées ici ne
+ * les lisent pas, et les règles d'accès de la base les refusent même en SQL
+ * direct. C'est vérifié par `supabase/tests/messagerie.test.mjs`.
+ */
+import Base from '../../layouts/Base.astro';
+import Icone from '../../components/Icone.astro';
+import Avatar from '../../components/Avatar.astro';
+import Alerte from '../../components/Alerte.astro';
+import { clientSession, baseConfiguree } from '../../lib/supabase';
+import { visiteuse } from '../../lib/session';
+import { prixComplet, quandCourt, dateLongue, messageErreur } from '../../lib/format';
+
+if (!baseConfiguree()) return Astro.redirect('/', 302);
+const moi = await visiteuse(Astro);
+if (!moi) return Astro.redirect('/connexion', 302);
+
+const client = clientSession(Astro)!;
+
+const { data: admin } = await client.rpc('est_admin');
+const autorisee = admin === true;
+
+let erreur = '';
+
+if (autorisee && Astro.request.method === 'POST') {
+  const f = await Astro.request.formData();
+  const commande = String(f.get('commande') ?? '');
+  const etat = String(f.get('etat') ?? '');
+  if (commande && etat) {
+    const { data } = await client.rpc('changer_etat_commande', { p_id: commande, p_etat: etat });
+    if (!data?.ok) erreur = messageErreur(data?.erreur);
+    else return Astro.redirect(`/admin?vue=commandes&etat=${encodeURIComponent(String(f.get('filtre') ?? ''))}`, 303);
+  }
+}
+
+const vue = Astro.url.searchParams.get('vue') === 'commandes' ? 'commandes' : 'messages';
+const cherche = (Astro.url.searchParams.get('q') ?? '').slice(0, 60);
+const filtreEtat = Astro.url.searchParams.get('etat') ?? '';
+
+let fils: any[] = [];
+let nonLus = 0;
+let commandesNouvelles = 0;
+let commandes: any[] = [];
+let compte: Record<string, number> = {};
+
+if (autorisee) {
+  const { data: boite } = await client.rpc('boite_de_reception', { p_recherche: cherche || null });
+  fils = boite?.fils ?? [];
+  nonLus = boite?.non_lus ?? 0;
+  commandesNouvelles = boite?.commandes_nouvelles ?? 0;
+
+  if (vue === 'commandes') {
+    const { data } = await client.rpc('commandes_admin', { p_etat: filtreEtat || null });
+    commandes = data?.commandes ?? [];
+    compte = data?.compte ?? {};
+  }
+}
+
+const ETATS = [
+  { id: 'nouvelle', libelle: 'Nouvelle' },
+  { id: 'preparee', libelle: 'Préparée' },
+  { id: 'envoyee', libelle: 'En livraison' },
+  { id: 'livree', libelle: 'Livrée' },
+  { id: 'annulee', libelle: 'Annulée' },
+];
+---
+
+<Base titre="Administration" nav={null}>
+  {
+    !autorisee && (
+      <main class="page refus">
+        <span class="refus-rond"><Icone nom="cadenas" taille={28} /></span>
+        <h1>Cet espace n'est pas pour toi</h1>
+        <p>
+          Seule la boutique y entre. Si tu cherchais tes discussions, elles sont dans l'onglet du milieu.
+        </p>
+        <a class="btn btn-rose" href="/">Retour à l'accueil</a>
+      </main>
+    )
+  }
+
+  {
+    autorisee && (
+      <main class="admin">
+        <header class="tete">
+          <div>
+            <h1>Administration</h1>
+            <p class="sous">Mousso Dambé, {dateLongue(new Date().toISOString().slice(0, 10))}</p>
+          </div>
+          <a class="sortie" href="/" aria-label="Quitter l'administration">
+            <Icone nom="croix" taille={20} />
+          </a>
+        </header>
+
+        <nav class="onglets" aria-label="Sections de l'administration">
+          <a class:list={['onglet', vue === 'messages' && 'onglet-actif']} href="/admin">
+            <Icone nom="bulles" taille={17} />
+            Messages
+            {nonLus > 0 && <span class="compteur">{nonLus}</span>}
+          </a>
+          <a class:list={['onglet', vue === 'commandes' && 'onglet-actif']} href="/admin?vue=commandes">
+            <Icone nom="colis" taille={17} />
+            Commandes
+            {commandesNouvelles > 0 && <span class="compteur">{commandesNouvelles}</span>}
+          </a>
+        </nav>
+
+        {erreur && <Alerte type="erreur" texte={erreur} />}
+
+        {/* --- La boîte de réception --- */}
+        {
+          vue === 'messages' && (
+            <section>
+              <form class="chercher" method="get">
+                <Icone nom="recherche" taille={18} />
+                <label class="lecture-seule" for="q">Chercher un prénom ou un numéro</label>
+                <input id="q" type="search" name="q" value={cherche} placeholder="Prénom ou numéro" />
+                {cherche && (
+                  <a class="vider" href="/admin" aria-label="Vider la recherche">
+                    <Icone nom="croix" taille={16} />
+                  </a>
+                )}
+              </form>
+
+              {fils.length === 0 && (
+                <p class="rien">
+                  {cherche ? 'Personne ne correspond à cette recherche.' : "Aucun message pour l'instant."}
+                </p>
+              )}
+
+              <ul class="lignes">
+                {fils.map((f) => (
+                  <li>
+                    <a class="ligne" href={`/admin/${f.fil}`}>
+                      <Avatar graine={f.avatar_graine} prenom={f.prenom} identifiant={f.fil} taille={44} />
+                      <span class="ligne-corps">
+                        <span class="ligne-haut">
+                          <b>{f.prenom}</b>
+                          <span class="ligne-heure">{quandCourt(f.quand)}</span>
+                        </span>
+                        <span class="ligne-bas">
+                          <span class:list={['ligne-apercu', f.non_lus > 0 && 'ligne-apercu-gras']}>
+                            {f.apercu_de === 'boutique' ? 'Toi : ' : ''}
+                            {f.apercu}
+                          </span>
+                          {f.non_lus > 0 && <span class="non-lu">{f.non_lus}</span>}
+                        </span>
+                        {f.telephone && <span class="ligne-tel">{f.telephone}</span>}
+                      </span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )
+        }
+
+        {/* --- Les commandes --- */}
+        {
+          vue === 'commandes' && (
+            <section>
+              <div class="filtres">
+                <a class:list={['filtre', !filtreEtat && 'filtre-actif']} href="/admin?vue=commandes">
+                  Toutes
+                </a>
+                {ETATS.map((e) => (
+                  <a
+                    class:list={['filtre', filtreEtat === e.id && 'filtre-actif']}
+                    href={`/admin?vue=commandes&etat=${e.id}`}
+                  >
+                    {e.libelle}
+                    {compte[e.id] ? ` ${compte[e.id]}` : ''}
+                  </a>
+                ))}
+              </div>
+
+              {commandes.length === 0 && <p class="rien">Aucune commande dans cette liste.</p>}
+
+              <ul class="commandes">
+                {commandes.map((c) => (
+                  <li class:list={['commande', `etat-${c.etat}`]}>
+                    <div class="commande-haut">
+                      <b>{c.numero}</b>
+                      <span class="etiquette-etat">{ETATS.find((e) => e.id === c.etat)?.libelle ?? c.etat}</span>
+                    </div>
+
+                    <p class="commande-qui">
+                      {c.nom} · <a href={`tel:${c.telephone}`}>{c.telephone}</a>
+                    </p>
+                    <p class="commande-ou">
+                      {c.quartier}
+                      {c.repere ? `, ${c.repere}` : ''}
+                    </p>
+
+                    <ul class="articles">
+                      {c.articles.map((a: any) => (
+                        <li>
+                          <span>
+                            {a.quantite} × {a.nom}
+                            {a.taille ? ` (${a.taille})` : ''}
+                          </span>
+                          <span>{prixComplet(a.prix_cfa * a.quantite)}</span>
+                        </li>
+                      ))}
+                      <li class="articles-livraison">
+                        <span>Livraison</span>
+                        <span>{c.livraison_cfa > 0 ? prixComplet(c.livraison_cfa) : 'offerte'}</span>
+                      </li>
+                      <li class="articles-total">
+                        <span>Total à encaisser</span>
+                        <span>{prixComplet(c.total_cfa)}</span>
+                      </li>
+                    </ul>
+
+                    <p class="commande-quand">Passée {quandCourt(c.quand)}</p>
+
+                    <form class="etats" method="post">
+                      <input type="hidden" name="commande" value={c.id} />
+                      <input type="hidden" name="filtre" value={filtreEtat} />
+                      {ETATS.filter((e) => e.id !== c.etat).map((e) => (
+                        <button class="bouton-etat" type="submit" name="etat" value={e.id}>
+                          {e.libelle}
+                        </button>
+                      ))}
+                    </form>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )
+        }
+
+        <p class="promesse">
+          Cet espace ne montre jamais le calendrier, le journal ni les questions posées à IA Dambé. C'est la base qui
+          le refuse, pas seulement cette page.
+        </p>
+
+        <div class="espace"></div>
+      </main>
+    )
+  }
+</Base>
+
+<style>
+  /* --- Le refus --- */
+  .refus {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--e3);
+    padding-top: 20vh;
+    text-align: center;
+  }
+
+  .refus-rond {
+    display: grid;
+    place-items: center;
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: var(--surface-douce);
+    color: var(--rose);
+  }
+
+  .refus h1 {
+    font-size: 22px;
+  }
+
+  .refus p {
+    max-width: 300px;
+    font-size: 14px;
+    color: var(--texte-2);
+    line-height: 1.5;
+  }
+
+  /* --- L'espace --- */
+  .admin {
+    max-width: 560px;
+    margin: 0 auto;
+    padding: var(--e4) var(--e4) var(--e6);
+  }
+
+  .tete {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--e3);
+    padding-bottom: var(--e4);
+  }
+
+  .tete h1 {
+    font-size: 24px;
+    font-weight: 800;
+  }
+
+  .sous {
+    margin-top: 2px;
+    font-size: 13px;
+    color: var(--texte-3);
+  }
+
+  .sortie {
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    flex: none;
+    border: 1px solid var(--bordure);
+    border-radius: 50%;
+    color: var(--encre);
+  }
+
+  .onglets {
+    display: flex;
+    gap: var(--e2);
+    margin-bottom: var(--e4);
+  }
+
+  .onglet {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 44px;
+    border: 1px solid var(--bordure);
+    border-radius: var(--r-ronde);
+    background: var(--surface);
+    color: var(--texte-2);
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .onglet-actif {
+    border-color: var(--encre);
+    background: var(--encre);
+    color: #fff;
+  }
+
+  .compteur {
+    display: grid;
+    place-items: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: var(--r-ronde);
+    background: var(--rose);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  /* --- Chercher --- */
+  .chercher {
+    display: flex;
+    align-items: center;
+    gap: var(--e2);
+    margin-bottom: var(--e3);
+    padding: 0 var(--e3);
+    border: 1px solid var(--bordure);
+    border-radius: var(--r-ronde);
+    background: var(--surface);
+    color: var(--texte-3);
+  }
+
+  .chercher input {
+    flex: 1;
+    min-height: 44px;
+    border: none;
+    background: none;
+    font-family: var(--texte);
+    font-size: 15px;
+  }
+
+  .chercher input:focus {
+    outline: none;
+  }
+
+  .vider {
+    display: flex;
+    color: var(--texte-3);
+  }
+
+  /* --- Les lignes de la boîte --- */
+  .lignes,
+  .commandes,
+  .articles {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .lignes {
+    display: flex;
+    flex-direction: column;
+    gap: var(--e2);
+  }
+
+  .ligne {
+    display: flex;
+    gap: var(--e3);
+    align-items: center;
+    padding: var(--e3);
+    border: 1px solid var(--bordure);
+    border-radius: 18px;
+    background: var(--surface);
+    color: var(--encre);
+  }
+
+  .ligne-corps {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .ligne-haut,
+  .ligne-bas {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--e2);
+  }
+
+  .ligne-haut b {
+    font-size: 15px;
+  }
+
+  .ligne-heure {
+    flex: none;
+    font-size: 11.5px;
+    color: var(--texte-3);
+  }
+
+  .ligne-apercu {
+    flex: 1;
+    min-width: 0;
+    margin-top: 2px;
+    font-size: 13px;
+    color: var(--texte-2);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .ligne-apercu-gras {
+    color: var(--encre);
+    font-weight: 600;
+  }
+
+  .non-lu {
+    display: grid;
+    place-items: center;
+    min-width: 20px;
+    height: 20px;
+    flex: none;
+    padding: 0 6px;
+    border-radius: var(--r-ronde);
+    background: var(--rose);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  .ligne-tel {
+    display: block;
+    margin-top: 2px;
+    font-size: 11.5px;
+    color: var(--texte-3);
+  }
+
+  .rien {
+    padding: var(--e5) 0;
+    font-size: 14px;
+    color: var(--texte-3);
+    text-align: center;
+  }
+
+  /* --- Les commandes --- */
+  .filtres {
+    display: flex;
+    gap: 6px;
+    margin: 0 calc(var(--e4) * -1) var(--e3);
+    padding: 0 var(--e4);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .filtres::-webkit-scrollbar {
+    display: none;
+  }
+
+  .filtre {
+    flex: none;
+    padding: 8px 13px;
+    border: 1px solid var(--bordure);
+    border-radius: var(--r-ronde);
+    background: var(--surface);
+    color: var(--texte-2);
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .filtre-actif {
+    border-color: var(--encre);
+    background: var(--encre);
+    color: #fff;
+  }
+
+  .commandes {
+    display: flex;
+    flex-direction: column;
+    gap: var(--e3);
+  }
+
+  .commande {
+    padding: var(--e3);
+    border: 1px solid var(--bordure);
+    border-radius: 18px;
+    border-left: 4px solid var(--bordure);
+    background: var(--surface);
+  }
+
+  .etat-nouvelle { border-left-color: var(--rose); }
+  .etat-preparee { border-left-color: #f5a623; }
+  .etat-envoyee { border-left-color: #7c5ce0; }
+  .etat-livree { border-left-color: #2f9e5e; }
+  .etat-annulee { border-left-color: var(--texte-3); }
+
+  .commande-haut {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--e2);
+    margin-bottom: 6px;
+  }
+
+  .commande-haut b {
+    font-family: var(--titre);
+    font-size: 16px;
+  }
+
+  .etiquette-etat {
+    padding: 3px 10px;
+    border-radius: var(--r-ronde);
+    background: var(--surface-douce);
+    font-size: 11.5px;
+    font-weight: 700;
+  }
+
+  .commande-qui,
+  .commande-ou {
+    font-size: 13.5px;
+    line-height: 1.4;
+  }
+
+  .commande-ou {
+    color: var(--texte-2);
+  }
+
+  .commande-qui a {
+    font-weight: 600;
+  }
+
+  .articles {
+    margin: var(--e2) 0;
+    padding-top: var(--e2);
+    border-top: 1px solid var(--bordure);
+    font-size: 13px;
+  }
+
+  .articles li {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--e2);
+    padding: 2px 0;
+  }
+
+  .articles-livraison {
+    color: var(--texte-2);
+  }
+
+  .articles-total {
+    margin-top: 4px;
+    padding-top: 6px;
+    border-top: 1px solid var(--bordure);
+    font-weight: 700;
+  }
+
+  .commande-quand {
+    font-size: 11.5px;
+    color: var(--texte-3);
+  }
+
+  .etats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: var(--e2);
+  }
+
+  .bouton-etat {
+    padding: 8px 12px;
+    border: 1px solid var(--bordure);
+    border-radius: var(--r-ronde);
+    background: var(--surface-douce);
+    font-family: var(--texte);
+    font-size: 12.5px;
+    font-weight: 600;
+  }
+
+  .bouton-etat:active {
+    transform: scale(0.96);
+  }
+
+  .promesse {
+    margin-top: var(--e5);
+    font-size: 12px;
+    color: var(--texte-3);
+    line-height: 1.5;
+  }
+</style>

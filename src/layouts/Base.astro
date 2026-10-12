@@ -13,15 +13,20 @@ import '../styles/animations.css';
 // Les animations dessinées par Motion (logo, phases, questionnaire, états).
 import '../styles/motion.css';
 import NavBasse from '../components/NavBasse.astro';
+import BoutonMascotte from '../components/BoutonMascotte.astro';
 
 interface Props {
   titre: string;
   description?: string;
-  nav?: 'accueil' | 'cycle' | 'dambe' | 'boutique' | 'compte' | null;
+  nav?: 'accueil' | 'cycle' | 'discussions' | 'boutique' | 'compte' | null;
   panier?: number;
+  /** Messages de la boutique non lus, pour la pastille de l'onglet. */
+  messages?: number;
   /** Une page qui tient tout l'écran (connexion, questionnaire) : pas de
    * barre basse, et pas de place réservée en bas. */
   pleinEcran?: boolean;
+  /** Le prénom, pour la petite phrase de la mascotte flottante. */
+  prenom?: string;
 }
 
 const {
@@ -29,10 +34,19 @@ const {
   description = 'Suis tes règles, trouve tes protections, pose tes questions. Mousso Dambé, pour les femmes du Burkina.',
   nav = null,
   panier = 0,
+  messages = 0,
   pleinEcran = false,
+  prenom = '',
 } = Astro.props;
 
 const titreComplet = titre === 'Mousso Dambé' ? titre : `${titre} · Mousso Dambé`;
+
+// La mascotte flottante est partout où il y a la barre basse, sauf là où elle
+// mènerait à la page qu'on regarde déjà (la conversation avec IA Dambé) ou
+// couvrirait la zone d'écriture (les autres conversations).
+const chemin = Astro.url.pathname;
+const mascotteFlottante =
+  nav !== null && !chemin.startsWith('/dambe') && !chemin.startsWith('/discussions/') && !chemin.startsWith('/admin');
 const canonique = new URL(Astro.url.pathname, Astro.site ?? 'http://localhost:4322').href;
 ---
 
@@ -70,7 +84,8 @@ const canonique = new URL(Astro.url.pathname, Astro.site ?? 'http://localhost:43
   </head>
   <body class={pleinEcran ? 'sans-nav' : undefined}>
     <slot />
-    {nav && <NavBasse actif={nav} panier={panier} />}
+    {mascotteFlottante && <BoutonMascotte prenom={prenom} />}
+    {nav && <NavBasse actif={nav} panier={panier} messages={messages} />}
     <script>
       import '../scripts/installer';
     </script>

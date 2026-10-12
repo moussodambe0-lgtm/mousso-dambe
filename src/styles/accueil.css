@@ -1,0 +1,443 @@
+/*
+ * LE HAUT DE L'ACCUEIL.
+ *
+ * Reprise du code de référence d'Arthur du 12 octobre 2026 : mêmes tokens,
+ * mêmes tailles, mêmes rayons, mêmes animations. Fond très clair, beaucoup
+ * d'espace, coins très arrondis, rien de tassé.
+ */
+
+.accueil {
+  --acc-fond: #f7f5f8;
+  --acc-surface: #ffffff;
+  --acc-ink: #1f1424;
+  --acc-muted: #8e8494;
+  --acc-line: #e3dde6;
+
+  --phase-regles: #ffb4c2;
+  --phase-elan: #ffd6e2;
+  --phase-fertile: #c7b3ff;
+  --phase-lune: #ffcb8e;
+
+  --acc-sang: #e01e3a;
+  --acc-lilas: #8c6cf0;
+  --acc-lilas-fonce: #5b3fc9;
+  --acc-vert: #4db377;
+
+  --ressort: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  background: var(--acc-fond);
+  color: var(--acc-ink);
+  padding-top: 14px;
+  overflow-x: hidden;
+}
+
+.acc-marges {
+  padding-left: 20px;
+  padding-right: 20px;
+}
+
+/* --- L'en-tête ----------------------------------------------------------- */
+.acc-entete {
+  display: grid;
+  grid-template-columns: 48px 1fr 48px;
+  align-items: center;
+  margin-bottom: 6px;
+  animation: acc-descend 0.5s ease both;
+}
+
+.acc-bonjour {
+  text-align: center;
+  line-height: 1.25;
+}
+
+.acc-bonjour b {
+  display: block;
+  font-family: var(--titre);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.acc-bonjour span {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--acc-muted);
+}
+
+.acc-rond {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  position: relative;
+  border: 1.5px solid var(--acc-line);
+  border-radius: 50%;
+  background: var(--acc-surface);
+  color: var(--acc-ink);
+}
+
+.acc-rond:active {
+  transform: scale(0.94);
+}
+
+.acc-point {
+  position: absolute;
+  top: 11px;
+  right: 12px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--acc-sang);
+  box-shadow: 0 0 0 2px #fff;
+}
+
+.acc-avatar-bouton {
+  display: block;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  transition: transform 0.2s var(--ressort);
+}
+
+.acc-avatar-bouton:active {
+  transform: scale(0.92);
+}
+
+/* --- Les cartes vedettes ------------------------------------------------- */
+.acc-vedettes {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  padding: 22px 20px 6px;
+  scroll-padding: 0 20px;
+}
+
+.acc-vedettes::-webkit-scrollbar {
+  display: none;
+}
+
+.acc-carte {
+  position: relative;
+  display: flex;
+  flex: 0 0 100%;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 168px;
+  padding: 20px 18px 18px;
+  border-radius: 26px;
+  scroll-snap-align: center;
+  color: var(--acc-ink);
+  animation: acc-carte-entre 0.6s 0.1s var(--ressort) both;
+}
+
+.carte-regles { background: var(--phase-regles); }
+.carte-elan { background: var(--phase-elan); }
+.carte-fertile { background: var(--phase-fertile); }
+.carte-lune { background: var(--phase-lune); }
+.carte-boutique { background: #e6dcff; }
+.carte-conseil { background: #ffe7c7; }
+
+.acc-carte-texte {
+  position: relative;
+  z-index: 2;
+  max-width: 58%;
+}
+
+.acc-carte-titre {
+  font-family: var(--titre);
+  font-size: 29px;
+  font-weight: 800;
+  line-height: 1.02;
+  letter-spacing: -0.6px;
+  /* Le titre est écrit avec un retour à la ligne volontaire, comme dans la
+     maquette de référence : « Tes règles / dans 4 jours ». */
+  white-space: pre-line;
+}
+
+.acc-carte-sous {
+  margin-top: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.35;
+  opacity: 0.85;
+}
+
+.acc-carte-pied {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.acc-pile {
+  display: flex;
+}
+
+.acc-pile > * {
+  margin-left: -9px;
+  box-shadow: 0 0 0 2.5px rgba(255, 255, 255, 0.9);
+}
+
+.acc-pile > *:first-child {
+  margin-left: 0;
+}
+
+.acc-pile-plus {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--acc-lilas-fonce);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.acc-pied-texte {
+  max-width: 118px;
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.2;
+  opacity: 0.8;
+}
+
+.acc-bouton-pilule {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 38px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 999px;
+  background: var(--acc-ink);
+  color: #fff;
+  font-family: var(--texte);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.acc-points {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.acc-points i {
+  width: 7px;
+  height: 7px;
+  border-radius: 9px;
+  background: #d9d1dd;
+  transition: all 0.35s var(--ressort);
+}
+
+.acc-points i.actif {
+  width: 22px;
+  background: var(--acc-ink);
+}
+
+/* --- La bande des jours -------------------------------------------------- */
+.acc-semaine {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  padding: 16px 20px 4px;
+  scroll-padding: 0 20px;
+}
+
+.acc-semaine::-webkit-scrollbar {
+  display: none;
+}
+
+.acc-capsule {
+  display: flex;
+  flex: 0 0 calc((100% - 48px) / 7);
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 44px;
+  height: 78px;
+  border: 1.5px solid var(--acc-line);
+  border-radius: 999px;
+  background: var(--acc-surface);
+  color: var(--acc-ink);
+  scroll-snap-align: start;
+  animation: acc-capsule-entre 0.45s var(--ressort) both;
+  transition: background 0.3s, color 0.3s, border-color 0.3s, transform 0.2s var(--ressort);
+}
+
+.acc-semaine > *:nth-child(1) { animation-delay: 45ms; }
+.acc-semaine > *:nth-child(2) { animation-delay: 90ms; }
+.acc-semaine > *:nth-child(3) { animation-delay: 135ms; }
+.acc-semaine > *:nth-child(4) { animation-delay: 180ms; }
+.acc-semaine > *:nth-child(5) { animation-delay: 225ms; }
+.acc-semaine > *:nth-child(6) { animation-delay: 270ms; }
+.acc-semaine > *:nth-child(7) { animation-delay: 315ms; }
+
+.acc-capsule:active {
+  transform: scale(0.94);
+}
+
+.acc-capsule-marque {
+  display: grid;
+  place-items: center;
+  height: 12px;
+}
+
+.acc-capsule-point {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--acc-vert);
+}
+
+.acc-capsule-nom {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--acc-muted);
+}
+
+.acc-capsule-num {
+  font-family: var(--titre);
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.acc-capsule.aujourdhui {
+  background: var(--acc-ink);
+  border-color: var(--acc-ink);
+  color: #fff;
+}
+
+.acc-capsule.aujourdhui .acc-capsule-nom {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.acc-capsule.choisie {
+  border-color: var(--acc-ink);
+}
+
+/* --- Ce que dit le jour choisi ------------------------------------------- */
+.acc-jour-dit {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  min-height: 62px;
+  margin: 12px 20px 0;
+  padding: 12px 14px;
+  border: 1.5px solid var(--acc-line);
+  border-radius: 18px;
+  background: var(--acc-surface);
+  font-size: 14px;
+  line-height: 1.35;
+  animation: acc-monte 0.5s 0.5s ease both;
+}
+
+.acc-jour-marque {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex: none;
+  border-radius: 12px;
+}
+
+.marque-regles { background: #ffe3e8; }
+.marque-fertile { background: #f1eaff; }
+.marque-faible { background: #dcf2e3; }
+
+.acc-jour-gris {
+  color: var(--acc-muted);
+}
+
+/* --- Animations ---------------------------------------------------------- */
+@keyframes acc-carte-entre {
+  from { opacity: 0; transform: translateY(24px) scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes acc-capsule-entre {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes acc-monte {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes acc-descend {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .acc-entete,
+  .acc-carte,
+  .acc-capsule,
+  .acc-jour-dit {
+    animation: none;
+  }
+}
+
+/* --- La bande défilante ---------------------------------------------------
+ * Deux lots identiques côte à côte, la piste glisse de la largeur d'un lot,
+ * puis revient : la boucle est invisible. Caché des lecteurs d'écran, une
+ * phrase normale dit la même chose juste en dessous.
+ */
+.acc-ruban {
+  margin-top: 18px;
+  overflow: hidden;
+  border-top: 1px solid var(--acc-line);
+  border-bottom: 1px solid var(--acc-line);
+  background: var(--acc-surface);
+  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+}
+
+.acc-ruban-piste {
+  display: flex;
+  width: max-content;
+  animation: acc-defile 26s linear infinite;
+}
+
+.acc-ruban-lot {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 7px;
+  white-space: nowrap;
+}
+
+.acc-ruban-lot b {
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  text-transform: uppercase;
+  color: var(--acc-ink);
+}
+
+.acc-ruban-lot i {
+  font-style: normal;
+  color: var(--rose);
+}
+
+@keyframes acc-defile {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .acc-ruban-piste {
+    animation: none;
+  }
+}

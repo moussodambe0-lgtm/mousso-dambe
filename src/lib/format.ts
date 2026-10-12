@@ -107,3 +107,41 @@ export function messageErreur(code: string | null | undefined): string {
   }
   return ERREURS[code] ?? "Quelque chose n'a pas marché. Réessaie.";
 }
+
+/**
+ * L'heure d'un message dans une liste de discussions.
+ *
+ * Aujourd'hui : l'heure. Hier : « Hier ». Cette semaine : le jour. Au-delà :
+ * la date courte. C'est ce que fait toute messagerie, et c'est la seule forme
+ * qui tient dans le coin d'une ligne sans la couper.
+ */
+export function quandCourt(quand: string | Date | null | undefined): string {
+  if (!quand) return '';
+  const d = quand instanceof Date ? quand : new Date(quand);
+  if (Number.isNaN(d.getTime())) return '';
+
+  const maintenant = new Date();
+  const jour = (x: Date) => `${x.getFullYear()}-${x.getMonth()}-${x.getDate()}`;
+  if (jour(d) === jour(maintenant)) {
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  }
+
+  const hier = new Date(maintenant);
+  hier.setDate(hier.getDate() - 1);
+  if (jour(d) === jour(hier)) return 'Hier';
+
+  const ecart = (maintenant.getTime() - d.getTime()) / 86400000;
+  const JOURS = ['dim.', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.'];
+  if (ecart < 7) return JOURS[d.getDay()];
+
+  const MOIS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+  return `${d.getDate()} ${MOIS[d.getMonth()]}`;
+}
+
+/** L'heure seule, pour l'horodatage sous une bulle de message. */
+export function heureCourte(quand: string | Date | null | undefined): string {
+  if (!quand) return '';
+  const d = quand instanceof Date ? quand : new Date(quand);
+  if (Number.isNaN(d.getTime())) return '';
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}

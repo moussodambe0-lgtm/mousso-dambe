@@ -1,0 +1,397 @@
+---
+/**
+ * UNE CONVERSATION, CÔTÉ ARTHUR.
+ *
+ * Section 9 : l'historique complet, la carte du produit concerné, le prénom,
+ * le téléphone, et de quoi répondre.
+ *
+ * Le refus d'accès est le même que celui de l'espace : la fonction de la base
+ * ne répond pas à quelqu'un qui n'est pas dans la table des administratrices,
+ * donc cette page n'a rien à vérifier elle-même. Elle montre ce que la base a
+ * voulu lui donner, et un écran de refus quand c'est rien.
+ */
+import Base from '../../layouts/Base.astro';
+import Icone from '../../components/Icone.astro';
+import Avatar from '../../components/Avatar.astro';
+import Alerte from '../../components/Alerte.astro';
+import { clientSession, baseConfiguree } from '../../lib/supabase';
+import { visiteuse } from '../../lib/session';
+import { prixComplet, heureCourte, dateLongue, messageErreur } from '../../lib/format';
+
+if (!baseConfiguree()) return Astro.redirect('/', 302);
+const moi = await visiteuse(Astro);
+if (!moi) return Astro.redirect('/connexion', 302);
+
+const { fil } = Astro.params;
+const client = clientSession(Astro)!;
+
+let erreur = '';
+
+if (Astro.request.method === 'POST') {
+  const f = await Astro.request.formData();
+  const texte = String(f.get('texte') ?? '').trim();
+  if (texte.length < 1) {
+    erreur = 'Écris ta réponse.';
+  } else {
+    const { data } = await client.rpc('repondre_a', { p_fil: fil, p_texte: texte });
+    if (!data?.ok) erreur = messageErreur(data?.erreur);
+    else return Astro.redirect(`/admin/${fil}`, 303);
+  }
+}
+
+const { data } = await client.rpc('fil_complet', { p_fil: fil });
+const ouvert = data?.ok === true;
+const tete = (data?.tete ?? null) as {
+  prenom: string;
+  telephone: string;
+  avatar_graine: string;
+  commandes: number;
+} | null;
+const messages = (data?.messages ?? []) as {
+  id: string;
+  de: 'elle' | 'boutique';
+  texte: string;
+  quand: string;
+  lu: boolean;
+  produit: { slug: string; nom: string; prix_cfa: number; image: string | null } | null;
+}[];
+
+// Lire la conversation, c'est l'avoir lue.
+if (ouvert) await client.rpc('marquer_lu', { p_fil: fil });
+
+let jourPrecedent = '';
+const lignes = messages.map((m) => {
+  const jour = (m.quand ?? '').slice(0, 10);
+  const nouveauJour = jour !== jourPrecedent;
+  jourPrecedent = jour;
+  return { ...m, jour, nouveauJour };
+});
+---
+
+<Base titre={ouvert ? `${tete?.prenom}` : 'Conversation'} nav={null}>
+  {
+    !ouvert && (
+      <main class="page refus">
+        <span class="refus-rond"><Icone nom="cadenas" taille={28} /></span>
+        <h1>Cette conversation ne s'ouvre pas</h1>
+        <p>Soit elle n'existe pas, soit cet espace n'est pas pour toi.</p>
+        <a class="btn btn-rose" href="/">Retour à l'accueil</a>
+      </main>
+    )
+  }
+
+  {
+    ouvert && tete && (
+      <main class="conversation">
+        <header class="barre">
+          <a class="retour" href="/admin" aria-label="Retour à la boîte de réception">
+            <Icone nom="retour" taille={22} />
+          </a>
+          <Avatar graine={tete.avatar_graine} prenom={tete.prenom} identifiant={fil ?? ''} taille={38} />
+          <span class="qui">
+            <b>{tete.prenom}</b>
+            <span>
+              {tete.telephone ? tete.telephone : 'Pas de numéro'}
+              {tete.commandes > 0 && ` · ${tete.commandes} commande${tete.commandes > 1 ? 's' : ''}`}
+            </span>
+          </span>
+          {
+            tete.telephone && (
+              <a class="appeler" href={`tel:${tete.telephone}`} aria-label={`Appeler ${tete.prenom}`}>
+                <Icone nom="micro" taille={18} />
+              </a>
+            )
+          }
+        </header>
+
+        <div class="fil-messages">
+          {
+            lignes.map((m) => (
+              <>
+                {m.nouveauJour && <p class="jour">{dateLongue(m.jour)}</p>}
+                <div class:list={['ligne', m.de === 'boutique' ? 'de-moi' : 'de-elle']}>
+                  <div class="bulle">
+                    {m.produit && (
+                      <a class="carte-jointe" href={`/boutique/${m.produit.slug}`}>
+                        {m.produit.image ? (
+                          <img src={m.produit.image} alt="" width="48" height="48" loading="lazy" />
+                        ) : (
+                          <span class="carte-sans-image"><Icone nom="paquet" taille={20} /></span>
+                        )}
+                        <span>
+                          <b>{m.produit.nom}</b>
+                          <span class="carte-prix">{prixComplet(m.produit.prix_cfa)}</span>
+                        </span>
+                      </a>
+                    )}
+                    <p class="texte">{m.texte}</p>
+                    <span class="pied">{heureCourte(m.quand)}</span>
+                  </div>
+                </div>
+              </>
+            ))
+          }
+        </div>
+
+        {erreur && <div class="dans-la-page"><Alerte type="erreur" texte={erreur} /></div>}
+
+        <form class="ecrire" method="post">
+          <div class="zone-ecriture">
+            <label class="lecture-seule" for="texte">Ta réponse</label>
+            <textarea
+              id="texte"
+              name="texte"
+              rows="1"
+              maxlength="2000"
+              required
+              placeholder={`Répondre à ${tete.prenom}...`}
+              autocomplete="off"></textarea>
+            <button class="envoyer" type="submit" aria-label="Envoyer">
+              <Icone nom="envoyer" taille={20} />
+            </button>
+          </div>
+        </form>
+      </main>
+    )
+  }
+</Base>
+
+<script>
+  import '../../scripts/conversation';
+</script>
+
+<style>
+  .refus {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--e3);
+    padding-top: 20vh;
+    text-align: center;
+  }
+
+  .refus-rond {
+    display: grid;
+    place-items: center;
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: var(--surface-douce);
+    color: var(--rose);
+  }
+
+  .refus h1 {
+    font-size: 22px;
+  }
+
+  .refus p {
+    max-width: 300px;
+    font-size: 14px;
+    color: var(--texte-2);
+  }
+
+  .conversation {
+    display: flex;
+    flex-direction: column;
+    min-height: 100dvh;
+    max-width: 560px;
+    margin: 0 auto;
+    padding-bottom: 90px;
+  }
+
+  .barre {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    gap: var(--e2);
+    padding: var(--e3) var(--e4);
+    border-bottom: 1px solid var(--bordure);
+    background: var(--surface);
+  }
+
+  .retour {
+    display: flex;
+    margin-left: -6px;
+    color: var(--encre);
+  }
+
+  .qui {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .qui b {
+    display: block;
+    font-size: 15px;
+    line-height: 1.2;
+  }
+
+  .qui span {
+    font-size: 11.5px;
+    color: var(--texte-3);
+  }
+
+  .appeler {
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    flex: none;
+    border-radius: 50%;
+    background: var(--surface-douce);
+    color: var(--rose);
+  }
+
+  .fil-messages {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: var(--e2);
+    padding: var(--e4);
+  }
+
+  .jour {
+    align-self: center;
+    margin: var(--e2) 0;
+    padding: 3px 10px;
+    border-radius: var(--r-ronde);
+    background: var(--surface-douce);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--texte-2);
+  }
+
+  .ligne {
+    display: flex;
+  }
+
+  .de-moi {
+    justify-content: flex-end;
+  }
+
+  .bulle {
+    max-width: 82%;
+    padding: 10px 13px;
+    border-radius: 18px;
+    font-size: 14.5px;
+    line-height: 1.45;
+  }
+
+  .de-moi .bulle {
+    border-bottom-right-radius: 6px;
+    background: var(--encre);
+    color: #fff;
+  }
+
+  .de-elle .bulle {
+    border: 1px solid var(--bordure);
+    border-bottom-left-radius: 6px;
+    background: var(--surface);
+  }
+
+  .texte {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  .pied {
+    display: block;
+    margin-top: 3px;
+    font-size: 10.5px;
+    text-align: right;
+    opacity: 0.7;
+  }
+
+  .carte-jointe {
+    display: flex;
+    align-items: center;
+    gap: var(--e2);
+    margin-bottom: 8px;
+    padding: 7px;
+    border-radius: 13px;
+    background: var(--surface-douce);
+    color: var(--encre);
+  }
+
+  .carte-jointe img {
+    border-radius: 9px;
+    object-fit: cover;
+  }
+
+  .carte-sans-image {
+    display: grid;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    flex: none;
+    border-radius: 9px;
+    background: var(--surface);
+    color: var(--rose);
+  }
+
+  .carte-jointe b {
+    display: block;
+    font-size: 13px;
+    line-height: 1.2;
+  }
+
+  .carte-prix {
+    font-size: 12px;
+    color: var(--texte-2);
+  }
+
+  .dans-la-page {
+    padding: 0 var(--e4);
+  }
+
+  .ecrire {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 10;
+    max-width: 560px;
+    margin: 0 auto;
+    padding: var(--e2) var(--e4) calc(var(--e3) + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid var(--bordure);
+    background: var(--surface);
+  }
+
+  .zone-ecriture {
+    display: flex;
+    align-items: flex-end;
+    gap: var(--e2);
+  }
+
+  .zone-ecriture textarea {
+    flex: 1;
+    min-height: 46px;
+    max-height: 140px;
+    padding: 12px 14px;
+    border: 1px solid var(--bordure);
+    border-radius: 23px;
+    background: var(--surface-douce);
+    font-family: var(--texte);
+    font-size: 15px;
+    line-height: 1.35;
+    resize: none;
+  }
+
+  .envoyer {
+    display: grid;
+    place-items: center;
+    width: 46px;
+    height: 46px;
+    flex: none;
+    border: none;
+    border-radius: 50%;
+    background: var(--encre);
+    color: #fff;
+  }
+
+  .envoyer:active {
+    transform: scale(0.93);
+  }
+</style>

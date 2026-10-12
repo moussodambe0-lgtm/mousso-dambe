@@ -151,6 +151,26 @@ await comme(
   claimsDemo
 );
 
+// Une deuxième femme, pour que la boîte de réception d'Arthur ait deux fils
+// et qu'on voie tout de suite ce que c'est que de répondre à quelqu'un.
+const AUTRE_ID = randomUUID();
+await db.query(
+  `insert into auth.users (id, email, mot_de_passe, raw_user_meta_data) values ($1, $2, $3, $4)`,
+  [AUTRE_ID, 'bintou@essai.bf', 'motdepasse', JSON.stringify({ prenom: 'Bintou' })]
+);
+const claimsAutre = { role: 'authenticated', sub: AUTRE_ID };
+await comme(`select public.enregistrer_questionnaire('Bintou', 31, 6, current_date - 12)`, [], claimsAutre);
+await comme(
+  `select public.ecrire_a_la_boutique('Bonjour, est-ce que la culotte existe en taille L ?', 'culotte-flux-abondant')`,
+  [], claimsAutre
+);
+await comme(`select public.changer_telephone('70889900')`, [], claimsAutre);
+
+// Et le compte de démonstration est administrateur, pour que /admin se
+// regarde sur ce PC. C'est le banc local, pas la production : en ligne,
+// Arthur s'ajoutera lui-même par une ligne de SQL.
+await db.query(`insert into public.administrateurs (profil_id) values ($1)`, [DEMO_ID]);
+
 // --- Traduction du langage de PostgREST vers du SQL -------------------------
 
 const OPERATEURS = {

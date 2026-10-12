@@ -29,6 +29,8 @@ export interface Visiteuse {
   telephone: string | null;
   quartier: string | null;
   repere: string | null;
+  /** Graine du générateur d'avatar. Vide tant qu'elle n'en a pas choisi un. */
+  avatarGraine: string;
 }
 
 export async function visiteuse(astro: ContexteAstro): Promise<Visiteuse | null> {
@@ -73,7 +75,7 @@ export async function visiteuse(astro: ContexteAstro): Promise<Visiteuse | null>
 
   const { data: profil } = await client
     .from('profils')
-    .select('prenom, questionnaire_fini, rappel_regles, notifications_discretes, code_ouverture, cycle_moyen, duree_regles, telephone, quartier, repere')
+    .select('prenom, questionnaire_fini, rappel_regles, notifications_discretes, code_ouverture, cycle_moyen, duree_regles, telephone, quartier, repere, avatar_graine')
     .eq('id', compte.user.id)
     .maybeSingle();
 
@@ -90,6 +92,7 @@ export async function visiteuse(astro: ContexteAstro): Promise<Visiteuse | null>
     telephone: profil?.telephone ?? null,
     quartier: profil?.quartier ?? null,
     repere: profil?.repere ?? null,
+    avatarGraine: profil?.avatar_graine ?? '',
   };
 }
 

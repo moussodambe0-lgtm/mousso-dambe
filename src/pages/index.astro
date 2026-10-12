@@ -1,38 +1,55 @@
 ---
 /**
- * L'accueil, dans ses deux états.
+ * L'ACCUEIL.
  *
- * Visiteuse : une page qui explique en trois lignes et montre la boutique.
- * Elle doit pouvoir regarder les prix sans compte, sinon un lien partagé sur
- * WhatsApp ne mène à rien.
+ * Deux états : la visiteuse qui découvre, et celle qui a son cycle.
  *
- * Connectée : son cycle, d'abord. C'est la raison d'ouvrir l'application, et
- * elle doit être lisible en une seconde, sans faire défiler.
+ * Le haut de l'écran reprend le code de référence d'Arthur du 12 octobre
+ * 2026 : en-tête avec son avatar, carte vedette dont la couleur suit la phase
+ * du cycle avec des objets qui flottent, puis la bande des jours en capsules.
+ * Sous la bande viennent les sections de la section 10 du prompt : conseils
+ * de la phase, et produits.
+ *
+ * Tout est construit sur le serveur. Le seul script envoyé fait avancer le
+ * carrousel tout seul, et il n'est pas nécessaire pour lire la page.
  */
 import Base from '../layouts/Base.astro';
 import Symbole from '../components/Symbole.astro';
 import Icone from '../components/Icone.astro';
-import Anneau from '../components/Anneau.astro';
-import Anim from '../components/Anim.astro';
+import Avatar from '../components/Avatar.astro';
+import ObjetsCarte from '../components/ObjetsCarte.astro';
+import DefsCycle from '../components/DefsCycle.astro';
+import GoutteJour from '../components/GoutteJour.astro';
+import BebeJour from '../components/BebeJour.astro';
 import CarteProduit from '../components/CarteProduit.astro';
 import Alerte from '../components/Alerte.astro';
+import '../styles/accueil.css';
 import { clientPublic, clientSession, baseConfiguree } from '../lib/supabase';
-import { visiteuse, monCycle, lirePanier, comptePanier } from '../lib/session';
+import { visiteuse, lirePanier, comptePanier } from '../lib/session';
 import { PHASES } from '../lib/cycle';
-import { dateLongue, dateCourte, dateDe, enIso, aujourdhui, enJours, pluriel } from '../lib/format';
+import {
+  infoDuJour,
+  jourOvulation,
+  prochainesRegles,
+  moyenneCycles,
+  ecartEnJours,
+  plusDeJours,
+  type ReglagesCycle,
+  type TypeJour,
+} from '../lib/cycle-calcul';
+import { aujourdhui, dateLongue, dateDe } from '../lib/format';
 
 const installee = baseConfiguree();
 const moi = installee ? await visiteuse(Astro) : null;
 
-// Elle a un compte mais n'a pas répondu au questionnaire : on ne peut rien
-// calculer, et un accueil vide ne dit pas quoi faire.
 if (moi && !moi.questionnaireFini) {
   return Astro.redirect('/bienvenue', 302);
 }
 
-const cycle = moi ? await monCycle(Astro) : null;
+const hui = aujourdhui();
 const panier = comptePanier(lirePanier(Astro));
 
+// --- Le catalogue ----------------------------------------------------------
 let produits: any[] = [];
 if (installee) {
   const { data } = await clientPublic(Astro)
@@ -44,83 +61,160 @@ if (installee) {
   produits = data ?? [];
 }
 
-const phase = cycle?.aDesDonnees ? PHASES[cycle.phase] : null;
-const ICONE_PHASE = { regles: 'goutte', elan: 'pousse', fertile: 'soleil', lune: 'lune' } as const;
+// --- Son cycle -------------------------------------------------------------
+let reglages: ReglagesCycle | null = null;
+let aDesDonnees = false;
+let infoAujourdhui: ReturnType<typeof infoDuJour> | null = null;
+let prochaines: string | null = null;
+let confirmes = new Set<string>();
 
-// Les journées qu'elle a notées depuis le début de ce cycle : elles
-// apparaissent en points sur l'anneau, pour que ce soit son carnet et pas
-// seulement un calcul.
-let notesDuCycle: { jour: number; saigne: boolean }[] = [];
-if (moi && cycle?.aDesDonnees && cycle.debutDernieresRegles) {
-  const client = clientSession(Astro);
-  const { data } = await client!
-    .from('journal')
-    .select('jour, flux')
-    .gte('jour', cycle.debutDernieresRegles)
-    .limit(45);
-  const depart = dateDe(cycle.debutDernieresRegles).getTime();
-  notesDuCycle = (data ?? []).map((n: { jour: string; flux: string }) => ({
-    jour: Math.round((dateDe(n.jour).getTime() - depart) / 86400000) + 1,
-    saigne: n.flux !== 'rien',
-  }));
-}
+if (moi) {
+  const client = clientSession(Astro)!;
+  const { data: cyclesBase } = await client
+    .from('cycles')
+    .select('debut, fin')
+    .order('debut', { ascending: false })
+    .limit(12);
 
-// Les trois repères qui comptent dans un cycle : la fin des règles, la
-// fenêtre fertile, les prochaines règles.
-const reperes: { quoi: string; quand: string; icone: string; couleur: string; passe: boolean }[] = [];
-if (cycle?.aDesDonnees && !cycle.depasse) {
-  const jours = (iso: string | null) =>
-    iso ? Math.round((dateDe(iso).getTime() - dateDe(aujourdhui()).getTime()) / 86400000) : null;
+  const debuts = (cyclesBase ?? []).map((c: { debut: string }) => c.debut);
+  aDesDonnees = debuts.length > 0;
 
-  const finRegles = cycle.debutDernieresRegles
-    ? enIso(new Date(dateDe(cycle.debutDernieresRegles).getTime() + (cycle.dureeRegles - 1) * 86400000))
-    : null;
-  const dFin = jours(finRegles);
-  if (dFin !== null) {
-    reperes.push({
-      quoi: dFin >= 0 ? 'Fin de tes règles' : 'Tes règles sont finies',
-      quand: dFin >= 0 ? enJours(dFin) : dateCourte(finRegles!),
-      icone: 'goutte',
-      couleur: 'rose',
-      passe: dFin < 0,
-    });
-  }
+  if (aDesDonnees) {
+    reglages = {
+      debuts,
+      dureeRegles: moi.dureeRegles,
+      dureeCycle: moyenneCycles(debuts) ?? moi.cycleMoyen,
+    };
 
-  const dFertile = jours(cycle.fertileDebut);
-  if (cycle.fertileDebut && cycle.fertileFin) {
-    const dFin2 = jours(cycle.fertileFin) ?? 0;
-    reperes.push({
-      quoi: dFin2 < 0 ? 'Période fertile passée' : dFertile !== null && dFertile <= 0 ? 'Période fertile, maintenant' : 'Période fertile',
-      quand:
-        dFin2 < 0
-          ? `du ${dateCourte(cycle.fertileDebut)} au ${dateCourte(cycle.fertileFin)}`
-          : dFertile !== null && dFertile <= 0
-            ? `jusqu'au ${dateCourte(cycle.fertileFin)}`
-            : `${enJours(dFertile ?? 0)}, le ${dateCourte(cycle.fertileDebut)}`,
-      icone: 'soleil',
-      couleur: 'violette',
-      passe: dFin2 < 0,
-    });
-  }
+    for (const c of cyclesBase ?? []) {
+      const fin = (c as { fin: string | null }).fin ?? c.debut;
+      for (let d = c.debut; d <= fin; d = plusDeJours(d, 1)) confirmes.add(d);
+    }
 
-  if (cycle.prochainesRegles) {
-    reperes.push({
-      quoi: 'Prochaines règles',
-      quand: `${enJours(cycle.joursRestants)}, le ${dateCourte(cycle.prochainesRegles)}`,
-      icone: 'cycle',
-      couleur: 'neutre',
-      passe: false,
-    });
+    const { data: notes } = await client
+      .from('journal')
+      .select('jour, flux')
+      .gte('jour', plusDeJours(hui, -21))
+      .lte('jour', hui);
+    for (const n of (notes ?? []) as { jour: string; flux: string }[]) {
+      if (n.flux !== 'rien') confirmes.add(n.jour);
+    }
+
+    infoAujourdhui = infoDuJour(hui, reglages, confirmes, hui);
+    prochaines = prochainesRegles(reglages, hui);
   }
 }
+
+// --- La bande des jours : quatorze jours à partir du lundi de cette semaine -
+const lundi = plusDeJours(hui, -(((dateDe(hui).getDay() + 6) % 7)));
+const JOURS_COURTS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+
+const semaine = Array.from({ length: 14 }, (_, i) => {
+  const iso = plusDeJours(lundi, i);
+  const info = reglages ? infoDuJour(iso, reglages, confirmes, hui) : null;
+  const d = dateDe(iso);
+  return {
+    iso,
+    nom: JOURS_COURTS[(d.getDay() + 6) % 7],
+    numero: d.getDate(),
+    type: (info?.type ?? 'faible') as TypeJour,
+    jourDuCycle: info?.jourDuCycle ?? 0,
+    aujourdhui: iso === hui,
+  };
+});
+
+const demande = Astro.url.searchParams.get('jour') ?? '';
+const choisi = semaine.find((j) => j.iso === demande) ?? semaine.find((j) => j.aujourdhui) ?? semaine[0];
+
+const DIT: Record<TypeJour, { quoi: string; sous: string; marque: string }> = {
+  regles: { quoi: 'Jour de règles', sous: 'Risque de grossesse faible', marque: 'marque-regles' },
+  fertile: { quoi: 'Jour fertile', sous: 'Risque de grossesse élevé', marque: 'marque-fertile' },
+  ovulation: { quoi: 'Ovulation estimée', sous: 'Risque de grossesse très élevé', marque: 'marque-fertile' },
+  faible: { quoi: 'Risque plus faible', sous: `Jour ${choisi?.jourDuCycle ?? 0} du cycle`, marque: 'marque-faible' },
+};
+
+// --- La carte vedette, dont la couleur suit la phase ------------------------
+// La phase se dit avec les mots de `cycle.ts`. Un jour « faible » est soit
+// l'élan d'avant l'ovulation, soit le ralenti d'après : c'est la place du jour
+// dans le cycle qui tranche, pas son type.
+let nomPhase: keyof typeof PHASES | null = null;
+if (infoAujourdhui) {
+  if (infoAujourdhui.type === 'regles') nomPhase = 'regles';
+  else if (infoAujourdhui.type === 'fertile' || infoAujourdhui.type === 'ovulation') nomPhase = 'fertile';
+  else nomPhase = infoAujourdhui.jourDuCycle > jourOvulation(reglages!.dureeCycle) ? 'lune' : 'elan';
+}
+const phase = nomPhase ? PHASES[nomPhase] : null;
+const joursAvant = prochaines ? ecartEnJours(prochaines, hui) : 0;
+
+let carteClasse = 'carte-elan';
+let carteTitre = '';
+let carteSous = '';
+
+if (infoAujourdhui) {
+  if (infoAujourdhui.type === 'regles') {
+    carteClasse = 'carte-regles';
+    carteTitre = `Jour ${infoAujourdhui.jourDuCycle}\nde tes règles`;
+    carteSous = "Repose-toi, bois beaucoup d'eau";
+  } else if (infoAujourdhui.type === 'ovulation') {
+    carteClasse = 'carte-fertile';
+    carteTitre = "Ovulation\naujourd'hui";
+    carteSous = 'Risque de grossesse très élevé';
+  } else if (infoAujourdhui.type === 'fertile') {
+    carteClasse = 'carte-fertile';
+    carteTitre = 'Période\nfertile';
+    carteSous = 'Risque de grossesse élevé ces jours-ci';
+  } else {
+    carteClasse = nomPhase === 'lune' ? 'carte-lune' : 'carte-elan';
+    carteTitre = joursAvant === 1 ? 'Tes règles\ndemain' : `Tes règles\ndans ${joursAvant} jours`;
+    carteSous =
+      joursAvant <= 5
+        ? 'Pense à commander tes serviettes maintenant'
+        : `Jour ${infoAujourdhui.jourDuCycle} de ton cycle`;
+  }
+}
+
+const PROMESSES = [
+  'Livraison discrète',
+  'Paiement à la livraison',
+  'Colis neutre',
+  'Conseils vérifiés',
+  'Ouagadougou et environs',
+];
+
+/** Trois conseils par phase, dits comme une grande sœur les dirait. Le
+ * premier vient de `cycle.ts` pour ne pas répéter deux vérités différentes. */
+const CONSEILS: Record<string, { icone: string; titre: string; texte: string }[]> = {
+  regles: [
+    { icone: 'goutte', titre: 'Change souvent', texte: 'Toutes les 4 à 6 heures, même si le flux est léger.' },
+    { icone: 'soleil', titre: 'Chaleur sur le ventre', texte: "Une bouteille d'eau chaude enveloppée dans un pagne calme les crampes." },
+    { icone: 'coeur', titre: 'Mange du fer', texte: 'Haricots, foie, feuilles vertes : tu en perds un peu ces jours-ci.' },
+  ],
+  elan: [
+    { icone: 'pousse', titre: "C'est ta bonne semaine", texte: 'Place ici ce qui demande de la force : examens, sport, grosses journées.' },
+    { icone: 'soleil', titre: 'Bois beaucoup', texte: "Avec la chaleur de Ouaga, deux litres d'eau ne sont pas de trop." },
+    { icone: 'paquet', titre: 'Fais ton stock', texte: 'Commande tes protections maintenant, pas la veille.' },
+  ],
+  fertile: [
+    { icone: 'info', titre: 'Risque élevé', texte: "C'est la semaine où une grossesse est possible." },
+    { icone: 'bouclier', titre: 'Contraception', texte: "Si tu n'en veux pas maintenant, c'est là qu'il faut être la plus attentive." },
+    { icone: 'goutte', titre: 'Pertes plus claires', texte: "Plus liquides et élastiques : c'est le signe, et c'est normal." },
+  ],
+  lune: [
+    { icone: 'lune', titre: 'Dors un peu plus', texte: 'Ton corps travaille plus pour le même effort.' },
+    { icone: 'coeur', titre: "L'humeur bouge", texte: 'Seins sensibles, envie de sucré : ça vient des hormones, et ça passe.' },
+    { icone: 'camion', titre: 'Tes règles arrivent', texte: 'Garde une protection dans ton sac dès maintenant.' },
+  ],
+};
+
+const conseilsPhase = nomPhase ? CONSEILS[nomPhase] : [];
+
+const MOIS_COURTS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+const dateDuJour = `${dateDe(hui).getDate()} ${MOIS_COURTS[dateDe(hui).getMonth()]}`;
 ---
 
-<Base
-  titre="Mousso Dambé"
-  nav={moi ? 'accueil' : null}
-  panier={panier}
-  pleinEcran={!moi}
->
+<Base titre="Mousso Dambé" nav={moi ? 'accueil' : null} panier={panier} pleinEcran={!moi} prenom={moi?.prenom ?? ''}>
+  <DefsCycle />
+
   {
     !installee && (
       <main class="page">
@@ -136,7 +230,6 @@ if (cycle?.aDesDonnees && !cycle.depasse) {
   {
     installee && !moi && (
       <main class="accueil-visiteuse">
-        <Anim nom="accueil" classe="bandeau" />
         <div class="page">
           <div class="haut apparait">
             <Symbole taille={54} anime titre="Mousso Dambé" />
@@ -152,7 +245,7 @@ if (cycle?.aDesDonnees && !cycle.depasse) {
               <span class="rond-icone"><Icone nom="cycle" taille={20} /></span>
               <div>
                 <strong>Sache quand elles arrivent</strong>
-                <span>Tu réponds à six questions, l'application calcule le reste.</span>
+                <span>Tu réponds à quelques questions, l'application calcule le reste.</span>
               </div>
             </li>
             <li>
@@ -210,138 +303,226 @@ if (cycle?.aDesDonnees && !cycle.depasse) {
 
   {
     moi && (
-      <main class="page">
-        <header class="barre-haute apparait">
-          <div class="marque">
-            <Symbole taille={30} anime />
-            <div>
-              <div class="nom-appli">Mousso Dambé</div>
-              <div class="date">{dateLongue(aujourdhui())}</div>
-            </div>
+      <main class="accueil">
+        {/* --- L'en-tête --- */}
+        <header class="acc-entete acc-marges">
+          <a class="acc-avatar-bouton" href="/compte" aria-label="Mon compte">
+            <Avatar
+              graine={moi.avatarGraine}
+              prenom={moi.prenom}
+              identifiant={moi.id}
+              taille={48}
+              morph
+            />
+          </a>
+          <div class="acc-bonjour">
+            <b>Bonjour, {moi.prenom || 'toi'}</b>
+            <span>Aujourd'hui, {dateDuJour}</span>
           </div>
-          {/* Le compte a rejoint la barre du bas le 12 octobre 2026, sur
-              demande d'Arthur : il est aligné avec les autres, et ce coin
-              n'avait pas besoin de deux endroits pour la même chose. */}
+          <a class="acc-rond" href="/boutique" aria-label="Chercher un produit">
+            <Icone nom="recherche" taille={22} epaisseur={2} />
+          </a>
         </header>
 
-        {cycle?.aDesDonnees ? (
-          <section class="carte bloc centre apparait" data-ordre="1">
-            <Anneau
-              jour={Math.min(cycle.jourDuCycle, cycle.cycleMoyen)}
-              dureeRegles={cycle.dureeRegles}
-              cycle={cycle.cycleMoyen}
-              phase={phase?.nom ?? ''}
-              notes={notesDuCycle}
-            >
-              <span class="etiquette-jour">Jour</span>
-              <span class="chiffre grand chiffre-arrive">{cycle.jourDuCycle}</span>
-              <span class:list={['phase-dedans', `phase-${phase?.couleur ?? 'rose'}`]}>
-                <Icone nom={ICONE_PHASE[cycle.phase]} taille={14} />
-                {phase?.nom}
-              </span>
-              <span class="sur-combien">sur {cycle.cycleMoyen} jours</span>
-            </Anneau>
-
-            {/* Ce qui vient, en trois repères. Un nombre seul ne dit pas où
-                elle en est : ces trois dates, si. */}
-            <div class="repères">
-              {reperes.map((r) => (
-                <div class:list={['repère', r.passe && 'repère-passe']}>
-                  <span class:list={['pastille-repère', `pastille-${r.couleur}`]}>
-                    <Icone nom={r.icone} taille={15} />
-                  </span>
-                  <span class="repère-texte">
-                    <span class="repère-quoi">{r.quoi}</span>
-                    <span class="repère-quand">{r.quand}</span>
-                  </span>
+        {/* --- Les cartes vedettes --- */}
+        <section class="acc-vedettes" id="vedettes" aria-label="À retenir aujourd'hui">
+          {
+            aDesDonnees ? (
+              <article class:list={['acc-carte', carteClasse]}>
+                <ObjetsCarte nom="cycle" />
+                <div class="acc-carte-texte">
+                  <h2 class="acc-carte-titre">{carteTitre}</h2>
+                  <p class="acc-carte-sous">{carteSous}</p>
                 </div>
-              ))}
-            </div>
-
-            {cycle.depasse ? (
-              <div class="prevision">
-                <div class="fort">Tes règles ont du retard</div>
-                <div class="doux">
-                  Rien n'est noté depuis {pluriel(cycle.jourDuCycle - 1, 'jour')}. Note-les quand elles arrivent, ou
-                  parle à une sage-femme si le retard dure.
+                <div class="acc-carte-pied">
+                  <div class="acc-pile">
+                    <Avatar graine="communaute-1" taille={32} contour={false} titre="" />
+                    <Avatar graine="communaute-2" taille={32} contour={false} titre="" />
+                    <Avatar graine="communaute-3" taille={32} contour={false} titre="" />
+                    <span class="acc-pile-plus">+120</span>
+                  </div>
+                  <span class="acc-pied-texte">femmes dans la même phase que toi</span>
                 </div>
-              </div>
+              </article>
             ) : (
-              /* Les trois repères disent déjà les dates : ici on ne répète pas,
-                 on dit seulement d'où sort le calcul. */
-              <p class="d-ou-ca-sort">
-                {cycle.cyclesMesures > 0
-                  ? `Calculé sur tes ${cycle.cyclesMesures === 1 ? 'deux derniers cycles' : `${cycle.cyclesMesures} derniers cycles`}`
-                  : 'À affiner dès que tu auras noté un cycle entier'}
-                {notesDuCycle.length > 0
-                  ? ` · ${pluriel(notesDuCycle.length, 'journée notée', 'journées notées')} ce cycle`
-                  : ''}
+              <article class="acc-carte carte-elan">
+                <ObjetsCarte nom="cycle" />
+                <div class="acc-carte-texte">
+                  <h2 class="acc-carte-titre">On ne connaît pas encore ton cycle</h2>
+                  <p class="acc-carte-sous">Dis-moi quand tes dernières règles ont commencé.</p>
+                </div>
+                <div class="acc-carte-pied">
+                  <a class="acc-bouton-pilule" href="/cycle">
+                    Déclarer mes règles
+                    <Icone nom="avant" taille={16} epaisseur={2.4} />
+                  </a>
+                </div>
+              </article>
+            )
+          }
+
+          <article class="acc-carte carte-boutique">
+            <ObjetsCarte nom="boutique" />
+            <div class="acc-carte-texte">
+              <h2 class="acc-carte-titre">Livrée{'\n'}chez toi</h2>
+              <p class="acc-carte-sous">Colis neutre, paiement à la livraison</p>
+            </div>
+            <div class="acc-carte-pied">
+              <a class="acc-bouton-pilule" href="/boutique">
+                Commander
+                <Icone nom="avant" taille={16} epaisseur={2.4} />
+              </a>
+            </div>
+          </article>
+
+          <article class="acc-carte carte-conseil">
+            <ObjetsCarte nom="conseil" />
+            <div class="acc-carte-texte">
+              <h2 class="acc-carte-titre">Conseil{'\n'}du jour</h2>
+              <p class="acc-carte-sous">
+                {phase ? phase.conseil : "Bois assez d'eau dans la journée, surtout quand il fait chaud."}
               </p>
-            )}
-
-            <div class="deux-boutons">
-              <a class="btn btn-rose sans-retour" href="/journal">Noter aujourd'hui</a>
-              <a class="btn btn-contour" href="/cycle">Calendrier</a>
             </div>
-          </section>
-        ) : (
-          <section class="carte bloc apparait" data-ordre="1">
-            <h2>On ne connaît pas encore ton cycle</h2>
-            <p class="doux haut-marge">
-              Dis-moi quand ont commencé tes dernières règles, et je te donne tes prochaines dates.
-            </p>
-            <a class="btn btn-rose btn-plein haut-marge" href="/cycle">Déclarer mes règles</a>
-          </section>
-        )}
-
-        {phase && (
-          <section class="carte bloc phase-carte apparait" data-ordre="2">
-            <Anim nom={`phase-${cycle!.phase}` as never} classe="phase-dessin" />
-            <div>
-              <h3>{phase.nom}</h3>
-              <p class="doux haut-marge">{phase.explique}</p>
-              <p class="conseil">{phase.conseil}</p>
+            <div class="acc-carte-pied">
+              <a class="acc-bouton-pilule" href="/dambe">Demander à IA Dambé</a>
             </div>
-          </section>
-        )}
+          </article>
+        </section>
 
-        <a class="carte-sombre bloc dambe apparait" data-ordre="3" href="/dambe">
-          <span class="rond-rose-plein"><Icone nom="dambe" taille={22} /></span>
-          <span class="dambe-texte">
-            <strong>Demande à IA Dambé</strong>
-            <span>Une intelligence artificielle, pour tes questions sur tes règles, tes douleurs, ton hygiène</span>
-          </span>
-          <Icone nom="avant" taille={18} />
-        </a>
+        <div class="acc-points" id="points" aria-hidden="true">
+          <i class="actif"></i><i></i><i></i>
+        </div>
 
-        {produits.length > 0 && (
-          <section class="apparait" data-ordre="4">
-            <div class="section-titre">
-              <h2>Pour tes règles</h2>
-              <a href="/boutique">Tout voir</a>
+        {/* --- La bande des jours --- */}
+        <section class="acc-semaine" aria-label="Les jours à venir">
+          {
+            semaine.slice(0, 7).map((j) => (
+              <a
+                class:list={['acc-capsule', j.aujourdhui && 'aujourdhui', !j.aujourdhui && j.iso === choisi?.iso && 'choisie']}
+                href={`/?jour=${j.iso}`}
+                aria-label={`${dateLongue(j.iso)}, ${DIT[j.type].quoi}`}
+              >
+                <span class="acc-capsule-marque">
+                  {
+                    j.type === 'regles' ? (
+                      <GoutteJour largeur={9} hauteur={11} />
+                    ) : j.type === 'ovulation' ? (
+                      <BebeJour taille={13} ovulation />
+                    ) : j.type === 'fertile' ? (
+                      <BebeJour taille={13} />
+                    ) : (
+                      <span class="acc-capsule-point"></span>
+                    )
+                  }
+                </span>
+                <span class="acc-capsule-nom">{j.nom}</span>
+                <span class="acc-capsule-num">{j.numero}</span>
+              </a>
+            ))
+          }
+        </section>
+
+        {
+          choisi && aDesDonnees && (
+            <div class="acc-jour-dit">
+              <span class:list={['acc-jour-marque', DIT[choisi.type].marque]}>
+                {
+                  choisi.type === 'regles' ? (
+                    <GoutteJour largeur={18} hauteur={22} />
+                  ) : choisi.type === 'faible' ? (
+                    <span class="acc-capsule-point"></span>
+                  ) : (
+                    <BebeJour taille={26} ovulation={choisi.type === 'ovulation'} />
+                  )
+                }
+              </span>
+              <span>
+                <b>{choisi.aujourdhui ? "Aujourd'hui" : dateLongue(choisi.iso)}</b> · {DIT[choisi.type].quoi}
+                <br />
+                <span class="acc-jour-gris">{DIT[choisi.type].sous}</span>
+              </span>
             </div>
-            <Anim nom="accueil" classe="bandeau-mince" />
-            <div class="grille-produits haut-marge">
-              {produits.slice(0, 2).map((p) => (
-                <CarteProduit
-                  slug={p.slug}
-                  nom={p.nom}
-                  prixCfa={p.prix_cfa}
-                  rayon={p.rayon}
-                  image={p.image}
-                  etiquette={p.etiquette}
-                  stock={p.stock}
-                />
-              ))}
-            </div>
-          </section>
-        )}
+          )
+        }
 
-        <div class="espace" />
+        {/* --- La bande défilante des promesses --- */}
+        <div class="acc-ruban" aria-hidden="true">
+          <div class="acc-ruban-piste">
+            {[0, 1].map(() => (
+              <span class="acc-ruban-lot">
+                {PROMESSES.map((t) => (
+                  <>
+                    <b>{t}</b>
+                    <i>•</i>
+                  </>
+                ))}
+              </span>
+            ))}
+          </div>
+        </div>
+        <p class="lecture-seule">Livraison discrète à Ouagadougou, paiement à la livraison, conseils vérifiés.</p>
+
+        {/* --- Sous la bande : les sections de la section 10 --- */}
+        <div class="page suite-accueil">
+          <div class="deux-boutons">
+            <a class="btn btn-rose sans-retour" href="/journal">Noter aujourd'hui</a>
+            <a class="btn btn-contour" href="/cycle">Mon calendrier</a>
+          </div>
+
+          {
+            phase && (
+              <section class="phase-bloc" aria-label="Conseils pour ta phase">
+                <div class="section-titre">
+                  <h2>Conseils pour ta phase</h2>
+                  <span class="etiquette-phase">{phase.nom}</span>
+                </div>
+                <div class="rail-conseils">
+                  {conseilsPhase.map((c, i) => (
+                    <article class:list={['conseil-carte', `conseil-${i % 3}`]}>
+                      <span class="conseil-icone"><Icone nom={c.icone} taille={20} /></span>
+                      <h3>{c.titre}</h3>
+                      <p>{c.texte}</p>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            )
+          }
+
+          {produits.length > 0 && (
+            <section>
+              <div class="section-titre">
+                <h2>Pour tes règles</h2>
+                <a href="/boutique">Tout voir</a>
+              </div>
+              <div class="grille-produits">
+                {produits.map((p, i) => (
+                  <div data-revele class:list={['monte', `retard-${i % 4}`]}>
+                    <CarteProduit
+                      slug={p.slug}
+                      nom={p.nom}
+                      prixCfa={p.prix_cfa}
+                      rayon={p.rayon}
+                      image={p.image}
+                      etiquette={p.etiquette}
+                      stock={p.stock}
+                    />
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          <div class="espace"></div>
+        </div>
       </main>
     )
   }
 </Base>
+
+<script>
+  import '../scripts/accueil';
+</script>
 
 <style>
   /* --- Accueil de la visiteuse --- */
@@ -411,6 +592,7 @@ if (cycle?.aDesDonnees && !cycle.depasse) {
     display: flex;
     justify-content: center;
     margin-top: var(--e2);
+    text-align: center;
   }
 
   .discret {
@@ -421,244 +603,113 @@ if (cycle?.aDesDonnees && !cycle.depasse) {
     line-height: 1.5;
   }
 
-  /* --- Accueil de la connectée --- */
-  .barre-haute {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: var(--e5) 0 var(--e3);
-  }
-
-  .marque {
-    display: flex;
-    align-items: center;
-    gap: var(--e3);
-  }
-
-  .nom-appli {
-    font-family: var(--titre);
-    font-size: 16px;
-    font-weight: 700;
-  }
-
-  .date {
-    font-size: 11.5px;
-    color: var(--texte-3);
-    font-weight: 500;
-  }
-
-  .centre {
-    text-align: center;
-  }
-
-  .carte.centre {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
-
-  .etiquette-jour {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--texte-3);
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
-  }
-
-  .grand {
-    font-size: 58px;
-    line-height: 1;
-    letter-spacing: -2px;
-  }
-
-  /* La phase au centre de l'anneau, et non en pastille sous lui : le regard
-     n'a plus à faire deux arrêts pour savoir où elle en est. */
-  .phase-dedans {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    margin-top: 3px;
-    padding: 3px 9px;
-    border-radius: var(--r-ronde);
-    font-size: 11.5px;
-    font-weight: 700;
-    line-height: 1.2;
-    max-width: 128px;
-  }
-
-  .phase-rose {
-    background: var(--rose-clair);
-    color: var(--rose-fonce);
-  }
-
-  .phase-violet {
-    background: var(--violet-clair);
-    color: var(--violet-fonce);
-  }
-
-  .phase-encre {
-    background: var(--surface-douce);
-    color: var(--texte-2);
-  }
-
-  .sur-combien {
-    margin-top: 3px;
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--texte-3);
-  }
-
-  /* Les trois repères du cycle. */
-  .repères {
-    width: 100%;
-    margin-top: var(--e4);
-    display: flex;
-    flex-direction: column;
-    gap: var(--e2);
-  }
-
-  .repère {
-    display: flex;
-    align-items: center;
-    gap: var(--e3);
-    padding: 9px 11px;
-    border-radius: 14px;
-    background: var(--fond);
-  }
-
-  .repère-passe {
-    opacity: 0.55;
-  }
-
-  .pastille-repère {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 30px;
-    height: 30px;
-    flex: none;
-    border-radius: 10px;
-  }
-
-  .repère-texte {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-    text-align: left;
-  }
-
-  .repère-quoi {
-    font-size: 13.5px;
-    font-weight: 600;
-    line-height: 1.25;
-  }
-
-  .repère-quand {
-    font-size: 12.5px;
-    color: var(--texte-2);
-  }
-
-  .pastille {
-    margin-top: var(--e3);
-    padding: 7px 14px;
-    font-size: 14px;
-  }
-
-  .prevision {
-    margin-top: var(--e3);
-    text-align: center;
-  }
-
-  .d-ou-ca-sort {
-    margin-top: var(--e3);
-    text-align: center;
-    font-size: 12.5px;
-    color: var(--texte-3);
-    line-height: 1.45;
-  }
-
-  .fort {
-    font-size: 15px;
-    font-weight: 600;
-  }
-
-  .doux {
-    font-size: 13px;
-    color: var(--texte-2);
-    line-height: 1.5;
-  }
-
-  .conseil {
-    margin-top: var(--e2);
-    padding-top: var(--e2);
-    border-top: 1px solid var(--bordure);
-    font-size: 13.5px;
-    color: var(--encre);
-  }
-
-  .haut-marge {
-    margin-top: var(--e2);
+  /* --- Sous la bande des jours --- */
+  .suite-accueil {
+    padding-top: var(--e5);
   }
 
   .deux-boutons {
     display: flex;
     gap: var(--e2);
-    width: 100%;
-    margin-top: var(--e4);
+    margin-bottom: var(--e4);
   }
 
   .deux-boutons > * {
     flex: 1;
   }
 
-  /* « Noter aujourd'hui » passait sur deux lignes dans la moitié d'écran :
-     l'icône en plus ne tenait pas. On garde les mots, on enlève l'icône, et
-     on donne un peu plus de place au bouton principal. */
   .sans-retour {
     flex: 1.25;
     white-space: nowrap;
     padding: 0 var(--e2);
   }
 
-  .carte,
-  .carte-sombre,
-  section {
-    margin-bottom: var(--e3);
+  /* --- Les conseils de la phase, en bande horizontale --- */
+  .phase-bloc {
+    margin-bottom: var(--e5);
   }
 
-  .dambe {
+  .etiquette-phase {
+    padding: 4px 11px;
+    border-radius: 999px;
+    background: var(--surface-douce);
+    color: var(--rose);
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  /* La bande sort des marges de la page pour aller jusqu'au bord de l'écran,
+     sinon la dernière carte semble coupée au milieu de rien. */
+  .rail-conseils {
     display: flex;
-    align-items: center;
-    gap: var(--e3);
-    color: #fff;
+    gap: var(--e2);
+    margin: 0 calc(var(--e4) * -1);
+    padding: 2px var(--e4) var(--e2);
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
   }
 
-  .rond-rose-plein {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 42px;
-    height: 42px;
-    flex: none;
-    border-radius: 13px;
-    background: var(--rose);
-    color: #fff;
+  .rail-conseils::-webkit-scrollbar {
+    display: none;
   }
 
-  .dambe-texte {
-    flex: 1;
-    min-width: 0;
+  .conseil-carte {
+    flex: 0 0 196px;
+    padding: var(--e3);
+    border-radius: 20px;
+    scroll-snap-align: start;
   }
 
-  .dambe-texte strong {
-    display: block;
+  .conseil-0 { background: #ffe7ee; }
+  .conseil-1 { background: #ece4ff; }
+  .conseil-2 { background: #fff0db; }
+
+  .conseil-icone {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    margin-bottom: var(--e2);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.72);
+    color: var(--encre);
+  }
+
+  .conseil-carte h3 {
     font-size: 15px;
+    font-weight: 700;
   }
 
-  .dambe-texte span {
-    font-size: 12.5px;
-    color: var(--rose-clair);
+  .conseil-carte p {
+    margin-top: 4px;
+    font-size: 13px;
     line-height: 1.4;
+    opacity: 0.8;
+  }
+
+  /* --- Les cartes produits qui montent en cascade --- */
+  .monte {
+    opacity: 0;
+    transform: translateY(18px);
+    transition: opacity 0.5s ease, transform 0.5s var(--ressort, cubic-bezier(0.34, 1.56, 0.64, 1));
+  }
+
+  .monte.vu {
+    opacity: 1;
+    transform: none;
+  }
+
+  .retard-1 { transition-delay: 70ms; }
+  .retard-2 { transition-delay: 140ms; }
+  .retard-3 { transition-delay: 210ms; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .monte {
+      opacity: 1;
+      transform: none;
+      transition: none;
+    }
   }
 
   .section-titre {
@@ -671,33 +722,5 @@ if (cycle?.aDesDonnees && !cycle.depasse) {
   .section-titre a {
     font-size: 13px;
     font-weight: 600;
-  }
-
-  /* Le bandeau tissé de Motion, pleine largeur en haut de la page. */
-  .bandeau {
-    margin-bottom: var(--e5);
-  }
-
-  /* Le même, en séparateur fin : on ne garde qu'une tranche du tissage. */
-  .bandeau-mince {
-    height: 20px;
-    overflow: hidden;
-    margin-bottom: var(--e3);
-    border-radius: 4px;
-  }
-
-  .bandeau-mince :global(svg) {
-    margin-top: -42px;
-  }
-
-  .phase-carte {
-    display: flex;
-    gap: var(--e3);
-    align-items: flex-start;
-  }
-
-  .phase-dessin {
-    flex: none;
-    width: 76px;
   }
 </style>

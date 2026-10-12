@@ -450,7 +450,31 @@ button.rangee:hover {
   border-radius: 24px 24px 0 0;
 }
 
+/* La pilule qui glisse d'un onglet à l'autre (section 11 du cahier d'Arthur).
+ * Cinq onglets de largeur égale : la pilule mesure un cinquième de la barre
+ * moins les marges, et se déplace d'un cran par onglet. La transition joue
+ * entre deux pages parce que la barre est reprise par la transition de vue. */
+.nav-pilule {
+  position: absolute;
+  top: 6px;
+  bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  left: 8px;
+  width: calc((100% - 16px) / 5);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.13);
+  view-transition-name: nav-pilule;
+  transition: transform 0.42s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.nav-basse[data-place='0'] .nav-pilule { transform: translateX(0); }
+.nav-basse[data-place='1'] .nav-pilule { transform: translateX(100%); }
+.nav-basse[data-place='2'] .nav-pilule { transform: translateX(200%); }
+.nav-basse[data-place='3'] .nav-pilule { transform: translateX(300%); }
+.nav-basse[data-place='4'] .nav-pilule { transform: translateX(400%); }
+
 .nav-item {
+  position: relative;
+  z-index: 1;
   flex: 1;
   min-width: 0;
   display: flex;
