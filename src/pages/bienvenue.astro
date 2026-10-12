@@ -83,6 +83,24 @@ if (Astro.request.method === 'POST') {
     } else {
       etape = 3;
     }
+  } else if (venantDe === 3) {
+    // Une durée de règles tapée à la main : on la borne ici, sinon la base la
+    // refusera au dernier écran, après cinq questions pour rien.
+    const n = Number(reponses.duree);
+    if (!Number.isInteger(n) || n < 1 || n > 10) {
+      erreur = 'Donne un nombre de jours entre 1 et 10, ou dis que tu ne sais pas.';
+      etape = 3;
+    } else {
+      etape = 4;
+    }
+  } else if (venantDe === 4) {
+    const n = Number(reponses.cycle);
+    if (!Number.isInteger(n) || n < 20 || n > 45) {
+      erreur = 'Donne un nombre de jours entre 20 et 45, ou dis que tu ne sais pas.';
+      etape = 4;
+    } else {
+      etape = 5;
+    }
   } else if (venantDe === TOTAL) {
     // Dernier écran : on écrit, une seule fois, par la fonction de la base.
     const client = clientSession(Astro);
@@ -226,6 +244,27 @@ const TITRES: Record<number, string> = {
             {/* Des gouttes plutôt qu'une grille de pastilles : l'écran suivant
                 pose aussi une question en jours, et deux grilles identiques à
                 la suite donnent l'impression que rien ne s'est passé. */}
+            {/* La saisie libre vient AVANT les propositions : quand elle
+                touche une proposition, c'est la valeur la plus récente dans
+                la page qui compte, et une saisie restée vide ne doit pas
+                l'emporter sur le bouton qu'elle vient de toucher. */}
+            <div class="autre-nombre">
+              <label class="libelle-petit" for="duree-libre">Un autre nombre</label>
+              <div class="ligne-saisie">
+                <input
+                  class="champ champ-nombre"
+                  id="duree-libre"
+                  name="duree"
+                  type="number"
+                  inputmode="numeric"
+                  min="1"
+                  max="10"
+                  placeholder="ex. 9"
+                />
+                <button class="btn btn-contour" type="submit">Valider</button>
+              </div>
+            </div>
+
             <div class="gouttes">
               {[2, 3, 4, 5, 6, 7, 8].map((n) => (
                 <button class="goutte-choix" type="submit" name="duree" value={String(n)} aria-pressed={reponses.duree === String(n)}>
@@ -242,6 +281,17 @@ const TITRES: Record<number, string> = {
                 </button>
               ))}
             </div>
+
+            {/* Celle qui ne sait pas doit pouvoir avancer. On part de 5 jours,
+                la durée la plus fréquente, et la moyenne réelle prendra le
+                dessus dès qu'elle aura noté des règles. */}
+            <button class="btn btn-contour btn-plein marge" type="submit" name="duree" value="5">
+              Je ne sais pas
+            </button>
+            <p class="aide-sous">
+              Je pars de 5 jours, et je corrige toute seule dès que tu auras noté tes premières règles dans
+              l'application.
+            </p>
           </div>
         )
       }
@@ -256,6 +306,23 @@ const TITRES: Record<number, string> = {
               Du premier jour de règles au premier jour des règles suivantes. Si tu ne sais pas, laisse 28 jours : je
               corrigerai toute seule dès que tu auras noté un cycle.
             </p>
+            <div class="autre-nombre">
+              <label class="libelle-petit" for="cycle-libre">Un autre nombre</label>
+              <div class="ligne-saisie">
+                <input
+                  class="champ champ-nombre"
+                  id="cycle-libre"
+                  name="cycle"
+                  type="number"
+                  inputmode="numeric"
+                  min="20"
+                  max="45"
+                  placeholder="ex. 27"
+                />
+                <button class="btn btn-contour" type="submit">Valider</button>
+              </div>
+            </div>
+
             <div class="choix-grille">
               {[21, 24, 26, 28, 30, 32, 35].map((n) => (
                 <button class="puce grande" type="submit" name="cycle" value={String(n)} aria-pressed={reponses.cycle === String(n)}>
@@ -266,6 +333,10 @@ const TITRES: Record<number, string> = {
             <button class="btn btn-contour btn-plein marge" type="submit" name="cycle" value="28">
               Je ne sais pas
             </button>
+            <p class="aide-sous">
+              Je pars de 28 jours, et je recalcule sur tes vrais cycles dès que tu en auras noté deux. C'est la mesure
+              qui commande, pas ce que tu réponds ici.
+            </p>
           </div>
         )
       }
@@ -432,6 +503,37 @@ const TITRES: Record<number, string> = {
 
   /* L'écran de la durée des règles : des gouttes, pas une grille de pastilles,
      pour qu'il ne se confonde pas avec celui du cycle qui vient après. */
+  /* La saisie libre : il manquait 27 jours, et il manquait surtout un endroit
+     pour écrire son propre chiffre. Relevé par Arthur le 12 octobre 2026. */
+  .autre-nombre {
+    margin-bottom: var(--e4);
+  }
+
+  .libelle-petit {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--texte-2);
+  }
+
+  .ligne-saisie {
+    display: flex;
+    gap: var(--e2);
+  }
+
+  .champ-nombre {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .aide-sous {
+    margin-top: var(--e2);
+    font-size: 12.5px;
+    color: var(--texte-3);
+    line-height: 1.5;
+  }
+
   .gouttes {
     display: flex;
     flex-direction: column;

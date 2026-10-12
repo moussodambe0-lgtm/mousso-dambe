@@ -452,15 +452,23 @@ button.rangee:hover {
 
 .nav-item {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 4px;
   min-height: 48px;
-  padding: var(--e2) 0;
+  padding: var(--e2) 2px;
   color: var(--texte-3-sombre);
-  font-size: 11px;
+  /* Cinq onglets depuis le 12 octobre 2026 : à 390 px chacun a 76 px, et le
+     libellé doit tenir sur une ligne sans se couper. */
+  font-size: 10.5px;
   font-weight: 600;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .nav-item[aria-current='page'] {

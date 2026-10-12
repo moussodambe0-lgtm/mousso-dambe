@@ -56,7 +56,7 @@ const ETATS: Record<string, { mot: string; classe: string; dit: string }> = {
 const panier = comptePanier(lirePanier(Astro));
 ---
 
-<Base titre="Mes commandes" nav="boutique" panier={panier}>
+<Base titre="Mes commandes" nav="compte" panier={panier}>
   <main class="page">
     <Entete titre="Mes commandes" retour="/compte" />
 

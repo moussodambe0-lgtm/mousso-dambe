@@ -1,0 +1,66 @@
+---
+/**
+ * Se connecter avec Google.
+ *
+ * Pourquoi il est en haut, avant le formulaire : c'est le chemin le plus
+ * court, et c'est le seul qui donne une adresse déjà vérifiée. Arthur voulait
+ * « le vrai email » : Google le garantit sans obliger personne à ouvrir sa
+ * boîte au milieu de son inscription.
+ *
+ * Le logo est dessiné ici, en SVG : charger celui de Google demanderait une
+ * requête vers un autre domaine, que la politique de sécurité du contenu
+ * refuse, et qui dirait à Google qu'une femme ouvre cette page.
+ */
+interface Props {
+  texte?: string;
+}
+
+const { texte = 'Continuer avec Google' } = Astro.props;
+---
+
+<form method="POST" action="/auth/google">
+  <button class="btn-google" type="submit">
+    <svg width="19" height="19" viewBox="0 0 48 48" aria-hidden="true">
+      <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.6 30.2 0 24 0 14.6 0 6.5 5.4 2.5 13.2l7.8 6.1C12.2 13.1 17.6 9.5 24 9.5z"></path>
+      <path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.2-.4-4.7H24v9h12.4c-.5 2.9-2.2 5.3-4.6 7l7.6 5.9c4.4-4.1 6.7-10.1 6.7-17.2z"></path>
+      <path fill="#FBBC05" d="M10.3 28.7c-.5-1.5-.8-3-.8-4.7s.3-3.2.8-4.7l-7.8-6.1C.9 16.3 0 20 0 24s.9 7.7 2.5 10.8l7.8-6.1z"></path>
+      <path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.6-5.9c-2.1 1.4-4.8 2.3-8.3 2.3-6.4 0-11.8-3.6-13.7-8.7l-7.8 6.1C6.5 42.6 14.6 48 24 48z"></path>
+    </svg>
+    {texte}
+  </button>
+</form>
+
+<style>
+  .btn-google {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    min-height: 50px;
+    padding: 0 var(--e4);
+    border: 1px solid var(--bordure-forte);
+    border-radius: var(--r-champ);
+    background: var(--surface);
+    color: var(--encre);
+    font-family: var(--texte);
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color var(--vite) ease, border-color var(--vite) ease;
+  }
+
+  .btn-google:hover {
+    background: var(--surface-douce);
+    border-color: var(--encre);
+  }
+
+  .btn-google:active {
+    transform: scale(0.99);
+  }
+
+  .btn-google:focus-visible {
+    outline: 2px solid var(--rose);
+    outline-offset: 2px;
+  }
+</style>

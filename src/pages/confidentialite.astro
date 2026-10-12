@@ -46,7 +46,7 @@ const confirmer = Astro.url.searchParams.get('effacer') === '1';
 const panier = comptePanier(lirePanier(Astro));
 ---
 
-<Base titre="Ce que l'application sait de moi" nav="accueil" panier={panier}>
+<Base titre="Ce que l'application sait de moi" nav="compte" panier={panier}>
   <main class="page">
     <Entete titre="Ce qu'on sait de toi" retour="/compte" />
 

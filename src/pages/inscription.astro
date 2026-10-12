@@ -11,6 +11,7 @@
  */
 import Base from '../layouts/Base.astro';
 import Symbole from '../components/Symbole.astro';
+import BoutonGoogle from '../components/BoutonGoogle.astro';
 import Alerte from '../components/Alerte.astro';
 import Icone from '../components/Icone.astro';
 import { clientPublic, poserSession, baseConfiguree } from '../lib/supabase';
@@ -82,9 +83,20 @@ if (Astro.request.method === 'POST') {
         <a class="btn btn-rose btn-plein marge" href="/connexion">Aller à la connexion</a>
       </div>
     ) : (
-      <form method="POST" class="apparait">
-        {erreur && <Alerte type="erreur" texte={erreur} />}
+      <div class="apparait">
+        {erreur && <div class="champ-bloc"><Alerte type="erreur" texte={erreur} /></div>}
 
+        <BoutonGoogle texte="Créer mon compte avec Google" />
+        <p class="aide centre-aide">
+          Deux touches, et ton adresse est déjà vérifiée. C'est le plus simple.
+        </p>
+
+        <div class="ou" role="separator" aria-label="ou">
+          <span>ou</span>
+        </div>
+      </div>
+
+      <form method="POST" class="apparait">
         <div class="champ-bloc">
           <label class="libelle" for="prenom">Ton prénom</label>
           <input class="champ" id="prenom" name="prenom" type="text" autocomplete="given-name" required maxlength="40" value={prenomSaisi} />
@@ -151,8 +163,26 @@ if (Astro.request.method === 'POST') {
     text-align: center;
   }
 
-  form > :global(.encadre:first-child),
-  form > :global([role='alert']) {
-    margin-bottom: var(--e4);
+  .centre-aide {
+    text-align: center;
+    margin-top: var(--e2);
+  }
+
+  .ou {
+    display: flex;
+    align-items: center;
+    gap: var(--e3);
+    margin: var(--e4) 0;
+    color: var(--texte-3);
+    font-size: 12.5px;
+    font-weight: 600;
+  }
+
+  .ou::before,
+  .ou::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--bordure);
   }
 </style>

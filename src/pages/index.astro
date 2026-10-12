@@ -16,10 +16,10 @@ import Anneau from '../components/Anneau.astro';
 import Anim from '../components/Anim.astro';
 import CarteProduit from '../components/CarteProduit.astro';
 import Alerte from '../components/Alerte.astro';
-import { clientPublic, baseConfiguree } from '../lib/supabase';
+import { clientPublic, clientSession, baseConfiguree } from '../lib/supabase';
 import { visiteuse, monCycle, lirePanier, comptePanier } from '../lib/session';
 import { PHASES } from '../lib/cycle';
-import { dateLongue, aujourdhui, enJours, pluriel } from '../lib/format';
+import { dateLongue, dateCourte, dateDe, enIso, aujourdhui, enJours, pluriel } from '../lib/format';
 
 const installee = baseConfiguree();
 const moi = installee ? await visiteuse(Astro) : null;
@@ -46,6 +46,73 @@ if (installee) {
 
 const phase = cycle?.aDesDonnees ? PHASES[cycle.phase] : null;
 const ICONE_PHASE = { regles: 'goutte', elan: 'pousse', fertile: 'soleil', lune: 'lune' } as const;
+
+// Les journées qu'elle a notées depuis le début de ce cycle : elles
+// apparaissent en points sur l'anneau, pour que ce soit son carnet et pas
+// seulement un calcul.
+let notesDuCycle: { jour: number; saigne: boolean }[] = [];
+if (moi && cycle?.aDesDonnees && cycle.debutDernieresRegles) {
+  const client = clientSession(Astro);
+  const { data } = await client!
+    .from('journal')
+    .select('jour, flux')
+    .gte('jour', cycle.debutDernieresRegles)
+    .limit(45);
+  const depart = dateDe(cycle.debutDernieresRegles).getTime();
+  notesDuCycle = (data ?? []).map((n: { jour: string; flux: string }) => ({
+    jour: Math.round((dateDe(n.jour).getTime() - depart) / 86400000) + 1,
+    saigne: n.flux !== 'rien',
+  }));
+}
+
+// Les trois repères qui comptent dans un cycle : la fin des règles, la
+// fenêtre fertile, les prochaines règles.
+const reperes: { quoi: string; quand: string; icone: string; couleur: string; passe: boolean }[] = [];
+if (cycle?.aDesDonnees && !cycle.depasse) {
+  const jours = (iso: string | null) =>
+    iso ? Math.round((dateDe(iso).getTime() - dateDe(aujourdhui()).getTime()) / 86400000) : null;
+
+  const finRegles = cycle.debutDernieresRegles
+    ? enIso(new Date(dateDe(cycle.debutDernieresRegles).getTime() + (cycle.dureeRegles - 1) * 86400000))
+    : null;
+  const dFin = jours(finRegles);
+  if (dFin !== null) {
+    reperes.push({
+      quoi: dFin >= 0 ? 'Fin de tes règles' : 'Tes règles sont finies',
+      quand: dFin >= 0 ? enJours(dFin) : dateCourte(finRegles!),
+      icone: 'goutte',
+      couleur: 'rose',
+      passe: dFin < 0,
+    });
+  }
+
+  const dFertile = jours(cycle.fertileDebut);
+  if (cycle.fertileDebut && cycle.fertileFin) {
+    const dFin2 = jours(cycle.fertileFin) ?? 0;
+    reperes.push({
+      quoi: dFin2 < 0 ? 'Période fertile passée' : dFertile !== null && dFertile <= 0 ? 'Période fertile, maintenant' : 'Période fertile',
+      quand:
+        dFin2 < 0
+          ? `du ${dateCourte(cycle.fertileDebut)} au ${dateCourte(cycle.fertileFin)}`
+          : dFertile !== null && dFertile <= 0
+            ? `jusqu'au ${dateCourte(cycle.fertileFin)}`
+            : `${enJours(dFertile ?? 0)}, le ${dateCourte(cycle.fertileDebut)}`,
+      icone: 'soleil',
+      couleur: 'violette',
+      passe: dFin2 < 0,
+    });
+  }
+
+  if (cycle.prochainesRegles) {
+    reperes.push({
+      quoi: 'Prochaines règles',
+      quand: `${enJours(cycle.joursRestants)}, le ${dateCourte(cycle.prochainesRegles)}`,
+      icone: 'cycle',
+      couleur: 'neutre',
+      passe: false,
+    });
+  }
+}
 ---
 
 <Base
@@ -98,7 +165,7 @@ const ICONE_PHASE = { regles: 'goutte', elan: 'pousse', fertile: 'soleil', lune:
             <li>
               <span class="rond-icone"><Icone nom="dambe" taille={20} /></span>
               <div>
-                <strong>Dambé répond à tout</strong>
+                <strong>IA Dambé répond à tout</strong>
                 <span>Les questions qu'on n'ose pas poser, sans jugement.</span>
               </div>
             </li>
@@ -152,9 +219,9 @@ const ICONE_PHASE = { regles: 'goutte', elan: 'pousse', fertile: 'soleil', lune:
               <div class="date">{dateLongue(aujourdhui())}</div>
             </div>
           </div>
-          <a class="rond" href="/compte" aria-label="Mon compte">
-            <Icone nom="compte" taille={20} />
-          </a>
+          {/* Le compte a rejoint la barre du bas le 12 octobre 2026, sur
+              demande d'Arthur : il est aligné avec les autres, et ce coin
+              n'avait pas besoin de deux endroits pour la même chose. */}
         </header>
 
         {cycle?.aDesDonnees ? (
@@ -164,15 +231,31 @@ const ICONE_PHASE = { regles: 'goutte', elan: 'pousse', fertile: 'soleil', lune:
               dureeRegles={cycle.dureeRegles}
               cycle={cycle.cycleMoyen}
               phase={phase?.nom ?? ''}
+              notes={notesDuCycle}
             >
               <span class="etiquette-jour">Jour</span>
               <span class="chiffre grand chiffre-arrive">{cycle.jourDuCycle}</span>
-              <span class="etiquette-jour">sur {cycle.cycleMoyen}</span>
+              <span class:list={['phase-dedans', `phase-${phase?.couleur ?? 'rose'}`]}>
+                <Icone nom={ICONE_PHASE[cycle.phase]} taille={14} />
+                {phase?.nom}
+              </span>
+              <span class="sur-combien">sur {cycle.cycleMoyen} jours</span>
             </Anneau>
 
-            <div class:list={['pastille', `pastille-${phase?.couleur === 'violet' ? 'violette' : phase?.couleur === 'encre' ? 'neutre' : 'rose'}`]}>
-              <Icone nom={ICONE_PHASE[cycle.phase]} taille={16} />
-              {phase?.nom}
+            {/* Ce qui vient, en trois repères. Un nombre seul ne dit pas où
+                elle en est : ces trois dates, si. */}
+            <div class="repères">
+              {reperes.map((r) => (
+                <div class:list={['repère', r.passe && 'repère-passe']}>
+                  <span class:list={['pastille-repère', `pastille-${r.couleur}`]}>
+                    <Icone nom={r.icone} taille={15} />
+                  </span>
+                  <span class="repère-texte">
+                    <span class="repère-quoi">{r.quoi}</span>
+                    <span class="repère-quand">{r.quand}</span>
+                  </span>
+                </div>
+              ))}
             </div>
 
             {cycle.depasse ? (
@@ -184,19 +267,16 @@ const ICONE_PHASE = { regles: 'goutte', elan: 'pousse', fertile: 'soleil', lune:
                 </div>
               </div>
             ) : (
-              <div class="prevision">
-                <div class="fort">
-                  {cycle.joursRestants > 0
-                    ? `Tes prochaines règles ${enJours(cycle.joursRestants)}`
-                    : 'Tes règles sont attendues aujourd’hui'}
-                </div>
-                <div class="doux">
-                  {cycle.prochainesRegles ? `Vers le ${dateLongue(cycle.prochainesRegles)}` : ''}
-                  {cycle.cyclesMesures > 0
-                    ? ` · calculé sur tes ${cycle.cyclesMesures === 1 ? 'derniers cycles' : `${cycle.cyclesMesures} derniers cycles`}`
-                    : ' · à affiner quand tu auras noté un cycle'}
-                </div>
-              </div>
+              /* Les trois repères disent déjà les dates : ici on ne répète pas,
+                 on dit seulement d'où sort le calcul. */
+              <p class="d-ou-ca-sort">
+                {cycle.cyclesMesures > 0
+                  ? `Calculé sur tes ${cycle.cyclesMesures === 1 ? 'deux derniers cycles' : `${cycle.cyclesMesures} derniers cycles`}`
+                  : 'À affiner dès que tu auras noté un cycle entier'}
+                {notesDuCycle.length > 0
+                  ? ` · ${pluriel(notesDuCycle.length, 'journée notée', 'journées notées')} ce cycle`
+                  : ''}
+              </p>
             )}
 
             <div class="deux-boutons">
@@ -228,8 +308,8 @@ const ICONE_PHASE = { regles: 'goutte', elan: 'pousse', fertile: 'soleil', lune:
         <a class="carte-sombre bloc dambe apparait" data-ordre="3" href="/dambe">
           <span class="rond-rose-plein"><Icone nom="dambe" taille={22} /></span>
           <span class="dambe-texte">
-            <strong>Demande à Dambé</strong>
-            <span>Une question sur tes règles, tes douleurs, ton hygiène ?</span>
+            <strong>Demande à IA Dambé</strong>
+            <span>Une intelligence artificielle, pour tes questions sur tes règles, tes douleurs, ton hygiène</span>
           </span>
           <Icone nom="avant" taille={18} />
         </a>
@@ -386,9 +466,96 @@ const ICONE_PHASE = { regles: 'goutte', elan: 'pousse', fertile: 'soleil', lune:
   }
 
   .grand {
-    font-size: 64px;
+    font-size: 58px;
     line-height: 1;
     letter-spacing: -2px;
+  }
+
+  /* La phase au centre de l'anneau, et non en pastille sous lui : le regard
+     n'a plus à faire deux arrêts pour savoir où elle en est. */
+  .phase-dedans {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 3px;
+    padding: 3px 9px;
+    border-radius: var(--r-ronde);
+    font-size: 11.5px;
+    font-weight: 700;
+    line-height: 1.2;
+    max-width: 128px;
+  }
+
+  .phase-rose {
+    background: var(--rose-clair);
+    color: var(--rose-fonce);
+  }
+
+  .phase-violet {
+    background: var(--violet-clair);
+    color: var(--violet-fonce);
+  }
+
+  .phase-encre {
+    background: var(--surface-douce);
+    color: var(--texte-2);
+  }
+
+  .sur-combien {
+    margin-top: 3px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--texte-3);
+  }
+
+  /* Les trois repères du cycle. */
+  .repères {
+    width: 100%;
+    margin-top: var(--e4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--e2);
+  }
+
+  .repère {
+    display: flex;
+    align-items: center;
+    gap: var(--e3);
+    padding: 9px 11px;
+    border-radius: 14px;
+    background: var(--fond);
+  }
+
+  .repère-passe {
+    opacity: 0.55;
+  }
+
+  .pastille-repère {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    flex: none;
+    border-radius: 10px;
+  }
+
+  .repère-texte {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    text-align: left;
+  }
+
+  .repère-quoi {
+    font-size: 13.5px;
+    font-weight: 600;
+    line-height: 1.25;
+  }
+
+  .repère-quand {
+    font-size: 12.5px;
+    color: var(--texte-2);
   }
 
   .pastille {
@@ -400,6 +567,14 @@ const ICONE_PHASE = { regles: 'goutte', elan: 'pousse', fertile: 'soleil', lune:
   .prevision {
     margin-top: var(--e3);
     text-align: center;
+  }
+
+  .d-ou-ca-sort {
+    margin-top: var(--e3);
+    text-align: center;
+    font-size: 12.5px;
+    color: var(--texte-3);
+    line-height: 1.45;
   }
 
   .fort {

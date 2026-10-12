@@ -3,10 +3,17 @@
  * L'anneau du cycle.
  *
  * Tout est calculé côté serveur : l'anneau s'affiche même sans JavaScript, et
- * il n'y a rien à charger. Les segments disent trois choses à la fois :
+ * il n'y a rien à charger.
+ *
+ * Il dit quatre choses à la fois :
  *   - le rose plein, les jours de règles ;
  *   - le violet, la période fertile ;
- *   - le point sombre, aujourd'hui.
+ *   - le point sombre, aujourd'hui ;
+ *   - les petits points à l'intérieur, les journées QU'ELLE A NOTÉES.
+ *
+ * Ce dernier point est ce qui transforme un calcul en son propre carnet.
+ * Arthur, le 12 octobre 2026 : « jour 1 sur 28, c'est trop basique, je veux
+ * vraiment une amélioration, que ce soit plus original ».
  *
  * Deux couleurs qu'il faut distinguer ne diffèrent jamais par la seule teinte :
  * le rose est plein et commence en haut, le violet est au milieu de l'anneau,
@@ -19,12 +26,33 @@ interface Props {
   dureeRegles: number;
   cycle: number;
   phase: string;
+  /** Les jours du cycle qu'elle a notés, et si elle y a déclaré du sang. */
+  notes?: { jour: number; saigne: boolean }[];
   anime?: boolean;
 }
 
-const { jour, dureeRegles, cycle, phase, anime = true } = Astro.props;
+const { jour, dureeRegles, cycle, phase, notes = [], anime = true } = Astro.props;
 const a = anneauDuCycle(jour, dureeRegles, cycle);
 const trace = `${a.parcouru.toFixed(1)} ${a.circonference.toFixed(1)}`;
+
+// Les journées notées, posées sur un cercle intérieur. Deux notes le même jour
+// n'existent pas (la base a une ligne par jour), donc pas de doublon à gérer.
+const RAYON_NOTES = 66;
+const points = notes
+  .filter((n) => n.jour >= 1 && n.jour <= cycle)
+  .map((n) => {
+    const angle = ((n.jour - 0.5) / cycle) * 2 * Math.PI - Math.PI / 2;
+    return {
+      x: Number((100 + RAYON_NOTES * Math.cos(angle)).toFixed(2)),
+      y: Number((100 + RAYON_NOTES * Math.sin(angle)).toFixed(2)),
+      saigne: n.saigne,
+    };
+  });
+
+const libelleNotes =
+  points.length === 0
+    ? ''
+    : `, ${points.length} ${points.length === 1 ? 'journée notée' : 'journées notées'}`;
 ---
 
 <div class="anneau">
@@ -33,7 +61,7 @@ const trace = `${a.parcouru.toFixed(1)} ${a.circonference.toFixed(1)}`;
     height="208"
     viewBox="0 0 200 200"
     role="img"
-    aria-label={`Jour ${jour} sur ${cycle} de ton cycle, ${phase}`}
+    aria-label={`Jour ${jour} sur ${cycle} de ton cycle, ${phase}${libelleNotes}`}
   >
     <g transform="rotate(-90 100 100)">
       <!-- Le cycle entier, en fond -->
@@ -78,6 +106,20 @@ const trace = `${a.parcouru.toFixed(1)} ${a.circonference.toFixed(1)}`;
         class={anime ? 'anneau-trace' : ''}
       ></circle>
     </g>
+
+    <!-- Ses journées notées -->
+    {
+      points.map((p) => (
+        <circle
+          cx={p.x}
+          cy={p.y}
+          r={p.saigne ? 3.6 : 2.6}
+          fill={p.saigne ? 'var(--rose)' : 'var(--texte-3)'}
+          class={anime ? 'pose' : ''}
+        />
+      ))
+    }
+
     <!-- Aujourd'hui : le seul élément qui respire, très lentement -->
     <circle cx={a.marqueur.x} cy={a.marqueur.y} r="9.5" fill="var(--fond)"></circle>
     <circle
@@ -109,7 +151,7 @@ const trace = `${a.parcouru.toFixed(1)} ${a.circonference.toFixed(1)}`;
     justify-content: center;
     gap: 2px;
     text-align: center;
+    /* Le centre ne doit pas intercepter le toucher destiné à l'anneau. */
+    pointer-events: none;
   }
-
-
 </style>

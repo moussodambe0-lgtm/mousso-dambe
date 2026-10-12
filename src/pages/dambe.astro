@@ -116,7 +116,7 @@ const panier = comptePanier(lirePanier(Astro));
 const branchee = ollamaConfigure();
 ---
 
-<Base titre="Dambé" nav="dambe" panier={panier}>
+<Base titre="IA Dambé" nav="dambe" panier={panier}>
   <header class="barre">
     <div class="page barre-dedans">
       <a class="rond" href="/" aria-label="Retour à l'accueil">
@@ -126,7 +126,7 @@ const branchee = ollamaConfigure();
         <Symbole taille={24} anneau="var(--rose)" goutte="var(--rose-clair)" />
       </span>
       <div>
-        <h1>Dambé</h1>
+        <h1>IA Dambé</h1>
         <div class:list={['etat', branchee ? 'etat-ok' : 'etat-off']}>
           <i></i>
           {branchee ? 'Prête à répondre' : 'Pas encore branchée'}

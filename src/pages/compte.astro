@@ -57,7 +57,7 @@ const panier = comptePanier(lirePanier(Astro));
 const initiales = (moi.prenom || moi.email || '?').slice(0, 2).toUpperCase();
 ---
 
-<Base titre="Mon compte" nav="accueil" panier={panier}>
+<Base titre="Mon compte" nav="compte" panier={panier}>
   <main class="page">
     <Entete titre="Mon compte" retour="/" />
 
