@@ -75,6 +75,7 @@ let aDesDonnees = false;
 let infoAujourdhui: ReturnType<typeof infoDuJour> | null = null;
 let prochaines: string | null = null;
 let confirmes = new Set<string>();
+let noteDuJour = false;
 
 if (moi) {
   const client = clientSession(Astro)!;
@@ -104,6 +105,9 @@ if (moi) {
       .select('jour, flux')
       .gte('jour', plusDeJours(hui, -21))
       .lte('jour', hui);
+    // A-t-elle déjà noté aujourd'hui ? Le bouton de la carte le dit, pour ne
+    // pas lui demander de refaire ce qu'elle vient de faire.
+    noteDuJour = (notes ?? []).some((n: { jour: string }) => n.jour === hui);
     for (const n of (notes ?? []) as { jour: string; flux: string }[]) {
       if (n.flux !== 'rien') confirmes.add(n.jour);
     }
@@ -324,14 +328,19 @@ const dateDuJour = `${dateDe(hui).getDate()} ${MOIS_COURTS[dateDe(hui).getMonth(
                   <h2 class="acc-carte-titre">{carteTitre}</h2>
                   <p class="acc-carte-sous">{carteSous}</p>
                 </div>
+                {/* Le cahier d'Arthur proposait ici « +120 femmes de la
+                    communauté sont dans la même phase que toi », OU un petit
+                    bouton d'action. On prend la seconde option, et voici
+                    pourquoi : ce chiffre n'existe pas. L'application n'a pas
+                    120 utilisatrices et ne compte la phase de personne.
+                    L'écrire serait afficher un faux sur une application de
+                    santé, là où la confiance est tout ce qu'on a. Le jour où
+                    il y aura du monde, ce compte sera vrai, et il reviendra. */}
                 <div class="acc-carte-pied">
-                  <div class="acc-pile">
-                    <Avatar graine="communaute-1" taille={32} contour={false} titre="" />
-                    <Avatar graine="communaute-2" taille={32} contour={false} titre="" />
-                    <Avatar graine="communaute-3" taille={32} contour={false} titre="" />
-                    <span class="acc-pile-plus">+120</span>
-                  </div>
-                  <span class="acc-pied-texte">femmes dans la même phase que toi</span>
+                  <a class="acc-bouton-pilule" href="/journal">
+                    {noteDuJour ? 'Modifier ma journée' : 'Noter ma journée'}
+                    <Icone nom="avant" taille={16} epaisseur={2.4} />
+                  </a>
                 </div>
               </article>
             ) : (

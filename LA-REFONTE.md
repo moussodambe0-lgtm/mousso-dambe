@@ -22,7 +22,9 @@ reste. Il est écrit pour toi, Arthur, pas pour un développeur.
 | 10 | Accueil animé (bannières, ruban, conseils, produits) | oui | `src/pages/index.astro` |
 | 10 bis | Haut de l'accueil d'après ta maquette | oui | `src/styles/accueil.css`, `Avatar.astro`, `ObjetsCarte.astro` |
 | 10 ter | Avatars générés | oui | `src/lib/avatar.ts` |
-| 11 | Pilule qui glisse, transitions, vibration | oui | `composants.css`, `src/scripts/toucher.ts` |
+| 11 | Navigation liquide, transitions, vibration | oui | `composants.css`, `src/scripts/nav.ts` |
+| + | Bannière du médecin sur l'accueil | oui | `src/pages/index.astro`, `public/accueil/` |
+| + | Conversation « Le médecin » | oui | `src/pages/discussions/[sujet].astro` |
 
 **Ce qui n'est pas fait, et pourquoi :** voir la section 5 plus bas. Rien n'a
 été abandonné en silence.
@@ -69,6 +71,23 @@ pas des photos. Tu avais demandé de vraies images de serviettes et de
 culottes. Il te faut soit des photos de ton stock (le mieux : ce sont tes
 vrais produits), soit des photos libres de droits.
 
+### Les photos du médecin
+
+`public/accueil/medecin-detoure-600.webp` et `-1200.webp`, puis
+`medecin-pose2-detoure-*` et `medecin-pose3-detoure-*` : une par message de la
+bannière qui défile. Détourées sur fond transparent, cadrées pour que la tête
+fasse la même taille sur les trois quand elles sont à la même hauteur.
+
+Pour les remplacer par ton vrai médecin : garde les mêmes noms de fichiers.
+Si tu n'en déposes qu'une, les trois messages la reprennent, et la bannière
+reste entière.
+
+**La licence de celles-ci interdit de laisser croire que la personne
+recommande le produit.** C'est pour ça que la mention « Photo d'illustration »
+est sous la bannière, et qu'aucun nom ni aucune spécialité ne lui est
+attribué. Provenance et licence complètes :
+`atelier-motion/images/medecin/LICENCE.md`.
+
 ### La mascotte
 
 `src/assets/mascotte/mascotte-salut.svg`, `-ecoute`, `-bravo`, `-visage`,
@@ -102,9 +121,10 @@ administrateur, donc `/admin` s'ouvre. `Ctrl+C` arrête tout.
 
 | Commande | Ce qu'elle prouve |
 |---|---|
-| `npm run test:sql` | 480 vérifications sur la base : les règles d'accès, les calculs du cycle, les quotas, et qu'une femme ne lit jamais les données d'une autre |
+| `npm run test:sql` | 505 vérifications sur la base : les règles d'accès, les calculs du cycle, les quotas, et qu'une femme ne lit jamais les données d'une autre |
 | `npm run essai` | 34 vérifications sur les écrans : on traverse l'application comme une utilisatrice, formulaires compris (il faut que `npm run demo` tourne) |
-| `npm run captures` | 30 captures d'écran en 390 px, dans `captures/` : le seul moyen de juger ce qui se voit |
+| `npm run essai:carrousel` | 5 vérifications dans un vrai navigateur : le carrousel de l'accueil ne remonte jamais la page, et s'arrête quand il n'est plus à l'écran |
+| `npm run captures` | 34 captures d'écran en 390 px, dans `captures/` : le seul moyen de juger ce qui se voit |
 | `npm run check` | Les erreurs de code |
 | `node outils/collisions.mjs` | Les noms de style qui se heurtent entre deux fichiers |
 | `node outils/mesurer.mjs /cycle ".anneau-s"` | Interroge un vrai navigateur quand un écran est de travers sans qu'on voie pourquoi |
@@ -147,16 +167,31 @@ autres :
 ### Une chose que j'ai enlevée, et pourquoi tu dois le savoir
 
 Ton cahier proposait, sur la grande carte de l'accueil, « +120 femmes de la
-communauté sont dans la même phase que toi ». **Ce nombre n'existe pas** :
-l'application n'a pas encore 120 utilisatrices, et personne ne compte les
-phases de qui que ce soit. L'afficher serait écrire un chiffre faux à
-l'écran, sur un sujet où la confiance est tout ce qu'on a.
+communauté sont dans la même phase que toi », **ou** un petit bouton d'action.
+J'ai pris la seconde option.
 
-Il est resté en place avec des avatars inventés. **Dis-moi ce que tu
-préfères** : soit on le remplace par un bouton d'action (« Voir mon cycle »,
-« Commander »), soit on le calcule pour de vrai quand il y aura assez de
-monde. Tant que tu ne tranches pas, je préfère te le signaler que le laisser
-passer.
+Pourquoi : ce nombre n'existe pas. L'application n'a pas 120 utilisatrices, et
+elle ne compte la phase de personne. L'écrire serait afficher un faux sur une
+application de santé, là où la confiance est tout ce qu'on a. Le jour où il y
+aura du monde, ce compte sera vrai, et il reviendra.
+
+À sa place : « Noter ma journée », qui devient « Modifier ma journée » si elle
+l'a déjà fait.
+
+### Qui répond au médecin ?
+
+La conversation « Le médecin » marche de bout en bout : elle écrit, le message
+arrive dans ton espace d'administration, tu réponds, elle reçoit. Mais **elle
+ne vaut que si quelqu'un lit.** Dis-moi qui : toi, ou un vrai médecin à qui tu
+donnes l'accès (une ligne dans la table `administrateurs`, comme pour toi).
+
+Tant que tu n'as pas tranché, l'écran ne promet aucun délai de réponse et
+n'écrit le nom d'aucun médecin.
+
+Une chose que j'ai ajoutée sans te la demander, parce qu'il s'agit de santé :
+si les mots d'un message disent une urgence, l'orientation vers le centre de
+santé s'affiche **tout de suite**, sans attendre que quelqu'un réponde. Un
+médecin répond quand il peut ; une urgence, non.
 
 ---
 
@@ -172,6 +207,17 @@ Pour que tu saches où regarder si quelque chose se remet de travers :
   l'application (celui qui la rend utilisable hors ligne) gardait les
   feuilles de style de la veille. Les captures jettent maintenant le profil
   du navigateur à chaque fois.
+- **Le service worker resservait un style périmé.** Il gardait les `.css` en
+  réserve et les servait en premier : tu voyais une barre de navigation de
+  trois versions en arrière, et tu me disais, à juste titre, que mon code
+  n'était pas appliqué. Rien ne pouvait le dire, pas même mes captures, qui
+  partent d'un navigateur neuf à chaque fois. Depuis : plus de service worker
+  en développement, et en production les styles passent par le réseau d'abord.
+  **Si tu revois un écran qui ne change pas : recharge deux fois, ou
+  Ctrl+Shift+R.**
+- **Le carrousel remontait la page.** Il demandait à la carte suivante de se
+  mettre en vue ; quand tu avais défilé plus bas, le navigateur remontait tout
+  l'écran pour la montrer. C'est la bande qui glisse, maintenant.
 - **`updateUser` ne lisait pas la session** quand on attache une adresse à un
   compte anonyme : il lui faut une session en mémoire, pas seulement un
   en-tête. La page disait « réessaie plus tard » pour une raison qui n'avait
@@ -179,4 +225,4 @@ Pour que tu saches où regarder si quelque chose se remet de travers :
 
 ---
 
-*Dernière mise à jour : 12 octobre 2026.*
+*Dernière mise à jour : 12 octobre 2026, au soir.*
