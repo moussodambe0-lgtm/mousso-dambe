@@ -17,7 +17,7 @@ import Anim from '../components/Anim.astro';
 import Alerte from '../components/Alerte.astro';
 import { clientSession, baseConfiguree } from '../lib/supabase';
 import { visiteuse } from '../lib/session';
-import { messageErreur, aujourdhui, dateDe, enIso, dateLongue } from '../lib/format';
+import { messageErreur, aujourdhui, dateDe, enIso, dateLongue, dateCourte } from '../lib/format';
 
 if (!baseConfiguree()) return Astro.redirect('/', 302);
 const moi = await visiteuse(Astro);
@@ -114,6 +114,20 @@ const joursRecents = Array.from({ length: 10 }, (_, i) => {
   return { iso: enIso(d), libelle: i === 0 ? "Aujourd'hui" : i === 1 ? 'Hier' : dateLongue(enIso(d)) };
 });
 
+// Ce qu'elle a déjà répondu, rappelé sous la barre d'avancement. Sans ça, deux
+// écrans qui posent tous les deux une question en jours se ressemblent assez
+// pour qu'on croie que rien ne s'est passé. Arthur, le 12 octobre : « ça fait
+// comme si ça charge mais rien ».
+const dejaDit: string[] = [];
+if (etape >= 2 && reponses.prenom) dejaDit.push(reponses.prenom);
+if (etape >= 3) {
+  dejaDit.push(
+    reponses.sait === 'oui' && reponses.dernieres ? dateCourte(reponses.dernieres) : 'date inconnue'
+  );
+}
+if (etape >= 4) dejaDit.push(`règles ${reponses.duree} j`);
+if (etape >= 5) dejaDit.push(`cycle ${reponses.cycle} j`);
+
 const TITRES: Record<number, string> = {
   1: 'Comment tu veux qu’on t’appelle ?',
   2: 'Quand ont commencé tes dernières règles ?',
@@ -153,6 +167,19 @@ const TITRES: Record<number, string> = {
       {etape !== 3 && <input type="hidden" name="duree" value={reponses.duree} />}
       {etape !== 4 && <input type="hidden" name="cycle" value={reponses.cycle} />}
 
+      {
+        dejaDit.length > 0 && (
+          <div class="deja" aria-label="Ce que tu as déjà répondu">
+            {dejaDit.map((bout) => (
+              <span class="bout">
+                <Icone nom="coche" taille={12} epaisseur={2.5} />
+                {bout}
+              </span>
+            ))}
+          </div>
+        )
+      }
+
       <h1>{TITRES[etape]}</h1>
 
       {erreur && <div class="marge"><Alerte type="erreur" texte={erreur} /></div>}
@@ -171,7 +198,7 @@ const TITRES: Record<number, string> = {
       {
         etape === 2 && (
           <div class="corps">
-            <Anim nom="q-cycle" classe="dessin-q" />
+            <Anim nom="phase-regles" classe="dessin-petit" />
             <p class="doux">
               Le premier jour de saignement, pas le dernier. C'est la seule date dont j'ai besoin pour calculer la
               suite.
@@ -196,10 +223,22 @@ const TITRES: Record<number, string> = {
         etape === 3 && (
           <div class="corps">
             <p class="doux">Du premier jour de saignement au dernier. Si ça change d'un mois à l'autre, donne une moyenne.</p>
-            <div class="choix-grille">
+            {/* Des gouttes plutôt qu'une grille de pastilles : l'écran suivant
+                pose aussi une question en jours, et deux grilles identiques à
+                la suite donnent l'impression que rien ne s'est passé. */}
+            <div class="gouttes">
               {[2, 3, 4, 5, 6, 7, 8].map((n) => (
-                <button class="puce grande" type="submit" name="duree" value={String(n)} aria-pressed={reponses.duree === String(n)}>
-                  {n} jours
+                <button class="goutte-choix" type="submit" name="duree" value={String(n)} aria-pressed={reponses.duree === String(n)}>
+                  {/* Une goutte par jour, toutes les gouttes : un dessin qui
+                      compte doit compter juste, sinon 5, 6 et 7 jours se
+                      ressemblent et il ne sert plus à rien. */}
+                  <span class="gouttes-dessin" aria-hidden="true">
+                    {Array.from({ length: n }, () => (
+                      <Icone nom="goutte" taille={11} />
+                    ))}
+                  </span>
+                  <span class="nb-jours chiffre">{n}</span>
+                  <span class="mot">jours</span>
                 </button>
               ))}
             </div>
@@ -210,6 +249,9 @@ const TITRES: Record<number, string> = {
       {
         etape === 4 && (
           <div class="corps">
+            {/* L'anneau des 28 jours : il dit de quoi on parle, et il rend cet
+                écran impossible à confondre avec le précédent. */}
+            <Anim nom="q-cycle" classe="dessin-q" />
             <p class="doux">
               Du premier jour de règles au premier jour des règles suivantes. Si tu ne sais pas, laisse 28 jours : je
               corrigerai toute seule dès que tu auras noté un cycle.
@@ -361,6 +403,80 @@ const TITRES: Record<number, string> = {
   .dessin-q {
     width: 200px;
     margin: 0 auto var(--e4);
+  }
+
+  .dessin-petit {
+    width: 110px;
+    margin: 0 auto var(--e4);
+  }
+
+  /* Ce qu'elle a déjà répondu : la preuve, à chaque écran, que ça avance. */
+  .deja {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: var(--e3);
+  }
+
+  .bout {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: var(--r-ronde);
+    background: var(--vert-clair);
+    color: var(--vert);
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  /* L'écran de la durée des règles : des gouttes, pas une grille de pastilles,
+     pour qu'il ne se confonde pas avec celui du cycle qui vient après. */
+  .gouttes {
+    display: flex;
+    flex-direction: column;
+    gap: var(--e2);
+  }
+
+  .goutte-choix {
+    display: flex;
+    align-items: center;
+    gap: var(--e3);
+    width: 100%;
+    min-height: 56px;
+    padding: 0 var(--e4);
+    border: 1px solid var(--bordure);
+    border-radius: var(--r-champ);
+    background: var(--surface);
+    cursor: pointer;
+    transition: background-color var(--vite) ease, border-color var(--vite) ease;
+  }
+
+  .goutte-choix:hover {
+    background: var(--surface-douce);
+  }
+
+  .goutte-choix[aria-pressed='true'] {
+    background: var(--rose-clair);
+    border-color: var(--rose);
+  }
+
+  .gouttes-dessin {
+    display: flex;
+    gap: 1px;
+    width: 100px;
+    flex: none;
+    color: var(--rose);
+  }
+
+  .nb-jours {
+    font-size: 19px;
+    color: var(--encre);
+  }
+
+  .mot {
+    font-size: 14px;
+    color: var(--texte-2);
   }
 
   .doux {
