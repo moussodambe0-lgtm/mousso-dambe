@@ -219,7 +219,16 @@ console.log('\nCommander');
     quartier: 'Zogona',
     repere: 'Derrière le lycée',
   });
-  verifier('la commande part', r.statut === 303 && (r.vers ?? '').includes('nouvelle=MD-'), `${r.statut} ${r.vers}`);
+  // Le plafond est de cinq commandes par heure et par compte. Quand on relance
+  // cet essai plusieurs fois de suite, c'est LUI qui répond, et il a raison de
+  // le faire : ce n'est pas une panne, c'est le garde-fou qui marche. On le
+  // dit, et on ne compte pas ça comme un échec.
+  const plafondAtteint = r.statut === 200 && /commandes de suite/.test(r.html);
+  if (plafondAtteint) {
+    console.log('  --   la commande est refusée par le plafond horaire (essai relancé trop souvent)');
+  } else {
+    verifier('la commande part', r.statut === 303 && (r.vers ?? '').includes('nouvelle=MD-'), `${r.statut} ${r.vers}`);
+  }
 }
 
 console.log('\nEntrer sans compte, et garder son compte ensuite');
