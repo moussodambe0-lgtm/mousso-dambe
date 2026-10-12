@@ -1,0 +1,478 @@
+/* Mousso Dambé : logo animé d'ouverture (1,2 s, joué une fois).
+   L'anneau du cycle se trace et se ferme, la goutte tombe en son centre,
+   le nom monte, puis trois fils tissés le soulignent.
+   N'anime que transform, opacity et stroke-dashoffset. */
+
+.md-logo { display: block; width: 100%; max-width: 240px; height: auto; overflow: visible; }
+
+.md-logo-anneau {
+  stroke: var(--rose, #D0206A);
+  stroke-dasharray: 100 101;
+  stroke-dashoffset: 0;
+  animation: md-logo-trace .62s cubic-bezier(.3, .7, .2, 1) both;
+}
+.md-logo-goutte {
+  fill: var(--encre, #1B1116);
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: md-logo-goutte .4s .44s cubic-bezier(.34, 1.56, .64, 1) both;
+}
+.md-logo-nom {
+  fill: var(--encre, #1B1116);
+  font-family: "Bricolage Grotesque", system-ui, sans-serif;
+  font-weight: 800;
+  font-size: 30px;
+  letter-spacing: -.02em;
+  animation: md-logo-nom .4s .58s cubic-bezier(.2, .8, .2, 1) both;
+}
+.md-logo-nom-rose { fill: var(--rose, #D0206A); }
+
+.md-logo-fil {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: md-logo-fil .26s cubic-bezier(.2, .8, .2, 1) both;
+}
+.md-logo-fil-1 { fill: var(--rose, #D0206A); animation-delay: .8s; }
+.md-logo-fil-2 { fill: var(--encre, #1B1116); animation-delay: .86s; }
+.md-logo-fil-3 { fill: var(--rose-clair, #FFDCE9); animation-delay: .92s; }
+
+@keyframes md-logo-trace {
+  from { stroke-dashoffset: 100.5; opacity: 0; }
+  5% { opacity: 1; }
+  to { stroke-dashoffset: 0; opacity: 1; }
+}
+@keyframes md-logo-goutte {
+  from { transform: translateY(-18px) scale(.3); opacity: 0; }
+  40% { opacity: 1; }
+  to { transform: none; opacity: 1; }
+}
+@keyframes md-logo-nom {
+  from { transform: translateY(12px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+@keyframes md-logo-fil {
+  from { transform: scaleX(0); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .md-logo-anneau, .md-logo-goutte, .md-logo-nom, .md-logo-fil { animation: none !important; }
+}
+/* Mousso Dambé : les quatre phases du cycle (120 x 120, jouées une fois
+   à l'arrivée en moins de 1,4 s, puis posées). Un seul détail respire
+   très lentement par phase. N'anime que transform, opacity et
+   stroke-dashoffset. */
+
+.md-phase { display: block; width: 120px; height: 120px; overflow: visible; }
+
+/* Couleurs (jetons du DESIGN.md, avec valeur de secours) */
+.md-f-rose { fill: var(--rose, #D0206A); }
+.md-f-rose-fonce { fill: var(--rose-fonce, #9C1450); }
+.md-f-rose-clair { fill: var(--rose-clair, #FFDCE9); }
+.md-f-encre { fill: var(--encre, #1B1116); }
+.md-f-fond { fill: var(--fond, #FFF6F9); }
+.md-f-blanc { fill: var(--surface, #FFFFFF); }
+.md-f-violet { fill: var(--violet, #6A3FC9); }
+.md-f-violet-clair { fill: var(--violet-clair, #ECE5FB); }
+
+/* Commun : le disque de fond se pose */
+.md-ph-fond {
+  transform-box: fill-box; transform-origin: 50% 50%;
+  animation: md-ph-pose .38s cubic-bezier(.2, .8, .2, 1) both;
+}
+
+/* 1. Tes règles : la goutte tombe, s'écrase un peu, une onde part */
+.md-ph-goutte {
+  transform-box: fill-box; transform-origin: 50% 100%;
+  animation: md-ph-chute .72s .08s cubic-bezier(.3, .6, .3, 1) both;
+}
+.md-ph-onde {
+  stroke: var(--surface, #FFFFFF); opacity: 0;
+  transform-box: fill-box; transform-origin: 50% 50%;
+  animation: md-ph-onde .7s .55s ease-out both;
+}
+.md-ph-reflet {
+  stroke: var(--rose-clair, #FFDCE9);
+  stroke-dasharray: 100 101;
+  animation: md-ph-trace .3s .78s ease-out both, md-ph-luit 5s 1.6s ease-in-out infinite;
+}
+.md-ph-gout { transform-box: fill-box; transform-origin: 50% 100%; animation: md-ph-pop .34s cubic-bezier(.34, 1.56, .64, 1) both; }
+.md-ph-gout-1 { animation-delay: .82s; }
+.md-ph-gout-2 { animation-delay: .94s; }
+
+/* 2. Tu reprends de l'élan : le sol tissé glisse, la pousse sort */
+.md-ph-sol { transform-box: fill-box; animation: md-ph-glisse-g .4s cubic-bezier(.2, .8, .2, 1) both; }
+.md-ph-sol-2 { animation-name: md-ph-glisse-d; }
+.md-ph-sol-1 { animation-delay: .05s; }
+.md-ph-sol-2 { animation-delay: .12s; }
+.md-ph-sol-3 { animation-delay: .19s; }
+.md-ph-tige {
+  stroke: var(--rose-fonce, #9C1450);
+  stroke-dasharray: 100 101;
+  animation: md-ph-trace .45s .25s cubic-bezier(.3, .7, .2, 1) both;
+}
+.md-ph-feuille-g {
+  transform-box: fill-box; transform-origin: 100% 100%;
+  animation: md-ph-deplie .42s .55s cubic-bezier(.34, 1.56, .64, 1) both;
+}
+.md-ph-feuille-d {
+  transform-box: fill-box; transform-origin: 0% 100%;
+  animation: md-ph-deplie-d .46s .7s cubic-bezier(.34, 1.56, .64, 1) both;
+}
+.md-ph-balance {
+  transform-box: fill-box; transform-origin: 0% 100%;
+  animation: md-ph-balance 6s 1.6s ease-in-out infinite;
+}
+
+/* 3. Période fertile : les rayons jaillissent de derrière le soleil */
+.md-ph-rayons {
+  transform-box: view-box; transform-origin: 60px 60px;
+  animation: md-ph-respire 5s 1.6s ease-in-out infinite;
+}
+.md-ph-rayon {
+  fill: none; stroke: var(--violet, #6A3FC9); stroke-width: 5.5; stroke-linecap: round;
+  animation: md-ph-jaillit .36s cubic-bezier(.34, 1.56, .64, 1) both;
+}
+.md-ph-rayon-1 { animation-delay: .32s; }
+.md-ph-rayon-2 { animation-delay: .37s; }
+.md-ph-rayon-3 { animation-delay: .42s; }
+.md-ph-rayon-4 { animation-delay: .47s; }
+.md-ph-rayon-5 { animation-delay: .52s; }
+.md-ph-rayon-6 { animation-delay: .57s; }
+.md-ph-rayon-7 { animation-delay: .62s; }
+.md-ph-rayon-8 { animation-delay: .67s; }
+.md-ph-soleil {
+  transform-box: fill-box; transform-origin: 50% 50%;
+  animation: md-ph-pop .42s .12s cubic-bezier(.34, 1.56, .64, 1) both;
+}
+.md-ph-anneau-s {
+  stroke: var(--surface, #FFFFFF);
+  stroke-dasharray: 100 101;
+  transform-box: fill-box; transform-origin: 50% 50%; transform: rotate(-90deg);
+  animation: md-ph-trace-a .4s .5s ease-out both;
+}
+.md-ph-pepin { transform-box: fill-box; transform-origin: 50% 50%; animation: md-ph-pop .3s cubic-bezier(.34, 1.56, .64, 1) both; }
+.md-ph-pepin-1 { animation-delay: .86s; }
+.md-ph-pepin-2 { animation-delay: .96s; }
+
+/* 4. Ton corps ralentit : la lune se lève, les étoiles s'allument */
+.md-ph-croissant {
+  transform-box: view-box; transform-origin: 60px 60px;
+  animation: md-ph-lever .8s .1s cubic-bezier(.2, .7, .2, 1) both;
+}
+.md-ph-etoile { transform-box: fill-box; transform-origin: 50% 50%; animation: md-ph-pop .34s cubic-bezier(.34, 1.56, .64, 1) both; }
+.md-ph-etoile-1 { animation: md-ph-pop .34s .62s cubic-bezier(.34, 1.56, .64, 1) both, md-ph-scintille 4.5s 1.6s ease-in-out infinite; }
+.md-ph-etoile-2 { animation-delay: .76s; }
+.md-ph-etoile-3 { animation-delay: .9s; }
+
+@keyframes md-ph-pose { from { transform: scale(.72); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes md-ph-pop { from { transform: scale(0); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes md-ph-trace { from { stroke-dashoffset: 100.5; } to { stroke-dashoffset: 0; } }
+@keyframes md-ph-trace-a { from { stroke-dashoffset: 100.5; } to { stroke-dashoffset: 0; } }
+@keyframes md-ph-chute {
+  0% { transform: translateY(-38px) scale(.9, 1.08); opacity: 0; }
+  25% { opacity: 1; }
+  62% { transform: translateY(0) scale(.96, 1.04); }
+  76% { transform: translateY(0) scale(1.08, .9); }
+  90% { transform: translateY(0) scale(.98, 1.02); }
+  100% { transform: none; opacity: 1; }
+}
+@keyframes md-ph-onde { from { transform: scale(.62); opacity: .9; } to { transform: scale(1.12); opacity: 0; } }
+@keyframes md-ph-luit { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
+@keyframes md-ph-glisse-g { from { transform: translateX(-100%); } to { transform: none; } }
+@keyframes md-ph-glisse-d { from { transform: translateX(100%); } to { transform: none; } }
+@keyframes md-ph-deplie { from { transform: scale(0) rotate(25deg); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes md-ph-deplie-d { from { transform: scale(0) rotate(-25deg); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes md-ph-balance { 0%, 100% { transform: none; } 50% { transform: rotate(-5deg); } }
+@keyframes md-ph-jaillit { from { transform: translateY(16px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes md-ph-respire { 0%, 100% { transform: none; } 50% { transform: scale(1.06); } }
+@keyframes md-ph-lever { from { transform: rotate(-50deg) translateX(-10px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes md-ph-scintille { 0%, 100% { transform: none; opacity: 1; } 50% { transform: scale(.78); opacity: .45; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .md-phase * { animation: none !important; }
+}
+/* Mousso Dambé : bandeau d'accueil tissé (1,5 s, joué une fois).
+   Une navette noire traverse l'écran cinq fois, en aller-retour, et laisse
+   derrière elle chaque bande du pagne (Faso Dan Fani) ; puis les fils fins
+   noirs se tendent et les petits losanges blancs se posent dans la bande
+   centrale. Décor : aria-hidden. N'anime que transform et opacity. */
+
+.md-accueil { display: block; width: 100%; height: auto; overflow: hidden; }
+
+.md-acc-trame { transform-box: fill-box; transform-origin: 0% 50%; animation: md-acc-tisse .2s cubic-bezier(.5, 0, .5, 1) both; }
+.md-acc-t1, .md-acc-t3, .md-acc-t5 { fill: var(--rose, #D0206A); }
+.md-acc-t2, .md-acc-t4 { fill: var(--rose-clair, #FFDCE9); transform-origin: 100% 50%; }
+.md-acc-t2 { animation-delay: .21s; }
+.md-acc-t3 { animation-delay: .42s; }
+.md-acc-t4 { animation-delay: .63s; }
+.md-acc-t5 { animation-delay: .84s; }
+
+.md-acc-fin {
+  fill: var(--encre, #1B1116);
+  transform-box: fill-box; transform-origin: 50% 50%;
+  animation: md-acc-tend .3s .92s cubic-bezier(.2, .8, .2, 1) both;
+}
+.md-acc-blocs path {
+  fill: var(--surface, #FFFFFF);
+  transform-box: fill-box; transform-origin: 50% 50%;
+  animation: md-acc-pose .2s cubic-bezier(.34, 1.56, .64, 1) both;
+}
+.md-acc-blocs path:nth-child(1) { animation-delay: 0.98s; }
+.md-acc-blocs path:nth-child(2) { animation-delay: 1.00s; }
+.md-acc-blocs path:nth-child(3) { animation-delay: 1.02s; }
+.md-acc-blocs path:nth-child(4) { animation-delay: 1.04s; }
+.md-acc-blocs path:nth-child(5) { animation-delay: 1.06s; }
+.md-acc-blocs path:nth-child(6) { animation-delay: 1.08s; }
+.md-acc-blocs path:nth-child(7) { animation-delay: 1.10s; }
+.md-acc-blocs path:nth-child(8) { animation-delay: 1.12s; }
+.md-acc-blocs path:nth-child(9) { animation-delay: 1.14s; }
+.md-acc-blocs path:nth-child(10) { animation-delay: 1.16s; }
+.md-acc-blocs path:nth-child(11) { animation-delay: 1.18s; }
+.md-acc-blocs path:nth-child(12) { animation-delay: 1.20s; }
+.md-acc-blocs path:nth-child(13) { animation-delay: 1.22s; }
+.md-acc-blocs path:nth-child(14) { animation-delay: 1.24s; }
+.md-acc-blocs path:nth-child(15) { animation-delay: 1.26s; }
+
+.md-acc-navette { fill: var(--encre, #1B1116); opacity: 0; animation: md-acc-navette 1.05s linear both; }
+.md-acc-oeil { fill: var(--rose-clair, #FFDCE9); }
+
+.md-acc-points { fill: var(--encre, #1B1116); animation: md-acc-apparait .3s 1.2s ease-out both; }
+@keyframes md-acc-apparait { from { opacity: 0; } to { opacity: 1; } }
+@keyframes md-acc-tisse { from { transform: scaleX(0); } to { transform: none; } }
+@keyframes md-acc-tend { from { transform: scaleX(0); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes md-acc-pose { from { transform: scale(0) rotate(45deg); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes md-acc-navette {
+  0% { transform: translate(-30px, 13px); opacity: 1; animation-timing-function: cubic-bezier(.5, 0, .5, 1); }
+  19.05% { transform: translate(392px, 13px); }
+  19.5% { transform: translate(392px, 30px); }
+  20% { transform: translate(392px, 30px); opacity: 1; animation-timing-function: cubic-bezier(.5, 0, .5, 1); }
+  39.05% { transform: translate(-32px, 30px); }
+  39.5% { transform: translate(-32px, 52px); }
+  40% { transform: translate(-32px, 52px); opacity: 1; animation-timing-function: cubic-bezier(.5, 0, .5, 1); }
+  59.05% { transform: translate(392px, 52px); }
+  59.5% { transform: translate(392px, 74px); }
+  60% { transform: translate(392px, 74px); opacity: 1; animation-timing-function: cubic-bezier(.5, 0, .5, 1); }
+  79.05% { transform: translate(-32px, 74px); }
+  79.5% { transform: translate(-32px, 91px); }
+  80% { transform: translate(-32px, 91px); opacity: 1; animation-timing-function: cubic-bezier(.5, 0, .5, 1); }
+  99.05% { transform: translate(392px, 91px); opacity: 1; }
+  100% { transform: translate(392px, 91px); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .md-accueil * { animation: none !important; }
+}
+/* Mousso Dambé : illustrations du questionnaire de départ (bienvenue,
+   ton cycle, ta vie privée). Jouées une fois en moins de 1,4 s, puis
+   posées ; un seul détail respire. N'anime que transform, opacity et
+   stroke-dashoffset. */
+
+.md-q { display: block; width: 100%; max-width: 240px; height: auto; overflow: visible; }
+
+.md-f-rose { fill: var(--rose, #D0206A); }
+.md-f-rose-fonce { fill: var(--rose-fonce, #9C1450); }
+.md-f-rose-clair { fill: var(--rose-clair, #FFDCE9); }
+.md-f-encre { fill: var(--encre, #1B1116); }
+.md-f-blanc { fill: var(--surface, #FFFFFF); }
+.md-f-gris { fill: var(--texte-3, #8C7480); }
+
+.md-q-disque { transform-box: fill-box; transform-origin: 50% 50%; animation: md-q-pose .4s cubic-bezier(.2, .8, .2, 1) both; }
+
+/* Bienvenue : elle se lève, tête haute ; le foulard se noue */
+.md-q-monte { animation: md-q-monte .6s .12s cubic-bezier(.2, .8, .2, 1) both; }
+.md-q-raie { transform-box: fill-box; transform-origin: 0% 50%; animation: md-q-tisse .32s cubic-bezier(.2, .8, .2, 1) both; }
+.md-q-raie-1 { animation-delay: .62s; }
+.md-q-raie-2 { animation-delay: .7s; transform-origin: 100% 50%; }
+.md-q-raie-3 { animation-delay: .78s; }
+.md-q-noeud { transform-box: fill-box; transform-origin: 20% 80%; animation: md-q-noue .42s .66s cubic-bezier(.34, 1.56, .64, 1) both; }
+.md-q-eclat { transform-box: fill-box; transform-origin: 50% 50%; animation: md-q-pop .34s cubic-bezier(.34, 1.56, .64, 1) both; }
+.md-q-eclat-1 { animation: md-q-pop .34s 1s cubic-bezier(.34, 1.56, .64, 1) both, md-q-scintille 4.5s 1.8s ease-in-out infinite; }
+.md-q-eclat-2 { animation-delay: 1.1s; }
+.md-q-eclat-3 { animation-delay: 1.18s; }
+
+/* Ton cycle : les 28 jours se posent en cercle, aujourd'hui respire */
+.md-q-goutte { transform-box: fill-box; transform-origin: 50% 100%; animation: md-q-pop .4s .1s cubic-bezier(.34, 1.56, .64, 1) both; }
+.md-q-jour { transform-box: fill-box; transform-origin: 50% 50%; animation: md-q-pop .28s cubic-bezier(.34, 1.56, .64, 1) both; }
+.md-q-fertile { fill: var(--violet-clair, #ECE5FB); stroke: var(--violet, #6A3FC9); }
+.md-q-jours circle:nth-child(1) { animation-delay: 0.180s; }
+.md-q-jours circle:nth-child(2) { animation-delay: 0.206s; }
+.md-q-jours circle:nth-child(3) { animation-delay: 0.232s; }
+.md-q-jours circle:nth-child(4) { animation-delay: 0.258s; }
+.md-q-jours circle:nth-child(5) { animation-delay: 0.284s; }
+.md-q-jours circle:nth-child(6) { animation-delay: 0.310s; }
+.md-q-jours circle:nth-child(7) { animation-delay: 0.336s; }
+.md-q-jours circle:nth-child(8) { animation-delay: 0.362s; }
+.md-q-jours circle:nth-child(9) { animation-delay: 0.388s; }
+.md-q-jours circle:nth-child(10) { animation-delay: 0.414s; }
+.md-q-jours circle:nth-child(11) { animation-delay: 0.440s; }
+.md-q-jours circle:nth-child(12) { animation-delay: 0.466s; }
+.md-q-jours circle:nth-child(13) { animation-delay: 0.492s; }
+.md-q-jours circle:nth-child(14) { animation-delay: 0.518s; }
+.md-q-jours circle:nth-child(15) { animation-delay: 0.544s; }
+.md-q-jours circle:nth-child(16) { animation-delay: 0.570s; }
+.md-q-jours circle:nth-child(17) { animation-delay: 0.596s; }
+.md-q-jours circle:nth-child(18) { animation-delay: 0.622s; }
+.md-q-jours circle:nth-child(19) { animation-delay: 0.648s; }
+.md-q-jours circle:nth-child(20) { animation-delay: 0.674s; }
+.md-q-jours circle:nth-child(21) { animation-delay: 0.700s; }
+.md-q-jours circle:nth-child(22) { animation-delay: 0.726s; }
+.md-q-jours circle:nth-child(23) { animation-delay: 0.752s; }
+.md-q-jours circle:nth-child(24) { animation-delay: 0.778s; }
+.md-q-jours circle:nth-child(25) { animation-delay: 0.804s; }
+.md-q-jours circle:nth-child(26) { animation-delay: 0.830s; }
+.md-q-jours circle:nth-child(27) { animation-delay: 0.856s; }
+.md-q-jours circle:nth-child(28) { animation-delay: 0.882s; }
+.md-q-auj-pose { transform-box: fill-box; transform-origin: 50% 50%; animation: md-q-pop .34s 1.02s cubic-bezier(.34, 1.56, .64, 1) both; }
+.md-q-auj {
+  stroke: var(--encre, #1B1116);
+  transform-box: fill-box; transform-origin: 50% 50%;
+  animation: md-q-respire 3.2s 1.6s ease-in-out infinite;
+}
+
+/* Ta vie privée : le téléphone se dessine, le cadenas se ferme */
+.md-q-tel { stroke: var(--encre, #1B1116); stroke-dasharray: 100 101; animation: md-q-trace .6s .1s cubic-bezier(.3, .7, .2, 1) both; }
+.md-q-tel-fond { animation: md-q-apparait .3s .3s ease-out both; }
+.md-q-ecran { transform-box: fill-box; transform-origin: 50% 50%; animation: md-q-pose .36s .48s cubic-bezier(.2, .8, .2, 1) both; }
+.md-q-mini { stroke: var(--rose-clair, #FFDCE9); }
+.md-q-mini-r {
+  stroke: var(--rose, #D0206A); stroke-dasharray: 22 101;
+  transform-box: fill-box; transform-origin: 50% 50%; transform: rotate(-90deg);
+}
+.md-q-cadenas { transform-box: fill-box; transform-origin: 50% 100%; animation: md-q-tombe .42s .74s cubic-bezier(.34, 1.56, .64, 1) both; }
+.md-q-anse { stroke: var(--encre, #1B1116); animation: md-q-ferme .3s 1.06s cubic-bezier(.5, 0, .6, 1.6) both; }
+.md-q-trou { transform-box: fill-box; transform-origin: 50% 50%; animation: md-q-apparait .2s 1.22s ease-out both; }
+
+@keyframes md-q-pose { from { transform: scale(.7); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes md-q-pop { from { transform: scale(0); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes md-q-apparait { from { opacity: 0; } to { opacity: 1; } }
+@keyframes md-q-monte { from { transform: translateY(56px); } to { transform: none; } }
+@keyframes md-q-tisse { from { transform: scaleX(0); } to { transform: none; } }
+@keyframes md-q-noue { from { transform: scale(0) rotate(-60deg); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes md-q-scintille { 0%, 100% { transform: none; opacity: 1; } 50% { transform: scale(.75); opacity: .45; } }
+@keyframes md-q-respire { 0%, 100% { transform: none; opacity: 1; } 50% { transform: scale(1.18); opacity: .55; } }
+@keyframes md-q-trace { from { stroke-dashoffset: 100.5; } to { stroke-dashoffset: 0; } }
+@keyframes md-q-tombe { from { transform: translateY(-26px); opacity: 0; } 50% { opacity: 1; } to { transform: none; opacity: 1; } }
+@keyframes md-q-ferme { from { transform: translateY(-9px); } to { transform: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .md-q * { animation: none !important; }
+}
+/* Mousso Dambé : les états (panier vide, commande confirmée, l'assistante
+   réfléchit, pas de connexion). Joués une fois, sauf « réfléchit », qui
+   tourne en boucle tant que l'assistante écrit. N'anime que transform,
+   opacity et stroke-dashoffset. */
+
+.md-etat { display: block; width: 100%; max-width: 200px; height: auto; overflow: visible; }
+.md-etat-reflechit { width: 84px; max-width: 84px; }
+
+.md-f-rose { fill: var(--rose, #D0206A); }
+.md-f-rose-fonce { fill: var(--rose-fonce, #9C1450); }
+.md-f-rose-clair { fill: var(--rose-clair, #FFDCE9); }
+.md-f-encre { fill: var(--encre, #1B1116); }
+.md-f-vert { fill: var(--vert, #17794A); }
+
+/* Panier vide : le panier tombe, rebondit, se balance : il est léger */
+.md-e-ombre {
+  fill: var(--bordure, #F6D9E4);
+  transform-box: fill-box; transform-origin: 50% 50%;
+  animation: md-e-ombre .5s .05s cubic-bezier(.2, .8, .2, 1) both;
+}
+.md-e-tombe {
+  transform-box: fill-box; transform-origin: 50% 100%;
+  animation: md-e-tombe .62s cubic-bezier(.3, .6, .3, 1) both;
+}
+.md-e-balance {
+  transform-box: fill-box; transform-origin: 50% 100%;
+  animation: md-e-balance .7s .62s ease-in-out both;
+}
+.md-e-anse {
+  stroke: var(--encre, #1B1116); stroke-dasharray: 100 101;
+  animation: md-e-trace .4s .4s cubic-bezier(.3, .7, .2, 1) both;
+}
+
+/* Commande confirmée : le disque vert, la coche, des pétales qui s'ouvrent */
+.md-e-cercle {
+  stroke: var(--rose-clair, #FFDCE9);
+  transform-box: fill-box; transform-origin: 50% 50%;
+  animation: md-e-pose .45s .3s cubic-bezier(.2, .8, .2, 1) both;
+}
+.md-e-disque {
+  transform-box: fill-box; transform-origin: 50% 50%;
+  animation: md-e-pop .42s cubic-bezier(.34, 1.56, .64, 1) both;
+}
+.md-e-coche {
+  stroke: var(--surface, #FFFFFF); stroke-dasharray: 100 101;
+  animation: md-e-trace .34s .3s cubic-bezier(.5, 0, .2, 1) both;
+}
+.md-e-petale { transform-box: fill-box; transform-origin: 50% 50%; animation: md-e-eclot .5s cubic-bezier(.34, 1.56, .64, 1) both; }
+.md-e-petales g:nth-child(1) .md-e-petale { animation-delay: .5s; }
+.md-e-petales g:nth-child(2) .md-e-petale { animation-delay: .56s; }
+.md-e-petales g:nth-child(3) .md-e-petale { animation-delay: .62s; }
+.md-e-petales g:nth-child(4) .md-e-petale { animation-delay: .68s; }
+.md-e-petales g:nth-child(5) .md-e-petale { animation-delay: .74s; }
+.md-e-petales g:nth-child(6) .md-e-petale { animation-delay: .8s; }
+.md-e-petales g:nth-child(7) .md-e-petale { animation-delay: .86s; }
+.md-e-petales g:nth-child(8) .md-e-petale { animation-delay: .92s; }
+
+/* L'assistante réfléchit : trois points en vague, en boucle */
+.md-e-bulle {
+  fill: var(--surface, #FFFFFF); stroke: var(--bordure, #F6D9E4);
+  transform-box: fill-box; transform-origin: 0% 100%;
+  animation: md-e-pop .26s cubic-bezier(.2, .8, .2, 1) both;
+}
+.md-e-point {
+  fill: var(--rose, #D0206A);
+  transform-box: fill-box; transform-origin: 50% 50%;
+  animation: md-e-vague 1.2s ease-in-out infinite;
+}
+.md-e-point-2 { animation-delay: .16s; }
+.md-e-point-3 { animation-delay: .32s; }
+
+/* Pas de connexion : le signal s'allume puis s'éteint, la croix se pose */
+.md-e-pale { stroke: var(--rose-clair, #FFDCE9); }
+.md-e-onde { stroke: var(--encre, #1B1116); animation: md-e-apparait .22s .12s ease-out both; }
+.md-e-onde-2 { opacity: 0; animation: md-e-allume-eteint 1s .22s ease-in-out both; }
+.md-e-onde-3 { opacity: 0; animation: md-e-allume-eteint 1s .32s ease-in-out both; }
+.md-e-source {
+  transform-box: fill-box; transform-origin: 50% 50%;
+  animation: md-e-pop .3s cubic-bezier(.34, 1.56, .64, 1) both;
+}
+.md-e-badge {
+  transform-box: fill-box; transform-origin: 50% 50%;
+  animation: md-e-badge .4s 1.05s cubic-bezier(.34, 1.56, .64, 1) both;
+}
+.md-e-croix { stroke: var(--surface, #FFFFFF); }
+
+@keyframes md-e-pop { from { transform: scale(0); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes md-e-pose { from { transform: scale(.7); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes md-e-apparait { from { opacity: 0; } to { opacity: 1; } }
+@keyframes md-e-trace { from { stroke-dashoffset: 100.5; } to { stroke-dashoffset: 0; } }
+@keyframes md-e-ombre { from { transform: scaleX(.25); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes md-e-tombe {
+  0% { transform: translateY(-48px); opacity: 0; }
+  30% { opacity: 1; }
+  62% { transform: translateY(0) scale(1); }
+  76% { transform: translateY(0) scale(1.06, .92); }
+  90% { transform: translateY(-4px) scale(.98, 1.02); }
+  100% { transform: none; opacity: 1; }
+}
+@keyframes md-e-balance {
+  0% { transform: none; }
+  30% { transform: rotate(-5deg); }
+  62% { transform: rotate(3deg); }
+  84% { transform: rotate(-1deg); }
+  100% { transform: none; }
+}
+@keyframes md-e-eclot { from { transform: translateY(34px) scale(.3); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes md-e-vague {
+  0%, 60%, 100% { transform: none; opacity: .35; }
+  25% { transform: translateY(-6px) scale(1.08); opacity: 1; }
+}
+@keyframes md-e-allume-eteint { 0% { opacity: 0; } 22% { opacity: 1; } 55% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes md-e-badge { from { transform: scale(0) rotate(-90deg); opacity: 0; } to { transform: none; opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .md-etat * { animation: none !important; }
+  .md-e-point { opacity: 1; }
+}

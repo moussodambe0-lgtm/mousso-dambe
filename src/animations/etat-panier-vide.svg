@@ -1,0 +1,20 @@
+<svg class="md-etat md-etat-panier" viewBox="0 0 200 160" role="img" aria-label="Ton panier est vide" xmlns="http://www.w3.org/2000/svg">
+  <defs><clipPath id="md-clip-panier"><path d="M54 84H146L134 136Q132 142 125 142H75Q68 142 66 136Z"/></clipPath></defs>
+  <ellipse class="md-e-ombre" cx="100" cy="148" rx="54" ry="5"/>
+  <g class="md-e-tombe">
+    <g class="md-e-balance">
+      <path class="md-e-anse" pathLength="100" d="M60 76C60 24 140 24 140 76" fill="none" stroke-width="6" stroke-linecap="round"/>
+      <path class="md-f-rose-clair" d="M54 84H146L134 136Q132 142 125 142H75Q68 142 66 136Z"/>
+      <g clip-path="url(#md-clip-panier)">
+        <rect class="md-f-rose" x="50" y="95" width="100" height="6"/>
+        <rect class="md-f-rose" x="50" y="111" width="100" height="6"/>
+        <rect class="md-f-rose" x="50" y="127" width="100" height="6"/>
+        <rect class="md-f-rose-fonce" x="77" y="84" width="2.5" height="60"/>
+        <rect class="md-f-rose-fonce" x="99" y="84" width="2.5" height="60"/>
+        <rect class="md-f-rose-fonce" x="121" y="84" width="2.5" height="60"/>
+      </g>
+      <rect class="md-f-rose" x="46" y="72" width="108" height="13" rx="6.5"/>
+      <rect class="md-f-encre" x="58" y="77" width="84" height="3" rx="1.5"/>
+    </g>
+  </g>
+</svg>

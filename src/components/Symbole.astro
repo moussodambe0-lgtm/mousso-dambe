@@ -1,0 +1,56 @@
+---
+/**
+ * Le symbole de Mousso Dambé : un anneau ouvert, qui dit le cycle, et une
+ * goutte posée dedans, qui dit les règles sans détour.
+ *
+ * L'anneau n'est pas fermé : un cycle se poursuit, il ne se boucle pas.
+ *
+ * Il se lit à 24 px comme à 200 px. Les couleurs sont passées en attributs
+ * pour qu'il tienne sur fond clair comme sur fond sombre.
+ */
+interface Props {
+  taille?: number;
+  anneau?: string;
+  goutte?: string;
+  classe?: string;
+  titre?: string;
+  anime?: boolean;
+}
+
+const {
+  taille = 32,
+  anneau = 'var(--rose)',
+  goutte = 'var(--encre)',
+  classe = '',
+  titre,
+  anime = false,
+} = Astro.props;
+---
+
+<svg
+  width={taille}
+  height={taille}
+  viewBox="0 0 32 32"
+  class={classe}
+  role={titre ? 'img' : undefined}
+  aria-label={titre}
+  aria-hidden={titre ? undefined : 'true'}
+>
+  <circle
+    cx="16"
+    cy="16"
+    r="13"
+    fill="none"
+    stroke={anneau}
+    stroke-width="2.6"
+    stroke-linecap="round"
+    stroke-dasharray="61 20"
+    transform="rotate(-90 16 16)"
+    class={anime ? 'anneau-trace' : ''}
+  />
+  <path
+    d="M16 9c3.4 3.6 5 6.1 5 8.3A5 5 0 0 1 11 17.3c0-2.2 1.6-4.7 5-8.3z"
+    fill={goutte}
+    class={anime ? 'pose' : ''}
+  />
+</svg>

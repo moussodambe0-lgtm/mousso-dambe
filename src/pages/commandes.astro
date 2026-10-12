@@ -1,0 +1,238 @@
+---
+/**
+ * Mes commandes.
+ *
+ * Une commande non préparée s'annule ici. Une fois partie, elle ne s'annule
+ * plus : on le dit franchement, et on explique qu'elle peut refuser le colis à
+ * la livraison. Un bouton qui échoue une fois sur deux est pire que pas de
+ * bouton.
+ */
+import Base from '../layouts/Base.astro';
+import Entete from '../components/Entete.astro';
+import Icone from '../components/Icone.astro';
+import Anim from '../components/Anim.astro';
+import Alerte from '../components/Alerte.astro';
+import { clientSession, baseConfiguree } from '../lib/supabase';
+import { visiteuse, lirePanier, comptePanier } from '../lib/session';
+import { prix, dateLongue, messageErreur } from '../lib/format';
+
+if (!baseConfiguree()) return Astro.redirect('/', 302);
+const moi = await visiteuse(Astro);
+if (!moi) return Astro.redirect('/connexion', 302);
+
+const client = clientSession(Astro)!;
+let erreur = '';
+let message = '';
+
+if (Astro.request.method === 'POST') {
+  const f = await Astro.request.formData();
+  const numero = String(f.get('numero') ?? '');
+  const { data, error } = await client.rpc('annuler_ma_commande', { p_numero: numero });
+  if (error || !data?.ok) erreur = messageErreur(data?.erreur);
+  else return Astro.redirect('/commandes?ok=annule', 303);
+}
+
+if (Astro.url.searchParams.get('ok') === 'annule') message = 'Ta commande est annulée.';
+const nouvelle = Astro.url.searchParams.get('nouvelle') ?? '';
+
+const { data: brutes } = await client.rpc('mes_commandes');
+const commandes = (brutes ?? []) as {
+  numero: string;
+  etat: string;
+  total: number;
+  cree_le: string;
+  quartier: string;
+  articles: { nom: string; taille: string | null; quantite: number; total: number }[];
+}[];
+
+const ETATS: Record<string, { mot: string; classe: string; dit: string }> = {
+  nouvelle: { mot: 'Reçue', classe: 'pastille-rose', dit: 'On prépare ton colis.' },
+  preparee: { mot: 'Préparée', classe: 'pastille-rose', dit: 'Ton colis est prêt, le livreur passe le prendre.' },
+  envoyee: { mot: 'En route', classe: 'pastille-violette', dit: 'Le livreur a ton colis. Il appelle avant de passer.' },
+  livree: { mot: 'Livrée', classe: 'pastille-verte', dit: 'Livrée. Merci.' },
+  annulee: { mot: 'Annulée', classe: 'pastille-neutre', dit: 'Cette commande est annulée.' },
+};
+
+const panier = comptePanier(lirePanier(Astro));
+---
+
+<Base titre="Mes commandes" nav="boutique" panier={panier}>
+  <main class="page">
+    <Entete titre="Mes commandes" retour="/compte" />
+
+    {
+      nouvelle && (
+        <section class="carte bloc confirmee pose">
+          <Anim nom="etat-commande-ok" classe="dessin-ok" />
+          <h2>C'est commandé</h2>
+          <p class="doux">
+            Ta commande {nouvelle} est enregistrée. On t'appelle pour confirmer, et le colis part aujourd'hui ou demain.
+          </p>
+        </section>
+      )
+    }
+
+    {message && <div class="marge-bas"><Alerte type="reussite" texte={message} /></div>}
+    {erreur && <div class="marge-bas"><Alerte type="erreur" texte={erreur} /></div>}
+
+    {
+      commandes.length === 0 ? (
+        <div class="etat-vide apparait">
+          <Icone nom="colis" taille={38} />
+          <h2>Aucune commande</h2>
+          <p>Tes serviettes et tes culottes t'attendent dans la boutique.</p>
+          <a class="btn btn-rose" href="/boutique">Voir la boutique</a>
+        </div>
+      ) : (
+        <div class="liste">
+          {commandes.map((c) => (
+            <section class="carte bloc commande apparait">
+              <div class="haut-commande">
+                <div>
+                  <div class="numero chiffre">{c.numero}</div>
+                  <div class="gris">{dateLongue(c.cree_le)}</div>
+                </div>
+                <span class:list={['pastille', ETATS[c.etat]?.classe ?? 'pastille-neutre']}>
+                  {ETATS[c.etat]?.mot ?? c.etat}
+                </span>
+              </div>
+
+              <ul class="articles">
+                {c.articles.map((a) => (
+                  <li>
+                    <span>
+                      {a.nom}
+                      {a.taille ? ` · ${a.taille}` : ''}
+                      {a.quantite > 1 ? ` × ${a.quantite}` : ''}
+                    </span>
+                    <span class="chiffre">{prix(a.total)}</span>
+                  </li>
+                ))}
+              </ul>
+
+              <div class="bas-commande">
+                <div>
+                  <div class="gris">Livrée à {c.quartier}</div>
+                  <div class="total chiffre">{prix(c.total)} FCFA</div>
+                </div>
+                {c.etat === 'nouvelle' && (
+                  <form method="POST" class="pousse">
+                    <input type="hidden" name="numero" value={c.numero} />
+                    <button class="btn btn-contour btn-petit" type="submit">Annuler</button>
+                  </form>
+                )}
+              </div>
+
+              <p class="dit">{ETATS[c.etat]?.dit ?? ''}</p>
+            </section>
+          ))}
+        </div>
+      )
+    }
+
+    <div class="espace"></div>
+  </main>
+</Base>
+
+<style>
+  .confirmee {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: var(--e2);
+    margin-bottom: var(--e4);
+  }
+
+  .confirmee h2 {
+    font-size: 21px;
+  }
+
+  .dessin-ok {
+    width: 170px;
+  }
+
+  .doux {
+    font-size: 14px;
+    color: var(--texte-2);
+    line-height: 1.5;
+    max-width: 320px;
+  }
+
+  .liste {
+    display: flex;
+    flex-direction: column;
+    gap: var(--e3);
+  }
+
+  .haut-commande {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--e3);
+  }
+
+  .numero {
+    font-size: 15px;
+  }
+
+  .gris {
+    font-size: 12.5px;
+    color: var(--texte-3);
+  }
+
+  .articles {
+    list-style: none;
+    margin: var(--e3) 0;
+    padding: var(--e3) 0;
+    border-top: 1px solid var(--bordure);
+    border-bottom: 1px solid var(--bordure);
+  }
+
+  .articles li {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--e3);
+    padding: 3px 0;
+    font-size: 13.5px;
+    color: var(--texte-2);
+  }
+
+  .articles .chiffre {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--encre);
+    flex: none;
+  }
+
+  .bas-commande {
+    display: flex;
+    align-items: center;
+    gap: var(--e3);
+  }
+
+  .total {
+    font-size: 18px;
+    color: var(--rose);
+  }
+
+  .btn-petit {
+    min-height: 40px;
+    padding: 0 var(--e3);
+    font-size: 13.5px;
+  }
+
+  .dit {
+    margin-top: var(--e2);
+    font-size: 12.5px;
+    color: var(--texte-3);
+  }
+
+  .marge-bas {
+    margin-bottom: var(--e3);
+  }
+
+  .etat-vide :global(svg) {
+    color: var(--texte-3);
+  }
+</style>

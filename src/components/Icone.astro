@@ -1,0 +1,83 @@
+---
+/**
+ * Les icônes du site, en trait, dessinées une fois ici.
+ *
+ * Jamais d'émoji comme icône : il change de dessin d'un téléphone à l'autre,
+ * et les lecteurs d'écran le lisent à voix haute au milieu d'une phrase.
+ *
+ * Une icône décorative est cachée des lecteurs d'écran (aria-hidden). Une
+ * icône qui porte l'information à elle seule reçoit un `titre`, qui devient
+ * son nom accessible.
+ */
+interface Props {
+  nom: string;
+  taille?: number;
+  classe?: string;
+  titre?: string;
+  epaisseur?: number;
+}
+
+const { nom, taille = 22, classe = '', titre, epaisseur = 1.75 } = Astro.props;
+
+const TRAITS: Record<string, string> = {
+  accueil: '<path d="M4 11l8-6.5 8 6.5"/><path d="M6.5 10v9h11v-9"/>',
+  cycle: '<rect x="4" y="5.5" width="16" height="14.5" rx="4"/><path d="M4 10h16M9 4v3M15 4v3"/>',
+  boutique: '<path d="M6 8h12l1.5 11.5h-15z"/><path d="M9.5 8V6.5a2.5 2.5 0 0 1 5 0V8"/>',
+  dambe: '<path d="M20 11.5a7.5 7.5 0 0 1-10.9 6.7L4 19.5l1.4-4.3A7.5 7.5 0 1 1 20 11.5z"/>',
+  compte: '<circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.3 3.1-5.5 7-5.5s7 2.2 7 5.5"/>',
+  retour: '<path d="M15 6l-6 6 6 6"/>',
+  avant: '<path d="M9 6l6 6-6 6"/>',
+  haut: '<path d="M6 15l6-6 6 6"/>',
+  bas: '<path d="M6 9l6 6 6-6"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  moins: '<path d="M5 12h14"/>',
+  goutte: '<path d="M12 4.5c3.8 4.2 5.6 7 5.6 9.4a5.6 5.6 0 0 1-11.2 0c0-2.4 1.8-5.2 5.6-9.4z"/>',
+  pousse: '<path d="M12 20V9"/><path d="M12 9c0-3 2-5 5-5 0 3-2 5-5 5z"/><path d="M12 13c0-2.8-1.8-4.5-4.5-4.5 0 2.8 1.8 4.5 4.5 4.5z"/>',
+  soleil: '<circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6L17 7M7 17l-1.4 1.4"/>',
+  lune: '<path d="M19 14.5A7.5 7.5 0 0 1 9.5 5a7.5 7.5 0 1 0 9.5 9.5z"/>',
+  cloche: '<path d="M6 10a6 6 0 0 1 12 0c0 4 1.5 5.5 1.5 5.5h-15S6 14 6 10z"/><path d="M10 18.5a2.2 2.2 0 0 0 4 0"/>',
+  cadenas: '<rect x="5" y="10.5" width="14" height="9.5" rx="3"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/>',
+  'oeil-barre': '<path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6z"/><path d="M4 4l16 16"/>',
+  bouclier: '<path d="M12 3.5l7 2.5v5.5c0 4.2-2.8 7.4-7 8.9-4.2-1.5-7-4.7-7-8.9V6z"/>',
+  'bouclier-coche': '<path d="M12 3.5l7 2.5v5.5c0 4.2-2.8 7.4-7 8.9-4.2-1.5-7-4.7-7-8.9V6z"/><path d="M9 12l2.2 2.2L15.5 10"/>',
+  camion: '<rect x="2.5" y="7" width="12" height="9" rx="2"/><path d="M14.5 10h3l3 3v3h-6z"/><circle cx="7" cy="18" r="1.8"/><circle cx="17" cy="18" r="1.8"/>',
+  colis: '<rect x="4.5" y="6" width="15" height="13" rx="3"/><path d="M8 6V4.5M16 6V4.5"/>',
+  panier: '<path d="M6 8h12l1.5 11.5h-15z"/><path d="M9.5 8V6.5a2.5 2.5 0 0 1 5 0V8"/>',
+  coche: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  info: '<circle cx="12" cy="12" r="8.5"/><path d="M12 8.5v.01M12 11.5v4"/>',
+  alerte: '<path d="M12 4l8.5 15h-17z"/><path d="M12 10v4M12 16.5v.01"/>',
+  micro: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M6 11.5a6 6 0 0 0 12 0M12 17.5V21"/>',
+  envoyer: '<path d="M4 12l16-7-7 16-2.5-6.5z"/>',
+  coeur: '<path d="M12 19.5C7 16.3 4 13.4 4 10.3A3.9 3.9 0 0 1 12 8a3.9 3.9 0 0 1 8 2.3c0 3.1-3 6-8 9.2z"/>',
+  recherche: '<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4"/>',
+  croix: '<path d="M6 6l12 12M18 6L6 18"/>',
+  crayon: '<path d="M4 20h4L19 9a2.5 2.5 0 0 0-3.5-3.5L4.5 16.5z"/>',
+  poubelle: '<path d="M5 7h14M9 7V5h6v2M7 7l1 13h8l1-13"/>',
+  horloge: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
+  lieu: '<path d="M12 21s6.5-6.1 6.5-10.5A6.5 6.5 0 0 0 5.5 10.5C5.5 14.9 12 21 12 21z"/><circle cx="12" cy="10.5" r="2.3"/>',
+  paquet: '<rect x="6" y="3.5" width="12" height="17" rx="3"/><path d="M9 8.5h6M9 12h6M9 15.5h3.5"/>',
+  culotte: '<path d="M4 7.5h16l-1.6 4.8c-1.3 3.7-3.4 5.8-6.4 6.9-3-1.1-5.1-3.2-6.4-6.9z"/><path d="M8.8 7.5c0 1.6 1.4 2.7 3.2 2.7s3.2-1.1 3.2-2.7"/>',
+  tissu: '<path d="M4 9c2.7-3.3 5.3-3.3 8 0s5.3 3.3 8 0"/><path d="M4 14c2.7-3.3 5.3-3.3 8 0s5.3 3.3 8 0"/><path d="M4 19c2.7-3.3 5.3-3.3 8 0s5.3 3.3 8 0"/>',
+  trousse: '<rect x="3.5" y="8" width="17" height="11" rx="3"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8M3.5 13h17"/>',
+  reglages: '<circle cx="12" cy="12" r="3"/><path d="M12 3v2.5M12 18.5V21M4.5 7.8l2.2 1.2M17.3 15l2.2 1.2M19.5 7.8l-2.2 1.2M6.7 15l-2.2 1.2"/>',
+  sortie: '<path d="M14 5H7a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h7"/><path d="M17 8l4 4-4 4M21 12h-8"/>',
+};
+
+const trait = TRAITS[nom] ?? TRAITS.info;
+---
+
+<svg
+  width={taille}
+  height={taille}
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width={epaisseur}
+  stroke-linecap="round"
+  stroke-linejoin="round"
+  class={classe}
+  role={titre ? 'img' : undefined}
+  aria-label={titre}
+  aria-hidden={titre ? undefined : 'true'}
+  set:html={trait}
+/>

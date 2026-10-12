@@ -1,0 +1,21 @@
+# Les secrets ne sont jamais enregistrés.
+.env
+.env.*
+!.env.example
+
+# Dépendances et compilation
+node_modules/
+dist/
+.vercel/
+.astro/
+
+# Système
+Thumbs.db
+.DS_Store
+*.log
+
+# L'atelier de Motion : les sources des animations et des images. Elles sont
+# déjà copiées dans src/animations et public/ ; garder les deux dans Git
+# doublerait le poids du dépôt pour rien.
+atelier-motion/
+captures/

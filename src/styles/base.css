@@ -1,0 +1,124 @@
+/* Les bases : remise à zéro courte, typographie, accessibilité. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--fond);
+  color: var(--encre);
+  font-family: var(--texte);
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  /* La barre basse flotte au-dessus du contenu : on lui réserve la place,
+     plus le creux des téléphones à encoche. */
+  padding-bottom: calc(var(--nav-hauteur) + env(safe-area-inset-bottom, 0px));
+  min-height: 100vh;
+}
+
+body.sans-nav {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--titre);
+  margin: 0;
+  letter-spacing: -0.3px;
+  line-height: 1.2;
+}
+
+h1 {
+  font-size: 26px;
+  font-weight: 800;
+}
+
+h2 {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+h3 {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+p {
+  margin: 0;
+}
+
+a {
+  color: var(--rose);
+  text-decoration: none;
+}
+
+/* Les chiffres qui comptent : jour du cycle, prix, totaux. */
+.chiffre {
+  font-family: var(--titre);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+/* Un anneau de focus visible partout, jamais retiré : au clavier comme au
+   lecteur d'écran, c'est le seul repère de position. */
+:focus-visible {
+  outline: 2px solid var(--rose);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Pour les lecteurs d'écran seulement. */
+.lecture-seule {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.page {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 0 var(--e4);
+}
+
+.espace {
+  height: var(--e5);
+}
+
+/* Elle a demandé moins de mouvement : on le respecte pour de vrai, en posant
+   l'état final tout de suite, pas en cassant l'écran. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

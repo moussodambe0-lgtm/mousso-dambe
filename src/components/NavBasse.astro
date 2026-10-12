@@ -1,0 +1,44 @@
+---
+/**
+ * La barre basse : quatre onglets, pas plus. Au-delà, personne ne les
+ * distingue au pouce, et les libellés deviennent illisibles sur 320 px.
+ *
+ * Le compte n'y est pas : il s'ouvre depuis l'accueil, parce qu'on y va
+ * rarement, et parce que ces quatre onglets sont les quatre raisons d'ouvrir
+ * l'application.
+ */
+import Icone from './Icone.astro';
+
+interface Props {
+  actif: 'accueil' | 'cycle' | 'boutique' | 'dambe';
+  panier?: number;
+}
+
+const { actif, panier = 0 } = Astro.props;
+
+const ONGLETS = [
+  { id: 'accueil', lien: '/', icone: 'accueil', libelle: 'Accueil' },
+  { id: 'cycle', lien: '/cycle', icone: 'cycle', libelle: 'Mon cycle' },
+  { id: 'boutique', lien: '/boutique', icone: 'boutique', libelle: 'Boutique' },
+  { id: 'dambe', lien: '/dambe', icone: 'dambe', libelle: 'Dambé' },
+] as const;
+---
+
+<nav class="nav-basse" aria-label="Navigation principale">
+  {
+    ONGLETS.map((o) => (
+      <a class="nav-item" href={o.lien} aria-current={actif === o.id ? 'page' : undefined}>
+        <span class="nav-icone">
+          <Icone nom={o.icone} />
+          {o.id === 'boutique' && panier > 0 && (
+            <span class="nav-pastille">
+              {panier}
+              <span class="lecture-seule">articles dans ton panier</span>
+            </span>
+          )}
+        </span>
+        {o.libelle}
+      </a>
+    ))
+  }
+</nav>

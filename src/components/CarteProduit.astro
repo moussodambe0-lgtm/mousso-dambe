@@ -1,0 +1,95 @@
+---
+/**
+ * Une carte produit du catalogue.
+ *
+ * Tant que les photos ne sont pas là, le visuel est le dessin du produit, pas
+ * un rectangle gris : une case vide fait croire à une page cassée. Dès qu'une
+ * photo existe en base (`image`), elle prend la place.
+ */
+import Icone from './Icone.astro';
+import { prix } from '../lib/format';
+
+interface Props {
+  slug: string;
+  nom: string;
+  prixCfa: number;
+  rayon: string;
+  image?: string | null;
+  etiquette?: string | null;
+  stock?: number;
+}
+
+const { slug, nom, prixCfa, rayon, image, etiquette, stock = 1 } = Astro.props;
+
+// Un dessin et un fond par rayon : la grille se lit d'un coup d'œil, même
+// avant de lire les noms.
+const DESSINS: Record<string, { icone: string; fond: string; trait: string }> = {
+  serviettes: { icone: 'paquet', fond: '', trait: 'trait-rose' },
+  culottes: { icone: 'culotte', fond: 'visuel-sombre', trait: 'trait-clair' },
+  lavables: { icone: 'tissu', fond: 'visuel-violet', trait: 'trait-violet' },
+  kits: { icone: 'trousse', fond: '', trait: 'trait-rose' },
+};
+
+const d = DESSINS[rayon] ?? DESSINS.serviettes;
+const rupture = stock <= 0;
+
+// La base garde le chemin de la variante 600 ; la 1200 s'en déduit. Le
+// navigateur choisit la bonne selon l'écran, et ne télécharge que celle-là.
+const grande = image?.replace('-600.webp', '-1200.webp');
+const jeu = image && grande !== image ? `${image} 600w, ${grande} 1200w` : undefined;
+---
+
+<a class="carte-produit" href={`/boutique/${slug}`}>
+  <div class:list={['visuel', d.fond]}>
+    {
+      image ? (
+        <img
+          src={image}
+          srcset={jeu}
+          sizes="(max-width: 480px) 45vw, 220px"
+          alt={nom}
+          width="300"
+          height="300"
+          loading="lazy"
+          decoding="async"
+        />
+      ) : (
+        <span class:list={['dessin', d.trait]}>
+          <Icone nom={d.icone} taille={52} epaisseur={1.6} />
+        </span>
+      )
+    }
+    {etiquette && !rupture && <span class="etiquette-coin">{etiquette}</span>}
+    {rupture && <span class="etiquette-coin">Bientôt de retour</span>}
+  </div>
+  <div class="nom">{nom}</div>
+  <div class="prix chiffre">
+    {prix(prixCfa)}
+    <span class="unite">FCFA</span>
+  </div>
+</a>
+
+<style>
+  .dessin {
+    display: block;
+  }
+
+  .trait-rose {
+    color: var(--rose);
+  }
+
+  .trait-clair {
+    color: var(--rose-clair);
+  }
+
+  .trait-violet {
+    color: var(--violet);
+  }
+
+  .unite {
+    font-family: var(--texte);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--texte-3);
+  }
+</style>

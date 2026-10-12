@@ -1,0 +1,15 @@
+<svg class="md-etat md-etat-hors-ligne" viewBox="0 0 200 160" role="img" aria-label="Pas de connexion" xmlns="http://www.w3.org/2000/svg">
+  <g class="md-e-pale" fill="none" stroke-width="8" stroke-linecap="round">
+    <path d="M67.47 85.47A46 46 0 0 1 132.53 85.47"/><path d="M51.92 69.92A68 68 0 0 1 148.08 69.92"/>
+  </g>
+  <g fill="none" stroke-width="8" stroke-linecap="round">
+    <path class="md-e-onde md-e-onde-1" d="M83.03 101.03A24 24 0 0 1 116.97 101.03"/>
+    <path class="md-e-onde md-e-onde-2" d="M67.47 85.47A46 46 0 0 1 132.53 85.47"/>
+    <path class="md-e-onde md-e-onde-3" d="M51.92 69.92A68 68 0 0 1 148.08 69.92"/>
+  </g>
+  <circle class="md-e-source md-f-encre" cx="100" cy="118" r="7.5"/>
+  <g class="md-e-badge">
+    <circle class="md-f-rose" cx="140" cy="112" r="15"/>
+    <path class="md-e-croix" d="M134 106L146 118M146 106L134 118" fill="none" stroke-width="4" stroke-linecap="round"/>
+  </g>
+</svg>

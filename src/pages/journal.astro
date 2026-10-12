@@ -1,0 +1,344 @@
+---
+/**
+ * Noter sa journée.
+ *
+ * Un seul formulaire, qui marche sans JavaScript : des boutons radio déguisés
+ * en grandes cases, des cases à cocher déguisées en pastilles. C'est le CSS
+ * qui les habille (`:checked + label`), donc le clavier, le lecteur d'écran et
+ * le pouce fonctionnent tous les trois.
+ *
+ * On peut noter un jour passé, jamais un jour à venir.
+ */
+import Base from '../layouts/Base.astro';
+import Entete from '../components/Entete.astro';
+import Alerte from '../components/Alerte.astro';
+import Icone from '../components/Icone.astro';
+import { clientSession, baseConfiguree } from '../lib/supabase';
+import { visiteuse, monCycle, lirePanier, comptePanier } from '../lib/session';
+import { SIGNES, FLUX, DOULEURS } from '../lib/cycle';
+import { aujourdhui, dateLongue, messageErreur, enIso } from '../lib/format';
+
+if (!baseConfiguree()) return Astro.redirect('/', 302);
+const moi = await visiteuse(Astro);
+if (!moi) return Astro.redirect('/connexion', 302);
+
+const client = clientSession(Astro)!;
+let erreur = '';
+
+const hui = aujourdhui();
+const demande = Astro.url.searchParams.get('jour') ?? '';
+const jour = /^\d{4}-\d{2}-\d{2}$/.test(demande) && demande <= hui ? demande : hui;
+
+if (Astro.request.method === 'POST') {
+  const f = await Astro.request.formData();
+  const { data, error } = await client.rpc('noter_journee', {
+    p_jour: String(f.get('jour') ?? hui),
+    p_flux: String(f.get('flux') ?? 'rien'),
+    p_douleur: Number(f.get('douleur') ?? 0),
+    p_signes: f.getAll('signes').map((s) => String(s)),
+    p_note: String(f.get('note') ?? ''),
+  });
+  if (error || !data?.ok) erreur = messageErreur(data?.erreur);
+  else return Astro.redirect('/?note=1', 303);
+}
+
+const { data: deja } = await client
+  .from('journal')
+  .select('flux, douleur, signes, note')
+  .eq('jour', jour)
+  .maybeSingle();
+
+const cycle = await monCycle(Astro);
+
+// Les sept derniers jours, pour rattraper un jour oublié sans passer par le
+// calendrier.
+const derniers = Array.from({ length: 7 }, (_, i) => {
+  const d = new Date();
+  d.setDate(d.getDate() - i);
+  return { iso: enIso(d), numero: d.getDate(), court: ['D', 'L', 'M', 'M', 'J', 'V', 'S'][d.getDay()] };
+}).reverse();
+
+const panier = comptePanier(lirePanier(Astro));
+const signesDeja: string[] = deja?.signes ?? [];
+---
+
+<Base titre="Noter ma journée" nav="accueil" panier={panier}>
+  <main class="page">
+    <Entete
+      titre={jour === hui ? "Aujourd'hui" : dateLongue(jour)}
+      sousTitre={cycle?.aDesDonnees && jour === hui ? `${dateLongue(jour)}, jour ${cycle.jourDuCycle}` : dateLongue(jour)}
+      retour="/"
+    />
+
+    {erreur && <div class="marge-bas"><Alerte type="erreur" texte={erreur} /></div>}
+
+    <nav class="semaine" aria-label="Choisir un jour">
+      {
+        derniers.map((d) => (
+          <a
+            class:list={['pastille-jour', d.iso === jour && 'pastille-jour-prise']}
+            href={`/journal?jour=${d.iso}`}
+            aria-current={d.iso === jour ? 'page' : undefined}
+          >
+            <span class="lettre">{d.court}</span>
+            <span class="num chiffre">{d.numero}</span>
+          </a>
+        ))
+      }
+    </nav>
+
+    <form method="POST" class="apparait">
+      <input type="hidden" name="jour" value={jour} />
+
+      <h2 class="titre-section">Tes saignements</h2>
+      <div class="choix-rangee">
+        {
+          FLUX.map((f) => (
+            <>
+              <input
+                class="cache"
+                type="radio"
+                name="flux"
+                id={`flux-${f.id}`}
+                value={f.id}
+                checked={(deja?.flux ?? 'rien') === f.id}
+              />
+              <label class="choix-label" for={`flux-${f.id}`}>
+                {f.id === 'rien' ? (
+                  <Icone nom="moins" taille={22} />
+                ) : (
+                  <span class:list={['goutte', `goutte-${f.id}`]}>
+                    <Icone nom="goutte" taille={22} />
+                  </span>
+                )}
+                {f.libelle}
+              </label>
+            </>
+          ))
+        }
+      </div>
+
+      <h2 class="titre-section">Tes douleurs</h2>
+      <div class="choix-rangee">
+        {
+          DOULEURS.map((d) => (
+            <>
+              <input
+                class="cache"
+                type="radio"
+                name="douleur"
+                id={`douleur-${d.id}`}
+                value={String(d.id)}
+                checked={(deja?.douleur ?? 0) === d.id}
+              />
+              <label class="choix-label" for={`douleur-${d.id}`}>
+                <span class="chiffre note">{d.note}</span>
+                {d.libelle}
+              </label>
+            </>
+          ))
+        }
+      </div>
+
+      <h2 class="titre-section">Ce que tu ressens</h2>
+      <div class="signes">
+        {
+          SIGNES.map((s) => (
+            <>
+              <input
+                class="cache"
+                type="checkbox"
+                name="signes"
+                id={`signe-${s.id}`}
+                value={s.id}
+                checked={signesDeja.includes(s.id)}
+              />
+              <label class="puce-label" for={`signe-${s.id}`}>{s.libelle}</label>
+            </>
+          ))
+        }
+      </div>
+
+      <h2 class="titre-section">Ta note du jour</h2>
+      <label class="lecture-seule" for="note">Ta note du jour</label>
+      <textarea
+        class="champ"
+        id="note"
+        name="note"
+        rows="3"
+        maxlength="500"
+        placeholder="Ce que tu veux garder en mémoire">{deja?.note ?? ''}</textarea>
+
+      <div class="encadre marge">
+        <Icone nom="info" taille={19} />
+        <p>
+          Plus tu notes, plus tes dates deviennent justes. Trois jours notés suffisent déjà à affiner le calcul. Si tu
+          notes du sang un jour où aucun cycle ne court, tes règles sont déclarées toutes seules.
+        </p>
+      </div>
+
+      <div class="bas-page">
+        <button class="btn btn-rose btn-plein" type="submit">
+          {deja ? 'Mettre à jour ma journée' : 'Enregistrer ma journée'}
+        </button>
+      </div>
+    </form>
+  </main>
+</Base>
+
+<style>
+  .semaine {
+    display: flex;
+    gap: 6px;
+    justify-content: space-between;
+    margin-bottom: var(--e5);
+  }
+
+  .pastille-jour {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    min-height: 56px;
+    padding: var(--e2) 0;
+    border: 1px solid var(--bordure);
+    border-radius: var(--r-champ);
+    background: var(--surface);
+    color: var(--encre);
+  }
+
+  .pastille-jour-prise {
+    background: var(--encre);
+    border-color: var(--encre);
+    color: #fff;
+  }
+
+  .lettre {
+    font-size: 10.5px;
+    font-weight: 700;
+    color: var(--texte-3);
+  }
+
+  .pastille-jour-prise .lettre {
+    color: var(--rose-clair);
+  }
+
+  .num {
+    font-size: 15px;
+  }
+
+  .titre-section {
+    margin: var(--e5) 0 var(--e2);
+    font-size: 15px;
+    font-weight: 700;
+  }
+
+  .titre-section:first-of-type {
+    margin-top: 0;
+  }
+
+  /* Le vrai champ est caché, mais reste au clavier et aux lecteurs d'écran :
+     c'est lui qui porte l'état, le label n'est que son habit. */
+  .cache {
+    position: absolute;
+    opacity: 0;
+    width: 1px;
+    height: 1px;
+    pointer-events: none;
+  }
+
+  .choix-label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    min-height: 66px;
+    padding: var(--e2) 4px;
+    border: 1px solid var(--bordure);
+    border-radius: var(--r-champ);
+    background: var(--surface);
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--texte-2);
+    cursor: pointer;
+    transition: background-color var(--vite) ease, border-color var(--vite) ease, transform var(--vite) ease;
+  }
+
+  .choix-label:active {
+    transform: scale(0.97);
+  }
+
+  .cache:checked + .choix-label {
+    background: var(--rose-clair);
+    border-color: var(--rose);
+    color: var(--rose-fonce);
+  }
+
+  .cache:focus-visible + .choix-label,
+  .cache:focus-visible + .puce-label {
+    outline: 2px solid var(--rose);
+    outline-offset: 2px;
+  }
+
+  .note {
+    font-size: 18px;
+  }
+
+  .goutte-leger {
+    color: var(--rose);
+  }
+
+  .goutte-moyen,
+  .goutte-abondant {
+    color: var(--rose);
+  }
+
+  .cache:checked + .choix-label .goutte-moyen :global(svg) {
+    fill: var(--rose-clair);
+  }
+
+  .cache:checked + .choix-label .goutte-abondant :global(svg) {
+    fill: currentColor;
+  }
+
+  .signes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--e2);
+  }
+
+  .puce-label {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    padding: 0 var(--e3);
+    border: 1px solid var(--bordure);
+    border-radius: var(--r-ronde);
+    background: var(--surface);
+    font-size: 13.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color var(--vite) ease, border-color var(--vite) ease;
+  }
+
+  .cache:checked + .puce-label {
+    background: var(--encre);
+    border-color: var(--encre);
+    color: #fff;
+  }
+
+  .marge {
+    margin-top: var(--e4);
+  }
+
+  .marge-bas {
+    margin-bottom: var(--e3);
+  }
+
+  .bas-page {
+    margin-top: var(--e5);
+    padding-bottom: var(--e5);
+  }
+</style>

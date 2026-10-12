@@ -1,0 +1,6 @@
+<svg class="md-etat md-etat-reflechit" viewBox="0 0 84 44" role="img" aria-label="Dambé réfléchit" xmlns="http://www.w3.org/2000/svg">
+  <rect class="md-e-bulle" x="1.5" y="1.5" width="81" height="41" rx="20.5" stroke-width="1.5"/>
+  <circle class="md-e-point md-e-point-1" cx="26" cy="22" r="5.5"/>
+  <circle class="md-e-point md-e-point-2" cx="42" cy="22" r="5.5"/>
+  <circle class="md-e-point md-e-point-3" cx="58" cy="22" r="5.5"/>
+</svg>

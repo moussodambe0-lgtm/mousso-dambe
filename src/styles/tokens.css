@@ -1,0 +1,101 @@
+/*
+ * Mousso Dambé, les jetons de style. Une seule source pour les couleurs, les
+ * espacements et les formes. Aucune valeur en dur ailleurs dans le site.
+ *
+ * Demande d'Arthur : rose, blanc, noir, surtout le rose et le blanc.
+ * Le violet ne sert qu'à une chose, la fertilité : c'est une information
+ * différente, elle ne doit jamais se confondre avec les règles.
+ */
+
+@font-face {
+  font-family: 'Bricolage';
+  src: url('/fonts/bricolage.woff2') format('woff2');
+  font-weight: 600 800;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+2000-206F, U+20AC, U+2122, U+2212;
+}
+
+/* Le même fichier, sous le nom complet de la police : les animations de Motion
+   écrivent le nom de l'application en texte SVG et demandent « Bricolage
+   Grotesque ». Même adresse, donc un seul téléchargement. */
+@font-face {
+  font-family: 'Bricolage Grotesque';
+  src: url('/fonts/bricolage.woff2') format('woff2');
+  font-weight: 600 800;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+2000-206F, U+20AC, U+2122, U+2212;
+}
+
+@font-face {
+  font-family: 'Figtree';
+  src: url('/fonts/figtree.woff2') format('woff2');
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+2000-206F, U+20AC, U+2122, U+2212;
+}
+
+:root {
+  /* Fonds et structure */
+  --fond: #fff6f9;
+  --surface: #ffffff;
+  --surface-douce: #ffeef4;
+  --bordure: #f6d9e4;
+  --bordure-forte: #e4c3d1;
+
+  /* Encre */
+  --encre: #1b1116;
+  --encre-douce: #3a2a31;
+  --texte-2: #6b5560;
+  --texte-3: #8c7480;
+
+  /* Le rose agit, et dit « règles » */
+  --rose: #d0206a;
+  --rose-fonce: #9c1450;
+  --rose-clair: #ffdce9;
+
+  /* Le violet dit « fertilité », et rien d'autre */
+  --violet: #6a3fc9;
+  --violet-fonce: #4b2a93;
+  --violet-clair: #ece5fb;
+
+  /* États */
+  --vert: #17794a;
+  --vert-clair: #e6f3ec;
+  --ambre: #a8590b;
+  --ambre-clair: #fdf1e3;
+  --rouge: #b3261e;
+  --rouge-clair: #fdeceb;
+
+  /* Polices */
+  --titre: 'Bricolage', 'Segoe UI', system-ui, sans-serif;
+  --texte: 'Figtree', 'Segoe UI', system-ui, sans-serif;
+
+  /* Espacements, échelle de 4 */
+  --e1: 4px;
+  --e2: 8px;
+  --e3: 12px;
+  --e4: 16px;
+  --e5: 24px;
+  --e6: 32px;
+  --e7: 48px;
+
+  /* Formes */
+  --r-champ: 14px;
+  --r-carte: 20px;
+  --r-feuille: 28px;
+  --r-ronde: 999px;
+
+  /* Une seule ombre, pour ce qui flotte */
+  --ombre: 0 2px 8px rgba(27, 17, 22, 0.06), 0 8px 24px rgba(27, 17, 22, 0.05);
+
+  /* Hauteur de la barre basse, pour que rien ne passe dessous */
+  --nav-hauteur: 72px;
+
+  /* Mouvement */
+  --vite: 150ms;
+  --normal: 220ms;
+  --sortie: cubic-bezier(0.22, 0.61, 0.36, 1);
+}

@@ -1,0 +1,197 @@
+---
+/**
+ * La boutique.
+ *
+ * Ouverte sans compte : une fille doit pouvoir regarder les prix avant de
+ * s'inscrire, et un lien partagé doit s'ouvrir sur le produit. Le compte
+ * n'est exigé qu'au moment de commander.
+ *
+ * Les pages du catalogue sont mises en cache par le réseau de diffusion
+ * (`s-maxage`) : elles ne contiennent donc rien de personnel, jamais.
+ */
+import Base from '../../layouts/Base.astro';
+import Icone from '../../components/Icone.astro';
+import CarteProduit from '../../components/CarteProduit.astro';
+import { clientPublic, baseConfiguree } from '../../lib/supabase';
+import { visiteuse, lirePanier, comptePanier } from '../../lib/session';
+
+const RAYONS = [
+  { id: '', libelle: 'Tout' },
+  { id: 'serviettes', libelle: 'Serviettes' },
+  { id: 'culottes', libelle: 'Culottes' },
+  { id: 'lavables', libelle: 'Lavables' },
+  { id: 'kits', libelle: 'Kits' },
+];
+
+const rayon = Astro.url.searchParams.get('rayon') ?? '';
+const cherche = (Astro.url.searchParams.get('q') ?? '').trim().slice(0, 60);
+
+let produits: any[] = [];
+if (baseConfiguree()) {
+  let requete = clientPublic(Astro)
+    .from('produits')
+    .select('slug, nom, resume, prix_cfa, rayon, image, etiquette, stock')
+    .eq('publie', true)
+    .order('ordre');
+  if (rayon && RAYONS.some((r) => r.id === rayon)) requete = requete.eq('rayon', rayon);
+  if (cherche) requete = requete.or(`nom.ilike.%${cherche}%,resume.ilike.%${cherche}%`);
+  const { data } = await requete;
+  produits = data ?? [];
+}
+
+const moi = await visiteuse(Astro);
+const panier = comptePanier(lirePanier(Astro));
+
+// Catalogue sans rien de personnel : le réseau peut le garder deux minutes.
+if (!moi) {
+  Astro.response.headers.set('Cache-Control', 'public, s-maxage=120, stale-while-revalidate=600');
+} else {
+  Astro.response.headers.set('Cache-Control', 'private, no-store');
+}
+---
+
+<Base titre="Boutique" nav="boutique" panier={panier}>
+  <main class="page">
+    <form class="haut" method="GET" action="/boutique">
+      <div class="recherche">
+        <Icone nom="recherche" taille={18} />
+        <label class="lecture-seule" for="q">Chercher un produit</label>
+        <input id="q" name="q" type="search" placeholder="Serviettes, culottes…" value={cherche} />
+      </div>
+      <a class="rond" href="/panier" aria-label={`Mon panier, ${panier} articles`}>
+        <Icone nom="panier" taille={20} />
+        {panier > 0 && <span class="nav-pastille">{panier}</span>}
+      </a>
+    </form>
+
+    <nav class="rayons" aria-label="Rayons">
+      {
+        RAYONS.map((r) => (
+          <a
+            class:list={['puce', rayon === r.id && 'puce-prise']}
+            href={r.id ? `/boutique?rayon=${r.id}` : '/boutique'}
+            aria-current={rayon === r.id ? 'page' : undefined}
+          >
+            {r.libelle}
+          </a>
+        ))
+      }
+    </nav>
+
+    <section class="carte-sombre bloc rassure apparait">
+      <Icone nom="camion" taille={22} />
+      <div>
+        <strong>Tu paies à la livraison</strong>
+        <span>Colis neutre, livré à Ouaga en 24 h</span>
+      </div>
+    </section>
+
+    {
+      produits.length === 0 ? (
+        <div class="etat-vide">
+          <Icone nom="recherche" taille={34} />
+          <h2>Rien trouvé</h2>
+          <p>
+            {cherche
+              ? `Aucun produit ne correspond à « ${cherche} ».`
+              : "Ce rayon est vide pour le moment."}
+          </p>
+          <a class="btn btn-contour" href="/boutique">Voir tout</a>
+        </div>
+      ) : (
+        <div class="grille-produits apparait" data-ordre="2">
+          {produits.map((p) => (
+            <CarteProduit
+              slug={p.slug}
+              nom={p.nom}
+              prixCfa={p.prix_cfa}
+              rayon={p.rayon}
+              image={p.image}
+              etiquette={p.etiquette}
+              stock={p.stock}
+            />
+          ))}
+        </div>
+      )
+    }
+
+    <div class="espace"></div>
+  </main>
+</Base>
+
+<style>
+  .haut {
+    display: flex;
+    gap: var(--e2);
+    align-items: center;
+    padding: var(--e5) 0 var(--e3);
+  }
+
+  .recherche {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-height: 46px;
+    padding: 0 13px;
+    border: 1px solid var(--bordure);
+    border-radius: 16px;
+    background: var(--surface);
+    color: var(--texte-3);
+  }
+
+  .recherche input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-size: 14.5px;
+    color: var(--encre);
+  }
+
+  .rayons {
+    display: flex;
+    gap: var(--e2);
+    overflow-x: auto;
+    padding-bottom: var(--e3);
+    scrollbar-width: none;
+  }
+
+  .rayons::-webkit-scrollbar {
+    display: none;
+  }
+
+  .rayons .puce {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .rassure {
+    display: flex;
+    align-items: center;
+    gap: var(--e3);
+    padding: var(--e3) var(--e4);
+    color: #fff;
+  }
+
+  .rassure strong {
+    display: block;
+    font-size: 13.5px;
+  }
+
+  .rassure span {
+    font-size: 12px;
+    color: var(--rose-clair);
+  }
+
+  .tisse {
+    margin: var(--e3) 0 var(--e4);
+  }
+
+  .etat-vide :global(svg) {
+    color: var(--texte-3);
+  }
+</style>

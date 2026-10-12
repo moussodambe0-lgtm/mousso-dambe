@@ -1,0 +1,423 @@
+---
+/**
+ * Dambé, l'assistante.
+ *
+ * Le formulaire est un POST ordinaire : la page revient avec la réponse déjà
+ * écrite. C'est plus lent à l'écran qu'une discussion qui se remplit toute
+ * seule, mais ça marche sans JavaScript, sur un téléphone d'entrée de gamme et
+ * sur une connexion qui tombe.
+ *
+ * Deux choses se passent AVANT le modèle :
+ *   - la question est enregistrée par la base, qui vérifie les quotas ;
+ *   - les mots qui disent une urgence déclenchent une réponse écrite par nous,
+ *     sans aucun appel au modèle. Une orientation vers un soignant ne dépend
+ *     pas de la disponibilité d'un service extérieur.
+ */
+import Base from '../layouts/Base.astro';
+import Icone from '../components/Icone.astro';
+import Symbole from '../components/Symbole.astro';
+import Anim from '../components/Anim.astro';
+import Alerte from '../components/Alerte.astro';
+import { clientSession, baseConfiguree } from '../lib/supabase';
+import { visiteuse, lirePanier, comptePanier } from '../lib/session';
+import { ollamaConfigure, demanderOllama, ErreurOllama } from '../lib/ollama';
+import { alerte, messagesPour, nettoyer, AVERTISSEMENT, SUGGESTIONS, type ContexteAssistante } from '../lib/assistante';
+import { prix, messageErreur } from '../lib/format';
+
+if (!baseConfiguree()) return Astro.redirect('/', 302);
+const moi = await visiteuse(Astro);
+if (!moi) return Astro.redirect('/connexion', 302);
+
+const client = clientSession(Astro)!;
+let erreur = '';
+
+if (Astro.request.method === 'POST') {
+  const f = await Astro.request.formData();
+  const question = String(f.get('question') ?? '').trim();
+
+  if (question.length < 2) {
+    erreur = 'Écris ta question.';
+  } else {
+    // 1. La base enregistre et compte. Si elle refuse, on s'arrête là : aucun
+    //    appel au service extérieur n'est fait pour rien.
+    const { data: pose, error: errPose } = await client.rpc('assistante_poser', { p_question: question });
+    if (errPose || !pose?.ok) {
+      erreur = messageErreur(pose?.erreur);
+    } else {
+      const { data: ctx } = await client.rpc('assistante_contexte');
+      const contexte = (ctx ?? { catalogue: [], echanges: [] }) as ContexteAssistante;
+      const signal = alerte(question);
+
+      let texte = '';
+      let produit: string | null = null;
+      let entree = 0;
+      let sortie = 0;
+
+      if (signal.gravite === 'urgence') {
+        // Rien ne part vers le modèle : cette réponse est écrite par nous.
+        texte = signal.texte;
+      } else if (!ollamaConfigure()) {
+        erreur = "Dambé n'est pas encore branchée. Il manque son adresse et sa clé dans les réglages du site.";
+      } else {
+        try {
+          const r = await demanderOllama(messagesPour(question, contexte));
+          const propre = nettoyer(r.texte, (contexte.catalogue ?? []).map((p) => p.slug));
+          texte = propre.texte;
+          produit = propre.produit;
+          entree = r.jetonsEntree;
+          sortie = r.jetonsSortie;
+          if (signal.gravite === 'soignant' && texte) {
+            texte = `${texte}\n\n${signal.texte}`;
+          }
+          if (!texte) {
+            erreur = "Dambé n'a pas réussi à répondre. Repose ta question autrement.";
+          }
+        } catch (e) {
+          erreur =
+            e instanceof ErreurOllama && e.statut === 429
+              ? 'Dambé reçoit trop de questions en ce moment. Réessaie dans une minute.'
+              : "Dambé n'a pas répondu à temps. Réessaie dans un moment.";
+        }
+      }
+
+      if (texte) {
+        await client.rpc('assistante_repondre', {
+          p_id: pose.id,
+          p_reponse: texte,
+          p_produit: produit,
+          p_entree: entree,
+          p_sortie: sortie,
+        });
+        return Astro.redirect('/dambe#fin', 303);
+      }
+    }
+  }
+}
+
+const { data: fil } = await client.rpc('mon_fil_assistante');
+const messages = (fil ?? []) as {
+  id: string;
+  question: string;
+  reponse: string | null;
+  produit: string | null;
+  cree_le: string;
+}[];
+
+// Les produits cités dans le fil, relus en base : le prix affiché est
+// toujours celui du catalogue, jamais celui qu'un modèle a écrit.
+const slugs = messages.map((m) => m.produit).filter((s): s is string => !!s);
+let produits: Record<string, { nom: string; prix_cfa: number; rayon: string }> = {};
+if (slugs.length > 0) {
+  const { data } = await client.from('produits').select('slug, nom, prix_cfa, rayon').in('slug', slugs);
+  for (const p of data ?? []) produits[p.slug] = p;
+}
+
+const panier = comptePanier(lirePanier(Astro));
+const branchee = ollamaConfigure();
+---
+
+<Base titre="Dambé" nav="dambe" panier={panier}>
+  <header class="barre">
+    <div class="page barre-dedans">
+      <a class="rond" href="/" aria-label="Retour à l'accueil">
+        <Icone nom="retour" taille={20} epaisseur={2} />
+      </a>
+      <span class="portrait">
+        <Symbole taille={24} anneau="var(--rose)" goutte="var(--rose-clair)" />
+      </span>
+      <div>
+        <h1>Dambé</h1>
+        <div class:list={['etat', branchee ? 'etat-ok' : 'etat-off']}>
+          <i></i>
+          {branchee ? 'Prête à répondre' : 'Pas encore branchée'}
+        </div>
+      </div>
+      {messages.length > 0 && (
+        <form method="POST" action="/dambe/effacer" class="pousse">
+          <button class="rond" type="submit" aria-label="Effacer toute la discussion">
+            <Icone nom="poubelle" taille={19} />
+          </button>
+        </form>
+      )}
+    </div>
+  </header>
+
+  <main class="page">
+    {
+      messages.length === 0 ? (
+        <div class="accueil-dambe apparait">
+          <Symbole taille={52} anime titre="Dambé" />
+          <h2>Pose ta question</h2>
+          <p class="doux">
+            Les douleurs, le retard, l'hygiène, les protections, ce qui est normal et ce qui ne l'est pas. Ce que tu
+            n'oses pas demander ailleurs.
+          </p>
+        </div>
+      ) : (
+        <div class="fil">
+          {messages.map((m) => (
+            <>
+              <div class="bulle-moi">{m.question}</div>
+              {m.reponse ? (
+                <div class="bulle-elle">{m.reponse}</div>
+              ) : (
+                <Anim nom="etat-reflechit" classe="reflechit" titre="Dambé réfléchit" />
+              )}
+              {m.produit && produits[m.produit] && (
+                <a class="produit-propose" href={`/boutique/${m.produit}`}>
+                  <span class="vignette">
+                    <Icone nom={produits[m.produit].rayon === 'culottes' ? 'culotte' : produits[m.produit].rayon === 'lavables' ? 'tissu' : 'paquet'} taille={26} />
+                  </span>
+                  <span class="propose-texte">
+                    <strong>{produits[m.produit].nom}</strong>
+                    <span class="chiffre prix-propose">{prix(produits[m.produit].prix_cfa)} FCFA</span>
+                  </span>
+                  <Icone nom="avant" taille={18} />
+                </a>
+              )}
+            </>
+          ))}
+        </div>
+      )
+    }
+
+    <span id="fin"></span>
+
+    {erreur && <div class="marge"><Alerte type="erreur" texte={erreur} /></div>}
+
+    {
+      !branchee && (
+        <div class="marge">
+          <Alerte
+            type="attention"
+            texte="Dambé répond dès qu'Arthur dépose l'adresse et la clé Ollama dans les réglages du site. Les réponses d'orientation vers un centre de santé, elles, marchent déjà."
+          />
+        </div>
+      )
+    }
+
+    {
+      messages.length === 0 && (
+        <div class="suggestions">
+          {SUGGESTIONS.map((s) => (
+            <form method="POST">
+              <input type="hidden" name="question" value={s} />
+              <button class="puce" type="submit">{s}</button>
+            </form>
+          ))}
+        </div>
+      )
+    }
+
+    <p class="avertissement">
+      <Icone nom="info" taille={14} />
+      {AVERTISSEMENT}
+    </p>
+
+    <div class="place-saisie"></div>
+  </main>
+
+  <form method="POST" class="saisie">
+    <div class="page saisie-dedans">
+      <label class="lecture-seule" for="question">Ta question</label>
+      <input
+        class="champ"
+        id="question"
+        name="question"
+        type="text"
+        placeholder="Écris ta question"
+        maxlength="500"
+        required
+        autocomplete="off"
+      />
+      <button class="rond rond-rose" type="submit" aria-label="Envoyer ma question">
+        <Icone nom="envoyer" taille={21} />
+      </button>
+    </div>
+  </form>
+</Base>
+
+<style>
+  .barre {
+    background: var(--surface);
+    border-bottom: 1px solid var(--bordure);
+  }
+
+  .barre-dedans {
+    display: flex;
+    align-items: center;
+    gap: var(--e3);
+    padding: var(--e4) var(--e4);
+  }
+
+  .portrait {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    flex: none;
+    border-radius: 13px;
+    background: var(--encre);
+  }
+
+  h1 {
+    font-size: 17px;
+  }
+
+  .etat {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .etat i {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+
+  .etat-ok {
+    color: var(--vert);
+  }
+
+  .etat-ok i {
+    background: var(--vert);
+  }
+
+  .etat-off {
+    color: var(--ambre);
+  }
+
+  .etat-off i {
+    background: var(--ambre);
+  }
+
+  .accueil-dambe {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--e3);
+    padding: var(--e7) 0 var(--e5);
+    text-align: center;
+  }
+
+  .accueil-dambe h2 {
+    font-size: 22px;
+  }
+
+  .doux {
+    max-width: 320px;
+    font-size: 14.5px;
+    color: var(--texte-2);
+    line-height: 1.5;
+  }
+
+  .fil {
+    padding-top: var(--e4);
+  }
+
+  .reflechit {
+    align-self: flex-start;
+    width: 84px;
+    justify-content: flex-start;
+  }
+
+  .produit-propose {
+    align-self: flex-start;
+    display: flex;
+    align-items: center;
+    gap: var(--e3);
+    max-width: 88%;
+    padding: 10px;
+    border: 1px solid var(--bordure);
+    border-radius: 16px;
+    background: var(--surface);
+    color: inherit;
+  }
+
+  .vignette {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 50px;
+    height: 50px;
+    flex: none;
+    border-radius: 12px;
+    background: var(--surface-douce);
+    color: var(--rose);
+  }
+
+  .propose-texte {
+    min-width: 0;
+  }
+
+  .propose-texte strong {
+    display: block;
+    font-size: 13.5px;
+    line-height: 1.3;
+  }
+
+  .prix-propose {
+    font-size: 15px;
+    color: var(--rose);
+  }
+
+  .suggestions {
+    display: flex;
+    flex-direction: column;
+    gap: var(--e2);
+    margin-top: var(--e4);
+  }
+
+  .suggestions .puce {
+    width: 100%;
+    text-align: left;
+  }
+
+  .avertissement {
+    display: flex;
+    gap: 7px;
+    align-items: flex-start;
+    margin-top: var(--e4);
+    font-size: 11.5px;
+    color: var(--texte-3);
+    line-height: 1.45;
+  }
+
+  .avertissement :global(svg) {
+    flex: none;
+    margin-top: 2px;
+  }
+
+  .marge {
+    margin-top: var(--e4);
+  }
+
+  /* La saisie est posée au-dessus de la barre basse. On réserve sa hauteur
+     entière, sinon la dernière phrase finit cachée derrière (constaté sur la
+     capture du 12 octobre : l'avertissement était coupé en deux). */
+  .place-saisie {
+    height: 150px;
+  }
+
+  .saisie {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: calc(var(--nav-hauteur) + env(safe-area-inset-bottom, 0px));
+    z-index: 19;
+    background: var(--fond);
+    border-top: 1px solid var(--bordure);
+  }
+
+  .saisie-dedans {
+    display: flex;
+    gap: var(--e2);
+    align-items: center;
+    padding: var(--e3) var(--e4);
+  }
+</style>

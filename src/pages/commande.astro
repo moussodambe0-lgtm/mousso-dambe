@@ -1,0 +1,291 @@
+---
+/**
+ * L'adresse, puis la commande.
+ *
+ * Le livreur se déplace pour de vrai : une adresse approximative est une
+ * livraison perdue et un colis payé pour rien. D'où le point de repère, qui
+ * est ce qu'on utilise réellement à Ouaga, et le numéro vérifié par la base.
+ *
+ * Le total affiché ici est indicatif. Celui qui compte est calculé par la base
+ * dans `passer_commande`, à partir des prix du catalogue.
+ */
+import Base from '../layouts/Base.astro';
+import Entete from '../components/Entete.astro';
+import Icone from '../components/Icone.astro';
+import Alerte from '../components/Alerte.astro';
+import { clientSession, clientPublic, baseConfiguree } from '../lib/supabase';
+import { visiteuse, lirePanier, ecrirePanier, comptePanier } from '../lib/session';
+import { prix, messageErreur } from '../lib/format';
+
+if (!baseConfiguree()) return Astro.redirect('/', 302);
+const moi = await visiteuse(Astro);
+if (!moi) return Astro.redirect('/connexion', 302);
+
+const LIVRAISON = 1000;
+const lignes = lirePanier(Astro);
+if (lignes.length === 0) return Astro.redirect('/panier', 302);
+
+let erreur = '';
+let nom = moi.prenom;
+let telephone = moi.telephone ?? '';
+let quartier = moi.quartier ?? '';
+let repere = moi.repere ?? '';
+
+if (Astro.request.method === 'POST') {
+  const f = await Astro.request.formData();
+  nom = String(f.get('nom') ?? '').trim();
+  telephone = String(f.get('telephone') ?? '').trim();
+  quartier = String(f.get('quartier') ?? '').trim();
+  repere = String(f.get('repere') ?? '').trim();
+
+  const client = clientSession(Astro)!;
+  const { data, error } = await client.rpc('passer_commande', {
+    p_panier: lignes,
+    p_nom: nom,
+    p_telephone: telephone,
+    p_quartier: quartier,
+    p_repere: repere,
+  });
+
+  if (error || !data?.ok) {
+    erreur = messageErreur(data?.erreur ?? error?.message);
+  } else {
+    ecrirePanier(Astro, []);
+    return Astro.redirect(`/commandes?nouvelle=${encodeURIComponent(data.numero)}`, 303);
+  }
+}
+
+const { data: donnees } = await clientPublic(Astro)
+  .from('produits')
+  .select('slug, nom, prix_cfa')
+  .in('slug', lignes.map((l) => l.slug));
+const produits: Record<string, any> = {};
+for (const p of donnees ?? []) produits[p.slug] = p;
+
+const articles = lignes.reduce((s, l) => s + (produits[l.slug]?.prix_cfa ?? 0) * l.quantite, 0);
+const total = articles + LIVRAISON;
+const nombre = comptePanier(lignes);
+
+// Les quartiers de Ouagadougou les plus demandés, pour éviter la saisie
+// libre dans la plupart des cas. La liste reste ouverte : un quartier qui
+// manque ne doit pas empêcher une commande.
+const QUARTIERS = [
+  'Dassasgho', 'Tanghin', 'Zogona', 'Gounghin', 'Pissy', 'Cissin', 'Karpala',
+  'Ouaga 2000', 'Somgandé', 'Kossodo', 'Nonsin', 'Patte d’Oie', 'Saaba',
+  'Tampouy', 'Wemtenga', 'Zone du bois', 'Nioko', 'Bonheur-ville',
+];
+---
+
+<Base titre="Ma commande" nav="boutique" panier={nombre}>
+  <main class="page">
+    <Entete titre="Où on te livre" retour="/panier" />
+
+    {erreur && <div class="marge-bas"><Alerte type="erreur" texte={erreur} /></div>}
+
+    <form method="POST" class="apparait">
+      <div class="champ-bloc">
+        <label class="libelle" for="nom">Ton nom pour le livreur</label>
+        <input class="champ" id="nom" name="nom" type="text" required maxlength="60" value={nom} autocomplete="name" />
+      </div>
+
+      <div class="champ-bloc">
+        <label class="libelle" for="telephone">Ton numéro</label>
+        <input
+          class="champ"
+          id="telephone"
+          name="telephone"
+          type="tel"
+          inputmode="numeric"
+          required
+          value={telephone}
+          autocomplete="tel-national"
+          placeholder="70 12 34 56"
+        />
+        <p class="aide">8 chiffres, qui commencent par 5, 6 ou 7. Le livreur appelle avant de passer.</p>
+      </div>
+
+      <div class="champ-bloc">
+        <label class="libelle" for="quartier">Ton quartier</label>
+        <input
+          class="champ"
+          id="quartier"
+          name="quartier"
+          type="text"
+          required
+          maxlength="60"
+          value={quartier}
+          list="quartiers"
+          autocomplete="address-level3"
+        />
+        <datalist id="quartiers">
+          {QUARTIERS.map((q) => <option value={q} />)}
+        </datalist>
+      </div>
+
+      <div class="champ-bloc">
+        <label class="libelle" for="repere">Un point de repère</label>
+        <input
+          class="champ"
+          id="repere"
+          name="repere"
+          type="text"
+          maxlength="120"
+          value={repere}
+          placeholder="À côté de la pharmacie, après le marché…"
+        />
+        <p class="aide">C'est ce qui sert vraiment au livreur, plus qu'un numéro de rue.</p>
+      </div>
+
+      <h2 class="rangee-titre">Comment tu paies</h2>
+      <div class="rangees">
+        <div class="rangee">
+          <span class="radio-pose" aria-hidden="true"><i></i></span>
+          <div>
+            <div class="fort">En espèces, à la livraison</div>
+            <div class="gris">Tu paies quand le colis est dans ta main</div>
+          </div>
+        </div>
+        <div class="rangee inactive">
+          <span class="radio-vide" aria-hidden="true"></span>
+          <div>
+            <div class="fort">Orange Money ou Moov Money</div>
+            <div class="gris">Pas encore disponible</div>
+          </div>
+        </div>
+      </div>
+
+      <section class="carte recap">
+        {
+          lignes.map((l) => (
+            <div class="ligne-recap">
+              <span>
+                {produits[l.slug]?.nom ?? l.slug}
+                {l.taille ? ` · ${l.taille}` : ''}
+                {l.quantite > 1 ? ` × ${l.quantite}` : ''}
+              </span>
+              <span class="chiffre">{prix((produits[l.slug]?.prix_cfa ?? 0) * l.quantite)}</span>
+            </div>
+          ))
+        }
+        <div class="ligne-recap">
+          <span>Livraison</span>
+          <span class="chiffre">{prix(LIVRAISON)}</span>
+        </div>
+        <div class="trait"></div>
+        <div class="ligne-total">
+          <span>À payer à la livraison</span>
+          <span class="chiffre grand">{prix(total)} F</span>
+        </div>
+      </section>
+
+      <div class="encadre">
+        <Icone nom="colis" taille={19} />
+        <p>Le colis est neutre, sans marque ni dessin. Si tu n'es pas là, le livreur rappelle.</p>
+      </div>
+
+      <div class="place-barre"></div>
+
+      <div class="barre-action">
+        <button class="btn btn-rose btn-plein" type="submit">
+          Commander {nombre === 1 ? '1 article' : `${nombre} articles`} · {prix(total)} F
+        </button>
+      </div>
+    </form>
+  </main>
+</Base>
+
+<style>
+  .champ-bloc {
+    margin-bottom: var(--e4);
+  }
+
+  .fort {
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .gris {
+    font-size: 12.5px;
+    color: var(--texte-2);
+    margin-top: 2px;
+  }
+
+  .radio-pose,
+  .radio-vide {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    flex: none;
+    border-radius: 50%;
+    border: 2px solid var(--rose);
+  }
+
+  .radio-pose i {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--rose);
+  }
+
+  .radio-vide {
+    border-color: var(--bordure-forte);
+  }
+
+  .inactive {
+    opacity: 0.55;
+  }
+
+  .recap {
+    margin-top: var(--e4);
+    padding: var(--e3) var(--e4);
+  }
+
+  .ligne-recap {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--e3);
+    padding: 5px 0;
+    font-size: 13.5px;
+    color: var(--texte-2);
+  }
+
+  .ligne-recap .chiffre {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--encre);
+    flex: none;
+  }
+
+  .trait {
+    height: 1px;
+    background: var(--bordure);
+    margin: 7px 0;
+  }
+
+  .ligne-total {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: 15px;
+    font-weight: 700;
+  }
+
+  .grand {
+    font-size: 22px;
+    color: var(--rose);
+  }
+
+  .encadre {
+    margin-top: var(--e4);
+  }
+
+  .place-barre {
+    height: 96px;
+  }
+
+  .marge-bas {
+    margin-bottom: var(--e3);
+  }
+</style>

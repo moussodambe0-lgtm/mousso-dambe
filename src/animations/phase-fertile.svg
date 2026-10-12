@@ -1,0 +1,17 @@
+<svg class="md-phase md-phase-fertile" viewBox="0 0 120 120" role="img" aria-label="Période fertile" xmlns="http://www.w3.org/2000/svg">
+  <circle class="md-ph-fond md-f-violet-clair" cx="60" cy="60" r="54"/>
+  <g class="md-ph-rayons">
+    <g><path class="md-ph-rayon md-ph-rayon-1" d="M60 34V20"/></g>
+    <g transform="rotate(45 60 60)"><path class="md-ph-rayon md-ph-rayon-2" d="M60 33V24"/></g>
+    <g transform="rotate(90 60 60)"><path class="md-ph-rayon md-ph-rayon-3" d="M60 34V20"/></g>
+    <g transform="rotate(135 60 60)"><path class="md-ph-rayon md-ph-rayon-4" d="M60 33V24"/></g>
+    <g transform="rotate(180 60 60)"><path class="md-ph-rayon md-ph-rayon-5" d="M60 34V20"/></g>
+    <g transform="rotate(225 60 60)"><path class="md-ph-rayon md-ph-rayon-6" d="M60 33V24"/></g>
+    <g transform="rotate(270 60 60)"><path class="md-ph-rayon md-ph-rayon-7" d="M60 34V20"/></g>
+    <g transform="rotate(315 60 60)"><path class="md-ph-rayon md-ph-rayon-8" d="M60 33V24"/></g>
+  </g>
+  <circle class="md-ph-soleil md-f-violet" cx="60" cy="60" r="19"/>
+  <circle class="md-ph-anneau-s" pathLength="100" cx="60" cy="60" r="9.5" fill="none" stroke-width="3.5"/>
+  <circle class="md-ph-pepin md-ph-pepin-1 md-f-violet" cx="85.4" cy="25.6" r="2.6"/>
+  <circle class="md-ph-pepin md-ph-pepin-2 md-f-violet" cx="22.4" cy="83.8" r="2.2"/>
+</svg>

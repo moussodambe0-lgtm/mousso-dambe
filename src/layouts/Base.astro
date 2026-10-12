@@ -1,0 +1,78 @@
+---
+/**
+ * Le gabarit de toutes les pages.
+ *
+ * Il n'y a aucun `style=` en ligne et aucun `<script is:inline>` dans le site :
+ * la politique de sécurité du contenu les refuse, et c'est ce qui empêche un
+ * texte venu d'ailleurs de s'exécuter dans la page.
+ */
+import '../styles/tokens.css';
+import '../styles/base.css';
+import '../styles/composants.css';
+import '../styles/animations.css';
+// Les animations dessinées par Motion (logo, phases, questionnaire, états).
+import '../styles/motion.css';
+import NavBasse from '../components/NavBasse.astro';
+
+interface Props {
+  titre: string;
+  description?: string;
+  nav?: 'accueil' | 'cycle' | 'boutique' | 'dambe' | null;
+  panier?: number;
+  /** Une page qui tient tout l'écran (connexion, questionnaire) : pas de
+   * barre basse, et pas de place réservée en bas. */
+  pleinEcran?: boolean;
+}
+
+const {
+  titre,
+  description = 'Suis tes règles, trouve tes protections, pose tes questions. Mousso Dambé, pour les femmes du Burkina.',
+  nav = null,
+  panier = 0,
+  pleinEcran = false,
+} = Astro.props;
+
+const titreComplet = titre === 'Mousso Dambé' ? titre : `${titre} · Mousso Dambé`;
+const canonique = new URL(Astro.url.pathname, Astro.site ?? 'http://localhost:4322').href;
+---
+
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{titreComplet}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonique} />
+
+    <!-- Le rose de la barre du navigateur, pour que l'application ne se voie
+         pas comme une page web ouverte dans un onglet. -->
+    <meta name="theme-color" content="#fff6f9" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/icone-192.png" />
+
+    <!-- Les deux polices sont servies depuis ce site : sur 3G, Google Fonts
+         coûtait 2 à 4 secondes avant le premier texte lisible. -->
+    <link rel="preload" href="/fonts/figtree.woff2" as="font" type="font/woff2" crossorigin />
+
+    <!-- Rien de tout ça ne doit sortir d'ici : une page de cycle n'a aucune
+         raison d'être indexée ni partagée. Seule la boutique l'est. -->
+    <meta
+      name="robots"
+      content={Astro.url.pathname.startsWith('/boutique') || Astro.url.pathname === '/' ? 'index,follow' : 'noindex,nofollow'}
+    />
+
+    <meta property="og:title" content={titreComplet} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="fr_FR" />
+  </head>
+  <body class={pleinEcran ? 'sans-nav' : undefined}>
+    <slot />
+    {nav && <NavBasse actif={nav} panier={panier} />}
+    <script>
+      import '../scripts/installer';
+    </script>
+  </body>
+</html>

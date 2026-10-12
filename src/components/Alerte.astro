@@ -1,0 +1,31 @@
+---
+/**
+ * Un message d'erreur, de réussite ou d'avertissement.
+ *
+ * Il porte toujours une icône en plus de sa couleur : au soleil de midi sur un
+ * écran d'entrée de gamme, un fond vert et un fond rouge se ressemblent.
+ * Les messages d'erreur sont annoncés aux lecteurs d'écran (role="alert").
+ */
+import Icone from './Icone.astro';
+
+interface Props {
+  type?: 'erreur' | 'reussite' | 'attention' | 'info';
+  texte: string;
+}
+
+const { type = 'info', texte } = Astro.props;
+
+const STYLES = {
+  erreur: { classe: 'encadre-rouge', icone: 'alerte', role: 'alert' },
+  reussite: { classe: 'encadre-vert', icone: 'coche', role: 'status' },
+  attention: { classe: 'encadre-ambre', icone: 'info', role: 'status' },
+  info: { classe: '', icone: 'info', role: undefined },
+} as const;
+
+const s = STYLES[type];
+---
+
+<div class:list={['encadre', s.classe]} role={s.role}>
+  <Icone nom={s.icone} taille={19} />
+  <p>{texte}</p>
+</div>

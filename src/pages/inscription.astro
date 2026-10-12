@@ -1,0 +1,158 @@
+---
+/**
+ * Créer son compte.
+ *
+ * Un compte est nécessaire pour noter son cycle et commander : ces données
+ * sont à elle, elles doivent la suivre d'un téléphone à l'autre et ne jamais
+ * s'afficher sur un appareil partagé. Le catalogue, lui, reste ouvert.
+ *
+ * Email et mot de passe pour commencer. Le code par WhatsApp sera plus naturel
+ * ici, mais il demande la configuration Meta : à ajouter quand elle existera.
+ */
+import Base from '../layouts/Base.astro';
+import Symbole from '../components/Symbole.astro';
+import Alerte from '../components/Alerte.astro';
+import Icone from '../components/Icone.astro';
+import { clientPublic, poserSession, baseConfiguree } from '../lib/supabase';
+import { visiteuse } from '../lib/session';
+
+if (baseConfiguree() && (await visiteuse(Astro))) {
+  return Astro.redirect('/', 302);
+}
+
+let erreur = '';
+let aVerifierEmail = false;
+let prenomSaisi = '';
+let emailSaisi = '';
+
+if (Astro.request.method === 'POST') {
+  const f = await Astro.request.formData();
+  prenomSaisi = String(f.get('prenom') ?? '').trim();
+  emailSaisi = String(f.get('email') ?? '').trim().toLowerCase();
+  const motDePasse = String(f.get('motdepasse') ?? '');
+
+  if (prenomSaisi.length < 2) {
+    erreur = 'Donne ton prénom, celui que tu veux voir dans l’application.';
+  } else if (!/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(emailSaisi)) {
+    erreur = 'Cette adresse email ne ressemble pas à une adresse.';
+  } else if (motDePasse.length < 8) {
+    erreur = 'Choisis un mot de passe de 8 caractères au moins.';
+  } else {
+    const client = clientPublic(Astro);
+    const { data, error } = await client.auth.signUp({
+      email: emailSaisi,
+      password: motDePasse,
+      options: { data: { prenom: prenomSaisi.slice(0, 40) } },
+    });
+
+    if (error) {
+      // On ne dit jamais « cette adresse a déjà un compte » : ce serait dire à
+      // n'importe qui si une personne utilise l'application.
+      erreur = /already|exists|registered/i.test(error.message)
+        ? "Impossible de créer ce compte. Si tu en as déjà un, connecte-toi."
+        : "La création du compte n'a pas marché. Réessaie dans un moment.";
+    } else if (data.session) {
+      poserSession(Astro, {
+        access_token: data.session.access_token,
+        refresh_token: data.session.refresh_token,
+      });
+      return Astro.redirect('/bienvenue', 303);
+    } else {
+      // La confirmation d'email est active sur le projet Supabase.
+      aVerifierEmail = true;
+    }
+  }
+}
+---
+
+<Base titre="Créer mon compte" pleinEcran>
+  <main class="page">
+    <div class="haut">
+      <Symbole taille={44} anime titre="Mousso Dambé" />
+      <h1>Bienvenue</h1>
+      <p class="doux">Deux minutes, et l'application connaît ton cycle.</p>
+    </div>
+
+    {aVerifierEmail ? (
+      <div class="apparait">
+        <Alerte
+          type="reussite"
+          texte={`Ton compte est créé. Ouvre l'email envoyé à ${emailSaisi} et clique sur le lien pour confirmer, puis reviens te connecter.`}
+        />
+        <a class="btn btn-rose btn-plein marge" href="/connexion">Aller à la connexion</a>
+      </div>
+    ) : (
+      <form method="POST" class="apparait">
+        {erreur && <Alerte type="erreur" texte={erreur} />}
+
+        <div class="champ-bloc">
+          <label class="libelle" for="prenom">Ton prénom</label>
+          <input class="champ" id="prenom" name="prenom" type="text" autocomplete="given-name" required maxlength="40" value={prenomSaisi} />
+          <p class="aide">C'est comme ça que Dambé t'appellera.</p>
+        </div>
+
+        <div class="champ-bloc">
+          <label class="libelle" for="email">Ton email</label>
+          <input class="champ" id="email" name="email" type="email" autocomplete="email" required value={emailSaisi} />
+        </div>
+
+        <div class="champ-bloc">
+          <label class="libelle" for="motdepasse">Un mot de passe</label>
+          <input class="champ" id="motdepasse" name="motdepasse" type="password" autocomplete="new-password" required minlength="8" />
+          <p class="aide">8 caractères au moins. Si ton téléphone est partagé, ne le note nulle part.</p>
+        </div>
+
+        <button class="btn btn-rose btn-plein" type="submit">Créer mon compte</button>
+
+        <div class="encadre marge">
+          <Icone nom="bouclier-coche" taille={19} />
+          <p>
+            Ce que tu notes sur ton cycle n'est lisible que par toi. Aucune donnée n'est vendue, et il n'y a aucune
+            administratrice qui peut ouvrir ton journal.
+          </p>
+        </div>
+
+        <p class="centre marge">
+          <a class="btn btn-texte" href="/connexion">J'ai déjà un compte</a>
+        </p>
+      </form>
+    )}
+  </main>
+</Base>
+
+<style>
+  .haut {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--e2);
+    padding: var(--e6) 0 var(--e5);
+    text-align: center;
+  }
+
+  .haut h1 {
+    font-size: 28px;
+  }
+
+  .doux {
+    font-size: 14.5px;
+    color: var(--texte-2);
+  }
+
+  .champ-bloc {
+    margin-bottom: var(--e4);
+  }
+
+  .marge {
+    margin-top: var(--e4);
+  }
+
+  .centre {
+    text-align: center;
+  }
+
+  form > :global(.encadre:first-child),
+  form > :global([role='alert']) {
+    margin-bottom: var(--e4);
+  }
+</style>

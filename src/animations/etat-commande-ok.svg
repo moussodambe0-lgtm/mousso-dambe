@@ -1,0 +1,6 @@
+<svg class="md-etat md-etat-ok" viewBox="0 0 200 160" role="img" aria-label="Commande confirmée" xmlns="http://www.w3.org/2000/svg">
+  <circle class="md-e-cercle" cx="100" cy="80" r="46" fill="none" stroke-width="3"/>
+  <g class="md-e-petales"><g transform="rotate(22 100 80)"><ellipse class="md-e-petale md-f-rose" cx="100" cy="22" rx="3.6" ry="8"/></g><g transform="rotate(67 100 80)"><circle class="md-e-petale md-f-encre" cx="100" cy="27" r="3"/></g><g transform="rotate(112 100 80)"><ellipse class="md-e-petale md-f-rose" cx="100" cy="22" rx="3.6" ry="8"/></g><g transform="rotate(157 100 80)"><circle class="md-e-petale md-f-encre" cx="100" cy="27" r="3"/></g><g transform="rotate(202 100 80)"><ellipse class="md-e-petale md-f-rose" cx="100" cy="22" rx="3.6" ry="8"/></g><g transform="rotate(247 100 80)"><circle class="md-e-petale md-f-encre" cx="100" cy="27" r="3"/></g><g transform="rotate(292 100 80)"><ellipse class="md-e-petale md-f-rose" cx="100" cy="22" rx="3.6" ry="8"/></g><g transform="rotate(337 100 80)"><circle class="md-e-petale md-f-encre" cx="100" cy="27" r="3"/></g></g>
+  <circle class="md-e-disque md-f-vert" cx="100" cy="80" r="35"/>
+  <path class="md-e-coche" pathLength="100" d="M83 81L95 93L118 68" fill="none" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

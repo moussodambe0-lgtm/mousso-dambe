@@ -1,0 +1,115 @@
+---
+/**
+ * L'anneau du cycle.
+ *
+ * Tout est calculé côté serveur : l'anneau s'affiche même sans JavaScript, et
+ * il n'y a rien à charger. Les segments disent trois choses à la fois :
+ *   - le rose plein, les jours de règles ;
+ *   - le violet, la période fertile ;
+ *   - le point sombre, aujourd'hui.
+ *
+ * Deux couleurs qu'il faut distinguer ne diffèrent jamais par la seule teinte :
+ * le rose est plein et commence en haut, le violet est au milieu de l'anneau,
+ * et le point d'aujourd'hui a une forme à lui.
+ */
+import { anneauDuCycle } from '../lib/cycle';
+
+interface Props {
+  jour: number;
+  dureeRegles: number;
+  cycle: number;
+  phase: string;
+  anime?: boolean;
+}
+
+const { jour, dureeRegles, cycle, phase, anime = true } = Astro.props;
+const a = anneauDuCycle(jour, dureeRegles, cycle);
+const trace = `${a.parcouru.toFixed(1)} ${a.circonference.toFixed(1)}`;
+---
+
+<div class="anneau">
+  <svg
+    width="208"
+    height="208"
+    viewBox="0 0 200 200"
+    role="img"
+    aria-label={`Jour ${jour} sur ${cycle} de ton cycle, ${phase}`}
+  >
+    <g transform="rotate(-90 100 100)">
+      <!-- Le cycle entier, en fond -->
+      <circle cx="100" cy="100" r="88" fill="none" stroke="var(--surface-douce)" stroke-width="14"></circle>
+      <!-- Les jours de règles -->
+      <circle
+        cx="100"
+        cy="100"
+        r="88"
+        fill="none"
+        stroke="var(--rose)"
+        stroke-width="14"
+        stroke-linecap="round"
+        stroke-dasharray={a.regles}
+      ></circle>
+      <!-- La période fertile -->
+      <circle
+        cx="100"
+        cy="100"
+        r="88"
+        fill="none"
+        stroke="var(--violet)"
+        stroke-width="14"
+        stroke-linecap="round"
+        stroke-dasharray={a.fertile}
+      ></circle>
+      <!-- Le chemin parcouru, qui se dessine à l'arrivée.
+           Le point de départ du tracé est posé en ATTRIBUT SVG, pas en style
+           en ligne : la politique de sécurité du contenu refuse les seconds.
+           L'animation n'a donc qu'une étape d'arrivée (« to »), et le
+           navigateur part tout seul de la valeur de l'attribut. -->
+      <circle
+        cx="100"
+        cy="100"
+        r="88"
+        fill="none"
+        stroke="var(--encre)"
+        stroke-width="3"
+        stroke-linecap="round"
+        stroke-dasharray={trace}
+        stroke-dashoffset={a.parcouru.toFixed(1)}
+        class={anime ? 'anneau-trace' : ''}
+      ></circle>
+    </g>
+    <!-- Aujourd'hui : le seul élément qui respire, très lentement -->
+    <circle cx={a.marqueur.x} cy={a.marqueur.y} r="9.5" fill="var(--fond)"></circle>
+    <circle
+      cx={a.marqueur.x}
+      cy={a.marqueur.y}
+      r="5.5"
+      fill="var(--encre)"
+      class={anime ? 'respire' : ''}
+    ></circle>
+  </svg>
+  <div class="anneau-centre">
+    <slot />
+  </div>
+</div>
+
+<style>
+  .anneau {
+    position: relative;
+    width: 208px;
+    height: 208px;
+  }
+
+  .anneau-centre {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    text-align: center;
+  }
+
+
+</style>

@@ -1,0 +1,431 @@
+---
+/**
+ * Le questionnaire de départ.
+ *
+ * Six écrans, une question par écran. Pourquoi pas un seul formulaire : ces
+ * questions sont intimes, et un mur de champs sur ce sujet fait fermer
+ * l'application. Une question à la fois, grosse, avec la raison de la poser.
+ *
+ * Il marche SANS JavaScript : chaque étape est un POST qui renvoie à la
+ * suivante, et les réponses déjà données voyagent dans des champs cachés. Rien
+ * n'est écrit en base avant le dernier écran, pour qu'une fille qui abandonne
+ * en route n'ait rien laissé.
+ */
+import Base from '../layouts/Base.astro';
+import Icone from '../components/Icone.astro';
+import Anim from '../components/Anim.astro';
+import Alerte from '../components/Alerte.astro';
+import { clientSession, baseConfiguree } from '../lib/supabase';
+import { visiteuse } from '../lib/session';
+import { messageErreur, aujourdhui, dateDe, enIso, dateLongue } from '../lib/format';
+
+if (!baseConfiguree()) return Astro.redirect('/', 302);
+const moi = await visiteuse(Astro);
+if (!moi) return Astro.redirect('/connexion', 302);
+
+const TOTAL = 6;
+let etape = Number(Astro.url.searchParams.get('etape') ?? '1');
+let erreur = '';
+
+// Les réponses en cours de route.
+let reponses = {
+  prenom: moi.prenom,
+  dernieres: '',
+  sait: 'oui',
+  duree: '5',
+  cycle: '28',
+};
+
+if (Astro.request.method === 'POST') {
+  const f = await Astro.request.formData();
+  reponses = {
+    prenom: String(f.get('prenom') ?? moi.prenom).trim(),
+    dernieres: String(f.get('dernieres') ?? '').trim(),
+    sait: String(f.get('sait') ?? 'oui'),
+    duree: String(f.get('duree') ?? '5'),
+    cycle: String(f.get('cycle') ?? '28'),
+  };
+  const venantDe = Number(f.get('etape') ?? '1');
+
+  if (venantDe === 2 && reponses.sait === 'oui') {
+    const d = reponses.dernieres;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) {
+      erreur = "Choisis la date du premier jour de tes dernières règles, ou dis que tu ne t'en souviens pas.";
+      etape = 2;
+    } else if (d > aujourdhui()) {
+      erreur = "Cette date est dans le futur.";
+      etape = 2;
+    } else if (dateDe(d) < new Date(Date.now() - 120 * 86400000)) {
+      erreur = 'Cette date est trop ancienne pour servir de point de départ.';
+      etape = 2;
+    } else {
+      etape = 3;
+    }
+  } else if (venantDe === TOTAL) {
+    // Dernier écran : on écrit, une seule fois, par la fonction de la base.
+    const client = clientSession(Astro);
+    const { data, error } = await client!.rpc('enregistrer_questionnaire', {
+      p_prenom: reponses.prenom,
+      p_cycle: Number(reponses.cycle),
+      p_duree: Number(reponses.duree),
+      p_dernieres_regles: reponses.sait === 'oui' && reponses.dernieres ? reponses.dernieres : null,
+    });
+    if (error || !data?.ok) {
+      erreur = messageErreur(data?.erreur ?? null);
+      etape = TOTAL;
+    } else {
+      return Astro.redirect('/?bienvenue=1', 303);
+    }
+  } else {
+    etape = Math.min(venantDe + 1, TOTAL);
+  }
+}
+
+etape = Math.min(Math.max(etape, 1), TOTAL);
+
+// Les sept derniers jours proposés en un geste : taper une date au clavier sur
+// un téléphone d'entrée de gamme est pénible, et la bonne réponse est presque
+// toujours récente.
+const joursRecents = Array.from({ length: 10 }, (_, i) => {
+  const d = new Date();
+  d.setDate(d.getDate() - i);
+  return { iso: enIso(d), libelle: i === 0 ? "Aujourd'hui" : i === 1 ? 'Hier' : dateLongue(enIso(d)) };
+});
+
+const TITRES: Record<number, string> = {
+  1: 'Comment tu veux qu’on t’appelle ?',
+  2: 'Quand ont commencé tes dernières règles ?',
+  3: 'Combien de jours durent tes règles, d’habitude ?',
+  4: 'Combien de jours entre deux règles ?',
+  5: 'Ce que l’application fait de tes réponses',
+  6: 'C’est prêt',
+};
+---
+
+<Base titre="Bienvenue" pleinEcran>
+  <main class="page">
+    <div class="haut">
+      <a class="rond" href={etape === 1 ? '/' : `/bienvenue?etape=${etape - 1}`} aria-label="Question précédente">
+        <Icone nom="retour" taille={20} epaisseur={2} />
+      </a>
+      <div class="progression">
+        <div class="ligne-haute">
+          <span>Question {etape} sur {TOTAL}</span>
+          <span>{etape < 3 ? '1 minute' : etape < 5 ? '30 secondes' : 'presque fini'}</span>
+        </div>
+        <div class="rail">
+          <div class="jauge" data-part={etape}></div>
+        </div>
+      </div>
+    </div>
+
+    <form method="POST" class="apparait">
+      <input type="hidden" name="etape" value={etape} />
+      <input type="hidden" name="prenom" value={reponses.prenom} />
+      <input type="hidden" name="dernieres" value={reponses.dernieres} />
+      <input type="hidden" name="sait" value={reponses.sait} />
+      <input type="hidden" name="duree" value={reponses.duree} />
+      <input type="hidden" name="cycle" value={reponses.cycle} />
+
+      <h1>{TITRES[etape]}</h1>
+
+      {erreur && <div class="marge"><Alerte type="erreur" texte={erreur} /></div>}
+
+      {
+        etape === 1 && (
+          <div class="corps">
+            <Anim nom="q-bienvenue" classe="dessin-q" />
+            <p class="doux">Ton prénom suffit. Il ne sort pas de ton téléphone, sauf vers Dambé quand tu lui parles.</p>
+            <label class="libelle" for="p">Ton prénom</label>
+            <input class="champ" id="p" name="prenom" type="text" required maxlength="40" value={reponses.prenom} autocomplete="given-name" />
+          </div>
+        )
+      }
+
+      {
+        etape === 2 && (
+          <div class="corps">
+            <Anim nom="q-cycle" classe="dessin-q" />
+            <p class="doux">
+              Le premier jour de saignement, pas le dernier. C'est la seule date dont j'ai besoin pour calculer la
+              suite.
+            </p>
+            <div class="jours">
+              {joursRecents.map((j) => (
+                <button class="puce" type="submit" name="dernieres" value={j.iso} aria-pressed={reponses.dernieres === j.iso}>
+                  {j.libelle}
+                </button>
+              ))}
+            </div>
+            <label class="libelle marge" for="d">Ou une autre date</label>
+            <input class="champ" id="d" name="dernieres" type="date" max={aujourdhui()} value={reponses.dernieres} />
+            <button class="btn btn-contour btn-plein marge" type="submit" name="sait" value="non">
+              Je ne m'en souviens pas
+            </button>
+          </div>
+        )
+      }
+
+      {
+        etape === 3 && (
+          <div class="corps">
+            <p class="doux">Du premier jour de saignement au dernier. Si ça change d'un mois à l'autre, donne une moyenne.</p>
+            <div class="choix-grille">
+              {[2, 3, 4, 5, 6, 7, 8].map((n) => (
+                <button class="puce grande" type="submit" name="duree" value={String(n)} aria-pressed={reponses.duree === String(n)}>
+                  {n} jours
+                </button>
+              ))}
+            </div>
+          </div>
+        )
+      }
+
+      {
+        etape === 4 && (
+          <div class="corps">
+            <p class="doux">
+              Du premier jour de règles au premier jour des règles suivantes. Si tu ne sais pas, laisse 28 jours : je
+              corrigerai toute seule dès que tu auras noté un cycle.
+            </p>
+            <div class="choix-grille">
+              {[21, 24, 26, 28, 30, 32, 35].map((n) => (
+                <button class="puce grande" type="submit" name="cycle" value={String(n)} aria-pressed={reponses.cycle === String(n)}>
+                  {n} jours
+                </button>
+              ))}
+            </div>
+            <button class="btn btn-contour btn-plein marge" type="submit" name="cycle" value="28">
+              Je ne sais pas
+            </button>
+          </div>
+        )
+      }
+
+      {
+        etape === 5 && (
+          <div class="corps">
+            <Anim nom="q-vie-privee" classe="dessin-q" />
+            <ul class="liste">
+              <li>
+                <span class="puce-icone verte"><Icone nom="bouclier-coche" taille={19} /></span>
+                <div>
+                  <strong>Ton journal n'est lisible que par toi</strong>
+                  <span>Aucune administratrice ne peut l'ouvrir, et il n'existe aucun export.</span>
+                </div>
+              </li>
+              <li>
+                <span class="puce-icone"><Icone nom="oeil-barre" taille={19} /></span>
+                <div>
+                  <strong>Les notifications ne disent rien</strong>
+                  <span>Ton téléphone affiche « Mousso Dambé » et rien de plus. C'est allumé d'office.</span>
+                </div>
+              </li>
+              <li>
+                <span class="puce-icone"><Icone nom="dambe" taille={19} /></span>
+                <div>
+                  <strong>Dambé ne reçoit que l'essentiel</strong>
+                  <span>Ton prénom et ton jour de cycle, jamais ton numéro, ton quartier ni ton journal.</span>
+                </div>
+              </li>
+              <li>
+                <span class="puce-icone"><Icone nom="poubelle" taille={19} /></span>
+                <div>
+                  <strong>Tu peux tout effacer</strong>
+                  <span>Un bouton dans ton compte, et il ne reste rien.</span>
+                </div>
+              </li>
+            </ul>
+          </div>
+        )
+      }
+
+      {
+        etape === 6 && (
+          <div class="corps">
+            <div class="recap carte bloc">
+              <div class="ligne">
+                <span>Ton prénom</span>
+                <strong>{reponses.prenom || '—'}</strong>
+              </div>
+              <div class="ligne">
+                <span>Dernières règles</span>
+                <strong>
+                  {reponses.sait === 'oui' && reponses.dernieres ? dateLongue(reponses.dernieres) : 'tu ne sais pas'}
+                </strong>
+              </div>
+              <div class="ligne">
+                <span>Durée des règles</span>
+                <strong>{reponses.duree} jours</strong>
+              </div>
+              <div class="ligne">
+                <span>Durée du cycle</span>
+                <strong>{reponses.cycle} jours</strong>
+              </div>
+            </div>
+            <p class="doux marge">
+              Tu pourras tout changer dans ton compte. Rien n'est figé, et plus tu noteras, plus les dates seront
+              justes.
+            </p>
+          </div>
+        )
+      }
+
+      <div class="bas">
+        {etape === 1 && <button class="btn btn-rose btn-plein" type="submit">Continuer</button>}
+        {etape === 5 && <button class="btn btn-rose btn-plein" type="submit">J'ai compris</button>}
+        {etape === 6 && <button class="btn btn-rose btn-plein" type="submit">Voir mon cycle</button>}
+      </div>
+    </form>
+  </main>
+</Base>
+
+<style>
+  .haut {
+    display: flex;
+    align-items: center;
+    gap: var(--e3);
+    padding: var(--e5) 0 var(--e5);
+  }
+
+  .progression {
+    flex: 1;
+  }
+
+  .ligne-haute {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--texte-2);
+  }
+
+  .rail {
+    height: 6px;
+    border-radius: var(--r-ronde);
+    background: var(--surface-douce);
+    overflow: hidden;
+  }
+
+  .jauge {
+    height: 100%;
+    border-radius: var(--r-ronde);
+    background: var(--rose);
+    transition: width var(--normal) var(--sortie);
+  }
+
+  .jauge[data-part='1'] { width: 16.6%; }
+  .jauge[data-part='2'] { width: 33.3%; }
+  .jauge[data-part='3'] { width: 50%; }
+  .jauge[data-part='4'] { width: 66.6%; }
+  .jauge[data-part='5'] { width: 83.3%; }
+  .jauge[data-part='6'] { width: 100%; }
+
+  h1 {
+    font-size: 27px;
+    font-weight: 800;
+    line-height: 1.15;
+  }
+
+  .corps {
+    margin-top: var(--e4);
+  }
+
+  .dessin-q {
+    width: 200px;
+    margin: 0 auto var(--e4);
+  }
+
+  .doux {
+    font-size: 14.5px;
+    color: var(--texte-2);
+    line-height: 1.5;
+    margin-bottom: var(--e4);
+  }
+
+  .jours {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--e2);
+  }
+
+  .choix-grille {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--e2);
+  }
+
+  .grande {
+    min-height: 52px;
+  }
+
+  .marge {
+    margin-top: var(--e4);
+  }
+
+  .liste {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--e4);
+  }
+
+  .liste li {
+    display: flex;
+    gap: var(--e3);
+    align-items: flex-start;
+  }
+
+  .liste strong {
+    display: block;
+    font-size: 14.5px;
+  }
+
+  .liste span {
+    font-size: 13px;
+    color: var(--texte-2);
+    line-height: 1.45;
+  }
+
+  .puce-icone {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    flex: none;
+    border-radius: 12px;
+    background: var(--surface-douce);
+    color: var(--rose);
+  }
+
+  .puce-icone.verte {
+    background: var(--vert-clair);
+    color: var(--vert);
+  }
+
+  .ligne {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--e3);
+    padding: 9px 0;
+    border-bottom: 1px solid var(--bordure);
+    font-size: 14px;
+  }
+
+  .ligne:last-child {
+    border-bottom: none;
+  }
+
+  .ligne span {
+    color: var(--texte-2);
+  }
+
+  .bas {
+    margin-top: var(--e5);
+    padding-bottom: var(--e6);
+  }
+</style>

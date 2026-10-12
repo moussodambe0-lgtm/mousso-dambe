@@ -1,0 +1,274 @@
+---
+/**
+ * Mon compte.
+ *
+ * Les réglages de vie privée sont en haut, pas enterrés : sur ce sujet, ce
+ * sont eux qui décident si elle garde l'application ou si elle la supprime.
+ *
+ * Les interrupteurs sont des formulaires qui s'envoient : pas de JavaScript,
+ * donc ils marchent partout. Chacun est un bouton, pas une case cochée qui
+ * attendrait un bouton « enregistrer » qu'on oublie de toucher.
+ */
+import Base from '../layouts/Base.astro';
+import Entete from '../components/Entete.astro';
+import Icone from '../components/Icone.astro';
+import Alerte from '../components/Alerte.astro';
+import { clientSession, baseConfiguree } from '../lib/supabase';
+import { visiteuse, monCycle, lirePanier, comptePanier } from '../lib/session';
+import { messageErreur, pluriel } from '../lib/format';
+
+if (!baseConfiguree()) return Astro.redirect('/', 302);
+const moi = await visiteuse(Astro);
+if (!moi) return Astro.redirect('/connexion', 302);
+
+const client = clientSession(Astro)!;
+let erreur = '';
+let message = '';
+
+if (Astro.request.method === 'POST') {
+  const f = await Astro.request.formData();
+  const geste = String(f.get('geste') ?? '');
+
+  const valeurs = {
+    p_rappel: moi.rappelRegles,
+    p_discretes: moi.notificationsDiscretes,
+    p_code: moi.codeOuverture,
+    p_cycle: null as number | null,
+    p_duree: null as number | null,
+  };
+
+  if (geste === 'rappel') valeurs.p_rappel = !moi.rappelRegles;
+  else if (geste === 'discretes') valeurs.p_discretes = !moi.notificationsDiscretes;
+  else if (geste === 'code') valeurs.p_code = !moi.codeOuverture;
+  else if (geste === 'cycle') {
+    valeurs.p_cycle = Number(f.get('cycle') ?? moi.cycleMoyen);
+    valeurs.p_duree = Number(f.get('duree') ?? moi.dureeRegles);
+  }
+
+  const { data, error } = await client.rpc('enregistrer_reglages', valeurs);
+  if (error || !data?.ok) erreur = messageErreur(data?.erreur);
+  else return Astro.redirect('/compte?ok=1', 303);
+}
+
+if (Astro.url.searchParams.get('ok')) message = 'C’est enregistré.';
+
+const cycle = await monCycle(Astro);
+const panier = comptePanier(lirePanier(Astro));
+const initiales = (moi.prenom || moi.email || '?').slice(0, 2).toUpperCase();
+---
+
+<Base titre="Mon compte" nav="accueil" panier={panier}>
+  <main class="page">
+    <Entete titre="Mon compte" retour="/" />
+
+    {message && <div class="marge-bas"><Alerte type="reussite" texte={message} /></div>}
+    {erreur && <div class="marge-bas"><Alerte type="erreur" texte={erreur} /></div>}
+
+    <section class="carte bloc identite apparait">
+      <span class="initiales chiffre">{initiales}</span>
+      <div class="qui">
+        <div class="prenom">{moi.prenom || 'Toi'}</div>
+        <div class="gris">{moi.email}</div>
+      </div>
+    </section>
+
+    <h2 class="rangee-titre">Ma vie privée</h2>
+    <div class="rangees apparait" data-ordre="2">
+      <form method="POST" class="rangee">
+        <input type="hidden" name="geste" value="discretes" />
+        <Icone nom="oeil-barre" taille={20} classe="i-encre" />
+        <span class="pousse-droite">Notifications sans détail</span>
+        <button
+          class="bascule pousse"
+          type="submit"
+          role="switch"
+          aria-checked={moi.notificationsDiscretes}
+          aria-label="Notifications sans détail"
+        >
+          <span></span>
+        </button>
+      </form>
+      <form method="POST" class="rangee">
+        <input type="hidden" name="geste" value="code" />
+        <Icone nom="cadenas" taille={20} classe="i-encre" />
+        <span class="pousse-droite">Code à l'ouverture</span>
+        <button
+          class="bascule pousse"
+          type="submit"
+          role="switch"
+          aria-checked={moi.codeOuverture}
+          aria-label="Demander un code à l'ouverture"
+        >
+          <span></span>
+        </button>
+      </form>
+      <a class="rangee" href="/confidentialite">
+        <Icone nom="bouclier-coche" taille={20} classe="i-vert" />
+        <span class="pousse-droite">Ce que l'application sait de moi</span>
+        <Icone nom="avant" taille={18} classe="pousse i-gris" />
+      </a>
+    </div>
+    <p class="note-sous">
+      Avec les notifications sans détail, ton téléphone affiche « Mousso Dambé » et rien de plus.
+      {moi.codeOuverture
+        ? " Le code à l'ouverture n'est pas encore demandé : il arrive avec la prochaine version."
+        : ''}
+    </p>
+
+    <h2 class="rangee-titre">Mon cycle</h2>
+    <form method="POST" class="carte bloc apparait" data-ordre="3">
+      <input type="hidden" name="geste" value="cycle" />
+      <div class="deux-champs">
+        <div>
+          <label class="libelle" for="cycle">Durée du cycle</label>
+          <select class="champ" id="cycle" name="cycle">
+            {
+              Array.from({ length: 26 }, (_, i) => i + 20).map((n) => (
+                <option value={String(n)} selected={n === moi.cycleMoyen}>{n} jours</option>
+              ))
+            }
+          </select>
+        </div>
+        <div>
+          <label class="libelle" for="duree">Durée des règles</label>
+          <select class="champ" id="duree" name="duree">
+            {
+              Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
+                <option value={String(n)} selected={n === moi.dureeRegles}>{n} {n === 1 ? 'jour' : 'jours'}</option>
+              ))
+            }
+          </select>
+        </div>
+      </div>
+      {
+        cycle && cycle.cyclesMesures > 0 && (
+          <p class="aide">
+            Mesuré sur tes {pluriel(cycle.cyclesMesures, 'dernier cycle', 'derniers cycles')} : {cycle.cycleMoyen} jours.
+            C'est cette mesure qui sert aux prévisions, pas la valeur ci-dessus.
+          </p>
+        )
+      }
+      <button class="btn btn-contour btn-plein marge" type="submit">Enregistrer</button>
+    </form>
+
+    <div class="rangees apparait" data-ordre="4">
+      <form method="POST" class="rangee">
+        <input type="hidden" name="geste" value="rappel" />
+        <Icone nom="cloche" taille={20} classe="i-rose" />
+        <span class="pousse-droite">Me prévenir 2 jours avant</span>
+        <button
+          class="bascule pousse"
+          type="submit"
+          role="switch"
+          aria-checked={moi.rappelRegles}
+          aria-label="Me prévenir deux jours avant mes règles"
+        >
+          <span></span>
+        </button>
+      </form>
+    </div>
+    <p class="note-sous">
+      Le rappel est enregistré. L'envoi des notifications arrive avec la prochaine version : il demande une
+      configuration qu'Arthur doit faire une fois.
+    </p>
+
+    <h2 class="rangee-titre">Mes achats</h2>
+    <div class="rangees apparait" data-ordre="5">
+      <a class="rangee" href="/commandes">
+        <Icone nom="colis" taille={20} classe="i-encre" />
+        <span class="pousse-droite">Mes commandes</span>
+        <Icone nom="avant" taille={18} classe="pousse i-gris" />
+      </a>
+      <a class="rangee" href="/panier">
+        <Icone nom="panier" taille={20} classe="i-encre" />
+        <span class="pousse-droite">Mon panier</span>
+        {panier > 0 && <span class="pastille pastille-rose pousse">{panier}</span>}
+        {panier === 0 && <Icone nom="avant" taille={18} classe="pousse i-gris" />}
+      </a>
+    </div>
+
+    <form method="POST" action="/deconnexion" class="deconnexion">
+      <button class="btn btn-contour btn-plein" type="submit">
+        <Icone nom="sortie" taille={19} />
+        Me déconnecter
+      </button>
+    </form>
+
+    <div class="espace"></div>
+  </main>
+</Base>
+
+<style>
+  .identite {
+    display: flex;
+    align-items: center;
+    gap: var(--e4);
+  }
+
+  .initiales {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 52px;
+    height: 52px;
+    flex: none;
+    border-radius: 17px;
+    background: var(--rose-clair);
+    color: var(--rose-fonce);
+    font-size: 21px;
+  }
+
+  .qui {
+    min-width: 0;
+  }
+
+  .prenom {
+    font-family: var(--titre);
+    font-size: 16.5px;
+    font-weight: 700;
+  }
+
+  .gris {
+    font-size: 13px;
+    color: var(--texte-2);
+    margin-top: 2px;
+    overflow-wrap: anywhere;
+  }
+
+  .pousse-droite {
+    flex: 1;
+  }
+
+  .note-sous {
+    margin: var(--e2) var(--e1) 0;
+    font-size: 12.5px;
+    color: var(--texte-3);
+    line-height: 1.5;
+  }
+
+  .deux-champs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--e3);
+  }
+
+  .marge {
+    margin-top: var(--e3);
+  }
+
+  .deconnexion {
+    margin-top: var(--e6);
+  }
+
+  .marge-bas {
+    margin-bottom: var(--e3);
+  }
+
+  :global(.i-rose) {
+    color: var(--rose);
+  }
+
+  :global(.i-gris) {
+    color: var(--texte-3);
+  }
+</style>

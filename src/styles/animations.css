@@ -1,0 +1,191 @@
+/*
+ * Les animations de l'application.
+ *
+ * Trois règles, qui viennent du DESIGN.md :
+ *   1. On n'anime que transform, opacity et stroke-dashoffset. Rien d'autre ne
+ *      tient 60 images par seconde sur un Android d'entrée de gamme.
+ *   2. Tout se joue UNE fois à l'arrivée, puis s'arrête. Une seule chose
+ *      respire en boucle, et très doucement : le repère « aujourd'hui ».
+ *   3. prefers-reduced-motion pose l'état final sans mouvement (voir base.css,
+ *      qui coupe les durées, et les règles de fin de ce fichier).
+ */
+
+/* --- Arrivée des blocs de l'accueil ------------------------------------ */
+@keyframes md-monte {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.apparait {
+  animation: md-monte 420ms var(--sortie) both;
+}
+
+/* Les blocs entrent l'un après l'autre, de haut en bas. Au-delà de six, le
+   décalage s'arrête : attendre une seconde avant de lire est un défaut. */
+.apparait[data-ordre='1'] { animation-delay: 60ms; }
+.apparait[data-ordre='2'] { animation-delay: 120ms; }
+.apparait[data-ordre='3'] { animation-delay: 180ms; }
+.apparait[data-ordre='4'] { animation-delay: 240ms; }
+.apparait[data-ordre='5'] { animation-delay: 300ms; }
+.apparait[data-ordre='6'] { animation-delay: 360ms; }
+
+/* --- L'anneau du cycle qui se dessine ---------------------------------- */
+/* Le tracé part du haut et parcourt les jours écoulés. On n'anime que
+   stroke-dashoffset : la géométrie ne change pas, donc rien ne se recalcule.
+   L'animation n'a QUE son étape d'arrivée : le navigateur part alors de la
+   valeur posée en attribut sur le cercle, qui diffère à chaque jour du cycle.
+   C'est ce qui évite un style en ligne, interdit par la politique de
+   sécurité du contenu. */
+@keyframes md-trace {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.anneau-trace {
+  animation: md-trace 900ms var(--sortie) 120ms both;
+}
+
+/* --- Le chiffre du jour ------------------------------------------------- */
+@keyframes md-chiffre {
+  from {
+    opacity: 0;
+    transform: scale(0.82);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.chiffre-arrive {
+  animation: md-chiffre 500ms var(--sortie) 420ms both;
+}
+
+/* --- Le repère « aujourd'hui » : la seule boucle de l'application ------ */
+@keyframes md-respire {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.18);
+    opacity: 0.78;
+  }
+}
+
+.respire {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: md-respire 2600ms ease-in-out infinite;
+}
+
+/* --- La bande tissée qui se tisse -------------------------------------- */
+@keyframes md-tisse {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.tisse-arrive {
+  transform-origin: left center;
+  animation: md-tisse 650ms var(--sortie) 300ms both;
+}
+
+/* --- L'assistante réfléchit -------------------------------------------- */
+.points {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+}
+
+.points i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--texte-3);
+  animation: md-saute 1200ms ease-in-out infinite;
+}
+
+.points i:nth-child(2) {
+  animation-delay: 160ms;
+}
+
+.points i:nth-child(3) {
+  animation-delay: 320ms;
+}
+
+@keyframes md-saute {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+/* --- Confirmation d'une commande --------------------------------------- */
+@keyframes md-coche {
+  from {
+    stroke-dashoffset: 40;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.coche-trace {
+  stroke-dasharray: 40;
+  animation: md-coche 520ms var(--sortie) 200ms both;
+}
+
+@keyframes md-pose {
+  from {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.pose {
+  animation: md-pose 460ms var(--sortie) both;
+}
+
+/* --- Moins de mouvement : on pose tout, sans rien casser --------------- */
+@media (prefers-reduced-motion: reduce) {
+  .anneau-trace,
+  .coche-trace {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+
+  .respire,
+  .points i {
+    animation: none;
+  }
+
+  .apparait,
+  .chiffre-arrive,
+  .tisse-arrive,
+  .pose {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}

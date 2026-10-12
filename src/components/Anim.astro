@@ -1,0 +1,70 @@
+---
+/**
+ * Les animations dessinées par Motion.
+ *
+ * Les SVG sont collés EN LIGNE dans la page (et non en `<img>`) : sinon le CSS
+ * de l'application ne les atteint pas, et rien ne s'animerait. Ils sont lus au
+ * moment de la compilation, donc rien n'est chargé en plus au navigateur.
+ *
+ * Aucun de ces fichiers ne contient de `<style>`, de script ni d'animation
+ * SMIL : tout le mouvement vient de `src/styles/motion.css`, dont chaque bloc
+ * a son propre « mouvement réduit ».
+ *
+ * Attention : quatre de ces dessins portent un identifiant de découpe
+ * (`md-clip-*`). Ne pas poser deux fois le même sur une page.
+ */
+const fichiers = import.meta.glob<string>('../animations/*.svg', {
+  query: '?raw',
+  import: 'default',
+  eager: true,
+});
+
+interface Props {
+  nom:
+    | 'logo'
+    | 'accueil'
+    | 'phase-regles'
+    | 'phase-elan'
+    | 'phase-fertile'
+    | 'phase-lune'
+    | 'q-bienvenue'
+    | 'q-cycle'
+    | 'q-vie-privee'
+    | 'etat-panier-vide'
+    | 'etat-commande-ok'
+    | 'etat-reflechit'
+    | 'etat-hors-ligne';
+  classe?: string;
+  /** Un dessin qui porte du sens reçoit un nom accessible ; sinon il est
+   * décoratif et les lecteurs d'écran le sautent. */
+  titre?: string;
+}
+
+const { nom, classe = '', titre } = Astro.props;
+const svg = fichiers[`../animations/${nom}.svg`] ?? '';
+---
+
+{
+  svg && (
+    <div
+      class:list={['anim', classe]}
+      role={titre ? 'img' : undefined}
+      aria-label={titre}
+      aria-hidden={titre ? undefined : 'true'}
+      set:html={svg}
+    />
+  )
+}
+
+<style>
+  .anim {
+    display: flex;
+    justify-content: center;
+  }
+
+  .anim :global(svg) {
+    display: block;
+    max-width: 100%;
+    height: auto;
+  }
+</style>

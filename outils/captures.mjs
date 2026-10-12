@@ -1,0 +1,206 @@
+/**
+ * Capture chaque écran de l'application, en 390 px de large, comme sur un
+ * téléphone.
+ *
+ * Lire le code prouve ce que fait l'application ; seul le rendu prouve qu'elle
+ * est regardable. Ce script pilote Chrome sans interface par le protocole
+ * DevTools (le WebSocket est celui de Node, aucune dépendance en plus).
+ *
+ * Avant de le lancer : le banc local (outils/banc-local/serveur.mjs) et
+ * `npx astro dev --port 4322` doivent tourner.
+ *
+ *   node outils/captures.mjs
+ *
+ * Les images sortent dans captures/. Elles servent à juger, pas à être
+ * livrées : le dossier est ignoré par Git.
+ */
+import { spawn } from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const RACINE = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
+const SORTIE = path.join(RACINE, 'captures');
+const SITE = 'http://localhost:4322';
+const PORT_DEBUG = 9333;
+
+const CHROME = [
+  'C:/Program Files/Google/Chrome/Application/chrome.exe',
+  'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe',
+  'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
+].find((p) => fs.existsSync(p));
+
+if (!CHROME) {
+  console.error("Aucun navigateur trouvé. Installer Chrome, ou corriger la liste dans ce fichier.");
+  process.exit(1);
+}
+
+const ECRANS = [
+  { nom: '01-accueil-visiteuse', url: '/', connectee: false },
+  { nom: '02-inscription', url: '/inscription', connectee: false },
+  { nom: '03-connexion', url: '/connexion', connectee: false },
+  { nom: '04-accueil', url: '/', connectee: true },
+  { nom: '05-questionnaire-1', url: '/bienvenue?etape=1', connectee: true },
+  { nom: '06-questionnaire-2', url: '/bienvenue?etape=2', connectee: true },
+  { nom: '07-questionnaire-5', url: '/bienvenue?etape=5', connectee: true },
+  { nom: '08-cycle', url: '/cycle', connectee: true },
+  { nom: '09-journal', url: '/journal', connectee: true },
+  { nom: '10-dambe', url: '/dambe', connectee: true },
+  { nom: '11-boutique', url: '/boutique', connectee: true },
+  { nom: '12-produit', url: '/boutique/culotte-flux-abondant', connectee: true },
+  { nom: '13-panier', url: '/panier', connectee: true },
+  { nom: '14-commande', url: '/commande', connectee: true },
+  { nom: '15-commandes', url: '/commandes', connectee: true },
+  { nom: '16-compte', url: '/compte', connectee: true },
+  { nom: '17-confidentialite', url: '/confidentialite', connectee: true },
+  { nom: '18-panier-vide', url: '/panier?vide=1', connectee: false },
+  { nom: '19-introuvable', url: '/cette-page-nexiste-pas', connectee: true },
+];
+
+/** Se connecte comme le ferait un téléphone, et récupère le cookie de session. */
+async function cookieDeSession() {
+  const reponse = await fetch(`${SITE}/connexion`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded', origin: SITE },
+    body: new URLSearchParams({ email: 'awa@essai.bf', motdepasse: 'motdepasse' }),
+    redirect: 'manual',
+  });
+  const brut = reponse.headers.getSetCookie?.() ?? [];
+  for (const c of brut) {
+    const [paire] = c.split(';');
+    const [nom, ...reste] = paire.split('=');
+    if (nom === 'md_session') return reste.join('=');
+  }
+  throw new Error("La connexion au banc local a échoué : le cookie n'est pas revenu.");
+}
+
+const attendre = (ms) => new Promise((r) => setTimeout(r, ms));
+
+async function cible() {
+  for (let essai = 0; essai < 40; essai += 1) {
+    try {
+      const r = await fetch(`http://127.0.0.1:${PORT_DEBUG}/json/list`);
+      const liste = await r.json();
+      const page = liste.find((c) => c.type === 'page');
+      if (page?.webSocketDebuggerUrl) return page.webSocketDebuggerUrl;
+    } catch {
+      /* le navigateur n'est pas encore prêt */
+    }
+    await attendre(300);
+  }
+  throw new Error("Chrome n'a pas ouvert son port de pilotage.");
+}
+
+function pilote(ws) {
+  let numero = 0;
+  const attentes = new Map();
+  ws.addEventListener('message', (e) => {
+    const lu = JSON.parse(e.data);
+    if (lu.id && attentes.has(lu.id)) {
+      const { ok, ko } = attentes.get(lu.id);
+      attentes.delete(lu.id);
+      if (lu.error) ko(new Error(lu.error.message));
+      else ok(lu.result);
+    }
+  });
+  return (methode, params = {}) =>
+    new Promise((ok, ko) => {
+      numero += 1;
+      attentes.set(numero, { ok, ko });
+      ws.send(JSON.stringify({ id: numero, method: methode, params }));
+    });
+}
+
+fs.mkdirSync(SORTIE, { recursive: true });
+const cookie = await cookieDeSession();
+
+const navigateur = spawn(
+  CHROME,
+  [
+    '--headless=new',
+    `--remote-debugging-port=${PORT_DEBUG}`,
+    '--user-data-dir=' + path.join(RACINE, 'captures', '.profil'),
+    '--no-first-run',
+    '--no-default-browser-check',
+    '--hide-scrollbars',
+    '--force-device-scale-factor=2',
+    'about:blank',
+  ],
+  { stdio: 'ignore' }
+);
+
+try {
+  const adresse = await cible();
+  const ws = new WebSocket(adresse);
+  await new Promise((ok, ko) => {
+    ws.addEventListener('open', ok, { once: true });
+    ws.addEventListener('error', () => ko(new Error('WebSocket refusé')), { once: true });
+  });
+  const envoyer = pilote(ws);
+
+  await envoyer('Page.enable');
+  await envoyer('Network.enable');
+  // Un vrai téléphone d'entrée de gamme : 390 px, écran dense, mode tactile.
+  await envoyer('Emulation.setDeviceMetricsOverride', {
+    width: 390,
+    height: 844,
+    deviceScaleFactor: 2,
+    mobile: true,
+  });
+
+  for (const ecran of ECRANS) {
+    await envoyer('Network.clearBrowserCookies');
+    if (ecran.connectee) {
+      await envoyer('Network.setCookie', {
+        name: 'md_session',
+        value: cookie,
+        url: SITE,
+        path: '/',
+        httpOnly: true,
+      });
+    }
+    // Le panier vit dans un cookie du téléphone : sans lui, les écrans du
+    // panier et de la commande renvoient vers la boutique.
+    if (['13-panier', '14-commande'].includes(ecran.nom)) {
+      await envoyer('Network.setCookie', {
+        name: 'md_panier',
+        value: encodeURIComponent(
+          JSON.stringify([
+            { slug: 'culotte-flux-abondant', taille: 'M', quantite: 1 },
+            { slug: 'serviettes-nuit-10', quantite: 2 },
+          ])
+        ),
+        url: SITE,
+        path: '/',
+      });
+    }
+
+    await envoyer('Page.navigate', { url: `${SITE}${ecran.url}` });
+    // Le temps du rendu serveur, puis des animations d'arrivée (1,5 s au plus).
+    await attendre(2200);
+
+    // Les images sous la ligne de flottaison ne se chargent qu'au défilement :
+    // sans ce passage, la capture pleine page les montrerait vides.
+    await envoyer('Runtime.evaluate', {
+      expression: `(async () => {
+        window.scrollTo(0, document.body.scrollHeight);
+        await new Promise((r) => setTimeout(r, 700));
+        window.scrollTo(0, 0);
+        await new Promise((r) => setTimeout(r, 400));
+      })()`,
+      awaitPromise: true,
+    });
+
+    const { data } = await envoyer('Page.captureScreenshot', {
+      format: 'png',
+      captureBeyondViewport: true,
+    });
+    fs.writeFileSync(path.join(SORTIE, `${ecran.nom}.png`), Buffer.from(data, 'base64'));
+    console.log(`  ${ecran.nom}.png`);
+  }
+
+  ws.close();
+  console.log(`\n${ECRANS.length} captures dans ${SORTIE}`);
+} finally {
+  navigateur.kill();
+}

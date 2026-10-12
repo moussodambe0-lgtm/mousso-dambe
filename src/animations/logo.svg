@@ -1,0 +1,12 @@
+<svg class="md-logo" viewBox="0 0 240 166" role="img" aria-label="Mousso Dambé" xmlns="http://www.w3.org/2000/svg">
+  <g transform="translate(72 0) scale(1.5)">
+    <path class="md-logo-anneau" pathLength="100" d="M32 8A24 24 0 0 1 32 56A24 24 0 0 1 32 8" fill="none" stroke-width="6.5" stroke-linecap="round"/>
+    <path class="md-logo-goutte" d="M32 19C36.8 25.16 40 30.2 40 35A8 8 0 1 1 24 35C24 30.2 27.2 25.16 32 19Z"/>
+  </g>
+  <text class="md-logo-nom" x="120" y="133" text-anchor="middle">Mousso <tspan class="md-logo-nom-rose">Dambé</tspan></text>
+  <g class="md-logo-bande" aria-hidden="true">
+    <rect class="md-logo-fil md-logo-fil-1" x="82" y="148" width="76" height="5" rx="2.5"/>
+    <rect class="md-logo-fil md-logo-fil-2" x="94" y="156" width="52" height="2.5" rx="1.25"/>
+    <rect class="md-logo-fil md-logo-fil-3" x="106" y="161" width="28" height="4" rx="2"/>
+  </g>
+</svg>

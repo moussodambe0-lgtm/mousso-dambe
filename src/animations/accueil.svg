@@ -1,0 +1,16 @@
+<svg class="md-accueil" viewBox="0 0 390 104" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+  <rect class="md-acc-trame md-acc-t1" x="0" y="6" width="390" height="14"/>
+  <rect class="md-acc-trame md-acc-t2" x="0" y="26" width="390" height="8"/>
+  <rect class="md-acc-trame md-acc-t3" x="0" y="40" width="390" height="24"/>
+  <rect class="md-acc-trame md-acc-t4" x="0" y="70" width="390" height="8"/>
+  <rect class="md-acc-trame md-acc-t5" x="0" y="84" width="390" height="14"/>
+  <g class="md-acc-fins">
+    <rect class="md-acc-fin" x="0" y="22" width="390" height="2.5"/>
+    <rect class="md-acc-fin" x="0" y="36" width="390" height="2.5"/>
+    <rect class="md-acc-fin" x="0" y="65.5" width="390" height="2.5"/>
+    <rect class="md-acc-fin" x="0" y="79.5" width="390" height="2.5"/>
+  </g>
+  <g class="md-acc-blocs"><path d="M14 45L20 52L14 59L8 52Z"/><path d="M40 45L46 52L40 59L34 52Z"/><path d="M66 45L72 52L66 59L60 52Z"/><path d="M92 45L98 52L92 59L86 52Z"/><path d="M118 45L124 52L118 59L112 52Z"/><path d="M144 45L150 52L144 59L138 52Z"/><path d="M170 45L176 52L170 59L164 52Z"/><path d="M196 45L202 52L196 59L190 52Z"/><path d="M222 45L228 52L222 59L216 52Z"/><path d="M248 45L254 52L248 59L242 52Z"/><path d="M274 45L280 52L274 59L268 52Z"/><path d="M300 45L306 52L300 59L294 52Z"/><path d="M326 45L332 52L326 59L320 52Z"/><path d="M352 45L358 52L352 59L346 52Z"/><path d="M378 45L384 52L378 59L372 52Z"/></g>
+  <g class="md-acc-points"><circle cx="27" cy="52" r="1.9"/><circle cx="53" cy="52" r="1.9"/><circle cx="79" cy="52" r="1.9"/><circle cx="105" cy="52" r="1.9"/><circle cx="131" cy="52" r="1.9"/><circle cx="157" cy="52" r="1.9"/><circle cx="183" cy="52" r="1.9"/><circle cx="209" cy="52" r="1.9"/><circle cx="235" cy="52" r="1.9"/><circle cx="261" cy="52" r="1.9"/><circle cx="287" cy="52" r="1.9"/><circle cx="313" cy="52" r="1.9"/><circle cx="339" cy="52" r="1.9"/><circle cx="365" cy="52" r="1.9"/></g>
+  <g class="md-acc-navette"><path d="M0 0C8-6.5 22-6.5 30 0C22 6.5 8 6.5 0 0Z"/><circle class="md-acc-oeil" cx="15" cy="0" r="2.2"/></g>
+</svg>

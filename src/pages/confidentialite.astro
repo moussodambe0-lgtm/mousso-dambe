@@ -1,0 +1,280 @@
+---
+/**
+ * Ce que l'application sait de moi.
+ *
+ * Écrit pour être lu par une fille de 17 ans, pas par un juriste. On dit ce
+ * qui est gardé, où, qui peut le lire, ce qui part vers un service extérieur,
+ * et on donne le bouton qui efface tout. Les chiffres sont comptés en direct
+ * dans sa propre base : une page de confidentialité qui annonce des promesses
+ * sans montrer les données est une page qu'on ne croit pas.
+ *
+ * L'effacement demande une confirmation en deux temps, parce qu'il est
+ * définitif : la base n'a pas de corbeille.
+ */
+import Base from '../layouts/Base.astro';
+import Entete from '../components/Entete.astro';
+import Icone from '../components/Icone.astro';
+import Alerte from '../components/Alerte.astro';
+import { clientSession, baseConfiguree } from '../lib/supabase';
+import { visiteuse, lirePanier, comptePanier } from '../lib/session';
+import { messageErreur } from '../lib/format';
+
+if (!baseConfiguree()) return Astro.redirect('/', 302);
+const moi = await visiteuse(Astro);
+if (!moi) return Astro.redirect('/connexion', 302);
+
+const client = clientSession(Astro)!;
+let erreur = '';
+
+if (Astro.request.method === 'POST') {
+  const f = await Astro.request.formData();
+  if (String(f.get('confirme') ?? '') === 'oui') {
+    const { data, error } = await client.rpc('effacer_mes_donnees');
+    if (error || !data?.ok) erreur = messageErreur(data?.erreur);
+    else return Astro.redirect('/compte?efface=1', 303);
+  }
+}
+
+const [{ count: nbJournal }, { count: nbCycles }, { count: nbQuestions }, { count: nbCommandes }] = await Promise.all([
+  client.from('journal').select('*', { count: 'exact', head: true }),
+  client.from('cycles').select('*', { count: 'exact', head: true }),
+  client.from('assistante_messages').select('*', { count: 'exact', head: true }),
+  client.from('commandes').select('*', { count: 'exact', head: true }),
+]);
+
+const confirmer = Astro.url.searchParams.get('effacer') === '1';
+const panier = comptePanier(lirePanier(Astro));
+---
+
+<Base titre="Ce que l'application sait de moi" nav="accueil" panier={panier}>
+  <main class="page">
+    <Entete titre="Ce qu'on sait de toi" retour="/compte" />
+
+    {erreur && <div class="marge-bas"><Alerte type="erreur" texte={erreur} /></div>}
+
+    <section class="carte bloc apparait">
+      <h2>Ce qui est enregistré</h2>
+      <div class="compte-lignes">
+        <div class="compte-ligne">
+          <span class="chiffre nb">{nbJournal ?? 0}</span>
+          <span>{(nbJournal ?? 0) === 1 ? 'journée notée' : 'journées notées'}</span>
+        </div>
+        <div class="compte-ligne">
+          <span class="chiffre nb">{nbCycles ?? 0}</span>
+          <span>{(nbCycles ?? 0) === 1 ? 'cycle déclaré' : 'cycles déclarés'}</span>
+        </div>
+        <div class="compte-ligne">
+          <span class="chiffre nb">{nbQuestions ?? 0}</span>
+          <span>{(nbQuestions ?? 0) === 1 ? 'question à Dambé' : 'questions à Dambé'}</span>
+        </div>
+        <div class="compte-ligne">
+          <span class="chiffre nb">{nbCommandes ?? 0}</span>
+          <span>{(nbCommandes ?? 0) === 1 ? 'commande' : 'commandes'}</span>
+        </div>
+      </div>
+      <p class="doux">
+        Plus ton prénom, ton email, et pour les livraisons ton numéro, ton quartier et ton point de repère.
+      </p>
+    </section>
+
+    <section class="carte bloc apparait" data-ordre="2">
+      <h2>Qui peut le lire</h2>
+      <ul class="liste">
+        <li>
+          <span class="rond-icone verte"><Icone nom="bouclier-coche" taille={18} /></span>
+          <div>
+            <strong>Toi, et personne d'autre</strong>
+            <span>
+              La base de données refuse elle-même qu'un autre compte lise tes lignes. Il n'existe aucun écran
+              d'administration qui ouvre un journal, et aucun export.
+            </span>
+          </div>
+        </li>
+        <li>
+          <span class="rond-icone"><Icone nom="camion" taille={18} /></span>
+          <div>
+            <strong>Le livreur, seulement ton adresse</strong>
+            <span>Ton nom, ton numéro et ton quartier pour la course. Jamais ce que tu notes sur ton cycle.</span>
+          </div>
+        </li>
+      </ul>
+    </section>
+
+    <section class="carte bloc apparait" data-ordre="3">
+      <h2>Ce qui part vers Dambé</h2>
+      <p class="doux">
+        Dambé est une intelligence artificielle qui tourne chez un prestataire extérieur. Quand tu lui écris, trois
+        choses lui sont envoyées, et rien de plus :
+      </p>
+      <ul class="courte">
+        <li>ta question</li>
+        <li>ton prénom et ton jour de cycle</li>
+        <li>la liste des produits de la boutique</li>
+      </ul>
+      <div class="encadre encadre-vert">
+        <Icone nom="coche" taille={19} />
+        <p>
+          Ton journal, tes notes, ton numéro, ton quartier et tes commandes ne partent jamais. C'est vérifié par un
+          test automatique à chaque modification du code.
+        </p>
+      </div>
+    </section>
+
+    <section class="carte bloc apparait" data-ordre="4">
+      <h2>Effacer mes données</h2>
+      {
+        confirmer ? (
+          <>
+            <Alerte
+              type="erreur"
+              texte="Ton journal, tes cycles et tes questions à Dambé seront effacés définitivement. Il n'y a pas de corbeille, rien ne pourra être récupéré."
+            />
+            <form method="POST" class="marge">
+              <input type="hidden" name="confirme" value="oui" />
+              <button class="btn btn-plein btn-danger" type="submit">
+                Oui, efface tout
+              </button>
+            </form>
+            <a class="btn btn-contour btn-plein marge" href="/confidentialite">Non, garder mes données</a>
+          </>
+        ) : (
+          <>
+            <p class="doux">
+              Tu peux effacer ton journal, tes cycles et tes questions à Dambé. Tes commandes déjà passées sont gardées :
+              elles servent de preuve d'achat, pour toi comme pour nous.
+            </p>
+            <a class="btn btn-contour btn-plein marge" href="/confidentialite?effacer=1">
+              <Icone nom="poubelle" taille={19} />
+              Effacer mes données
+            </a>
+          </>
+        )
+      }
+    </section>
+
+    <p class="pied">
+      Mousso Dambé ne vend aucune donnée, à personne. Si cette phrase devient fausse un jour, cette page le dira avant.
+    </p>
+
+    <div class="espace"></div>
+  </main>
+</Base>
+
+<style>
+  section {
+    margin-bottom: var(--e3);
+  }
+
+  h2 {
+    font-size: 17px;
+    margin-bottom: var(--e3);
+  }
+
+  .compte-lignes {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--e3);
+    margin-bottom: var(--e3);
+  }
+
+  .compte-ligne {
+    display: flex;
+    align-items: baseline;
+    gap: 7px;
+    padding: var(--e2) var(--e3);
+    border-radius: var(--r-champ);
+    background: var(--surface-douce);
+    font-size: 12.5px;
+    color: var(--texte-2);
+    line-height: 1.3;
+  }
+
+  .nb {
+    font-size: 20px;
+    color: var(--rose);
+  }
+
+  .doux {
+    font-size: 14px;
+    color: var(--texte-2);
+    line-height: 1.55;
+  }
+
+  .liste {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--e4);
+  }
+
+  .liste li {
+    display: flex;
+    gap: var(--e3);
+    align-items: flex-start;
+  }
+
+  .liste strong {
+    display: block;
+    font-size: 14.5px;
+  }
+
+  .liste span {
+    font-size: 13px;
+    color: var(--texte-2);
+    line-height: 1.45;
+  }
+
+  .rond-icone {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    flex: none;
+    border-radius: 12px;
+    background: var(--surface-douce);
+    color: var(--rose);
+  }
+
+  .rond-icone.verte {
+    background: var(--vert-clair);
+    color: var(--vert);
+  }
+
+  .courte {
+    margin: var(--e2) 0 var(--e3);
+    padding-left: var(--e4);
+    font-size: 13.5px;
+    color: var(--texte-2);
+  }
+
+  .courte li {
+    margin-bottom: 4px;
+  }
+
+  .marge {
+    margin-top: var(--e3);
+  }
+
+  .btn-danger {
+    background: var(--rouge);
+    color: #fff;
+  }
+
+  .btn-danger:hover {
+    background: #8f1e17;
+  }
+
+  .pied {
+    margin: var(--e4) var(--e1) 0;
+    font-size: 12.5px;
+    color: var(--texte-3);
+    line-height: 1.5;
+  }
+
+  .marge-bas {
+    margin-bottom: var(--e3);
+  }
+</style>

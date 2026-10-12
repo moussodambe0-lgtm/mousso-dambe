@@ -1,0 +1,354 @@
+---
+/**
+ * La fiche d'un produit.
+ *
+ * Elle dit trois choses qu'une fille se demande vraiment avant d'acheter ici :
+ * combien ça coûte livré, si le colis se voit, et combien de temps ça dure.
+ * Le reste est du détail.
+ */
+import Base from '../../layouts/Base.astro';
+import Icone from '../../components/Icone.astro';
+import Alerte from '../../components/Alerte.astro';
+import { clientPublic, baseConfiguree } from '../../lib/supabase';
+import { visiteuse, lirePanier, comptePanier } from '../../lib/session';
+import { prix, prixComplet } from '../../lib/format';
+
+const { slug } = Astro.params;
+
+if (!baseConfiguree()) return Astro.redirect('/boutique', 302);
+
+const { data: produit } = await clientPublic(Astro)
+  .from('produits')
+  .select('slug, nom, resume, description, prix_cfa, rayon, image, etiquette, stock, tailles, reutilisable')
+  .eq('slug', slug ?? '')
+  .eq('publie', true)
+  .maybeSingle();
+
+if (!produit) {
+  return new Response(null, { status: 404 });
+}
+
+// Le prix de la livraison vit dans la table des réglages, que le navigateur
+// n'a pas le droit de lire. Il est donc écrit ici en une constante pour
+// l'affichage, et c'est la base qui le relit au moment de la commande : si
+// Arthur le change, la commande sera juste même si cette ligne est oubliée.
+const LIVRAISON = 1000;
+
+const moi = await visiteuse(Astro);
+const panier = comptePanier(lirePanier(Astro));
+const rupture = produit.stock <= 0;
+const tailles: string[] = produit.tailles ?? [];
+const erreur = Astro.url.searchParams.get('erreur');
+
+const DESSINS: Record<string, string> = {
+  serviettes: 'paquet',
+  culottes: 'culotte',
+  lavables: 'tissu',
+  kits: 'trousse',
+};
+
+if (!moi) {
+  Astro.response.headers.set('Cache-Control', 'public, s-maxage=120, stale-while-revalidate=600');
+} else {
+  Astro.response.headers.set('Cache-Control', 'private, no-store');
+}
+---
+
+<Base titre={produit.nom} description={produit.resume} nav="boutique" panier={panier}>
+  <main>
+    <div class:list={['visuel-haut', produit.rayon === 'culottes' && 'sombre', produit.rayon === 'lavables' && 'violet']}>
+      {
+        produit.image ? (
+          <img
+            src={produit.image}
+            srcset={`${produit.image} 600w, ${produit.image.replace('-600.webp', '-1200.webp')} 1200w`}
+            sizes="(max-width: 480px) 100vw, 480px"
+            alt={produit.nom}
+            width="600"
+            height="600"
+            fetchpriority="high"
+          />
+        ) : (
+          <span class:list={['dessin', produit.rayon === 'culottes' && 'clair']}>
+            <Icone nom={DESSINS[produit.rayon] ?? 'paquet'} taille={128} epaisseur={1.4} />
+          </span>
+        )
+      }
+      <div class="coins">
+        <a class="rond" href="/boutique" aria-label="Retour à la boutique">
+          <Icone nom="retour" taille={20} epaisseur={2} />
+        </a>
+        <a class="rond" href="/panier" aria-label={`Mon panier, ${panier} articles`}>
+          <Icone nom="panier" taille={20} />
+          {panier > 0 && <span class="nav-pastille">{panier}</span>}
+        </a>
+      </div>
+    </div>
+
+    <div class="page">
+      <h1>{produit.nom}</h1>
+
+      <div class="ligne-prix">
+        <span class="chiffre grand-prix">{prix(produit.prix_cfa)}</span>
+        <span class="unite">FCFA</span>
+        <span class:list={['pastille', rupture ? 'pastille-neutre' : 'pastille-verte', 'pousse']}>
+          {rupture ? 'Bientôt de retour' : 'En stock'}
+        </span>
+      </div>
+
+      <p class="description">{produit.description || produit.resume}</p>
+
+      {erreur && <div class="marge"><Alerte type="erreur" texte={erreur === 'taille' ? 'Choisis ta taille avant de continuer.' : 'Ce produit ne peut pas être ajouté.'} /></div>}
+
+      <form method="POST" action="/panier">
+        <input type="hidden" name="geste" value="ajouter" />
+        <input type="hidden" name="slug" value={produit.slug} />
+
+        {
+          tailles.length > 0 && (
+            <fieldset class="tailles">
+              <legend class="libelle">Ta taille</legend>
+              {tailles.map((t, i) => (
+                <>
+                  <input class="cache" type="radio" name="taille" id={`t-${t}`} value={t} checked={i === 1 || tailles.length === 1} required />
+                  <label class="taille-label" for={`t-${t}`}>{t}</label>
+                </>
+              ))}
+            </fieldset>
+          )
+        }
+
+        <div class="garanties carte">
+          <div class="garantie">
+            <Icone nom="camion" taille={19} classe="i-vert" />
+            <p>
+              <strong>Livrée à Ouaga en 24 h</strong>, {prixComplet(LIVRAISON)} de livraison. Tu paies à la remise du
+              colis, en espèces.
+            </p>
+          </div>
+          <div class="garantie">
+            <Icone nom="colis" taille={19} classe="i-encre" />
+            <p>
+              <strong>Colis neutre</strong> : un emballage sans marque ni dessin. Personne ne sait ce qu'il y a dedans.
+            </p>
+          </div>
+          {
+            produit.reutilisable && (
+              <div class="garantie">
+                <Icone nom="bouclier" taille={19} classe="i-violet" />
+                <p>
+                  <strong>Réutilisable deux ans</strong> si tu la laves à la main, à l'eau froide puis au savon.
+                </p>
+              </div>
+            )
+          }
+        </div>
+
+        <a class="aide-dambe" href="/dambe">
+          <span class="rond-sombre"><Icone nom="dambe" taille={20} /></span>
+          <span>Tu hésites ? <strong>Demande à Dambé</strong></span>
+        </a>
+
+        <div class="place-barre"></div>
+
+        <div class="barre-action">
+          {/* Un seul bouton : la quantité se règle dans le panier, avec des
+              plus et des moins qui se comprennent sans rien lire. Trois
+              chiffres alignés ici se lisaient comme une pagination. */}
+          <button class="btn btn-rose btn-plein" type="submit" name="quantite" value="1" disabled={rupture}>
+            {rupture ? 'Bientôt de retour' : `Mettre au panier · ${prix(produit.prix_cfa)} F`}
+          </button>
+        </div>
+      </form>
+    </div>
+  </main>
+</Base>
+
+<style>
+  .visuel-haut {
+    position: relative;
+    height: 260px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--surface-douce);
+    color: var(--rose);
+    overflow: hidden;
+  }
+
+  .visuel-haut img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .sombre {
+    background: var(--encre);
+  }
+
+  .violet {
+    background: var(--violet-clair);
+    color: var(--violet);
+  }
+
+  .clair {
+    color: var(--rose-clair);
+  }
+
+  .coins {
+    position: absolute;
+    top: var(--e4);
+    left: var(--e4);
+    right: var(--e4);
+    display: flex;
+    justify-content: space-between;
+  }
+
+  h1 {
+    margin-top: var(--e4);
+    font-size: 22px;
+  }
+
+  .ligne-prix {
+    display: flex;
+    align-items: baseline;
+    gap: var(--e2);
+    margin-top: var(--e2);
+  }
+
+  .grand-prix {
+    font-size: 28px;
+    color: var(--rose);
+  }
+
+  .unite {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--texte-2);
+  }
+
+  .description {
+    margin-top: var(--e3);
+    font-size: 14.5px;
+    color: var(--texte-2);
+    line-height: 1.55;
+  }
+
+  .tailles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--e2);
+    align-items: center;
+    margin: var(--e5) 0 0;
+    padding: 0;
+    border: none;
+  }
+
+  .tailles legend {
+    width: 100%;
+  }
+
+  .cache {
+    position: absolute;
+    opacity: 0;
+    width: 1px;
+    height: 1px;
+    pointer-events: none;
+  }
+
+  .taille-label {
+    min-width: 56px;
+    min-height: 48px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--bordure);
+    border-radius: var(--r-champ);
+    background: var(--surface);
+    font-size: 14.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background-color var(--vite) ease, border-color var(--vite) ease;
+  }
+
+  .cache:checked + .taille-label {
+    background: var(--encre);
+    border-color: var(--encre);
+    color: #fff;
+  }
+
+  .cache:focus-visible + .taille-label {
+    outline: 2px solid var(--rose);
+    outline-offset: 2px;
+  }
+
+  .garanties {
+    margin-top: var(--e5);
+    padding: var(--e4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--e3);
+  }
+
+  .garantie {
+    display: flex;
+    gap: var(--e3);
+    align-items: flex-start;
+    font-size: 13.5px;
+    color: var(--texte-2);
+    line-height: 1.45;
+  }
+
+  .garantie :global(svg) {
+    flex: none;
+    margin-top: 2px;
+  }
+
+  .garantie strong {
+    color: var(--encre);
+    font-weight: 600;
+  }
+
+  :global(.i-vert) {
+    color: var(--vert);
+  }
+
+  :global(.i-violet) {
+    color: var(--violet);
+  }
+
+  :global(.i-encre) {
+    color: var(--encre);
+  }
+
+  .aide-dambe {
+    display: flex;
+    align-items: center;
+    gap: var(--e3);
+    margin-top: var(--e4);
+    font-size: 13.5px;
+    color: var(--encre);
+  }
+
+  .aide-dambe strong {
+    color: var(--rose);
+  }
+
+  .rond-sombre {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    flex: none;
+    border-radius: 12px;
+    background: var(--encre);
+    color: var(--rose-clair);
+  }
+
+  /* La barre d'action flotte au-dessus du contenu : on lui réserve sa hauteur
+     entière, sinon la dernière ligne du texte finit cachée derrière. */
+  .place-barre {
+    height: 112px;
+  }
+</style>

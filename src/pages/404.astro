@@ -1,0 +1,50 @@
+---
+/**
+ * Page introuvable. Elle propose les trois endroits où on voulait aller,
+ * plutôt que de laisser une impasse.
+ */
+import Base from '../layouts/Base.astro';
+import Symbole from '../components/Symbole.astro';
+---
+
+<Base titre="Page introuvable" pleinEcran>
+  <main class="page centre">
+    <Symbole taille={48} anime titre="Mousso Dambé" />
+    <h1>Cette page n'existe pas</h1>
+    <p class="doux">Elle a peut-être changé d'adresse. Voilà par où continuer.</p>
+    <div class="liens">
+      <a class="btn btn-rose btn-plein" href="/">Mon cycle</a>
+      <a class="btn btn-contour btn-plein" href="/boutique">La boutique</a>
+      <a class="btn btn-contour btn-plein" href="/dambe">Demander à Dambé</a>
+    </div>
+  </main>
+</Base>
+
+<style>
+  .centre {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--e3);
+    padding-top: var(--e7);
+    text-align: center;
+  }
+
+  h1 {
+    font-size: 25px;
+  }
+
+  .doux {
+    font-size: 14.5px;
+    color: var(--texte-2);
+    max-width: 300px;
+  }
+
+  .liens {
+    display: flex;
+    flex-direction: column;
+    gap: var(--e2);
+    width: 100%;
+    margin-top: var(--e4);
+  }
+</style>

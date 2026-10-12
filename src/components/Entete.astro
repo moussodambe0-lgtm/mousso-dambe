@@ -1,0 +1,47 @@
+---
+/**
+ * L'entête d'une page intérieure : une flèche de retour, un titre, et de la
+ * place à droite si la page en a besoin.
+ *
+ * La flèche est un vrai lien, pas un retour d'historique : elle doit marcher
+ * quand la page a été ouverte directement, et le bouton retour du téléphone
+ * reste à sa place.
+ */
+import Icone from './Icone.astro';
+
+interface Props {
+  titre: string;
+  sousTitre?: string;
+  retour?: string;
+}
+
+const { titre, sousTitre, retour = '/' } = Astro.props;
+---
+
+<header class="entete">
+  <a class="rond" href={retour} aria-label="Revenir en arrière">
+    <Icone nom="retour" taille={20} epaisseur={2} />
+  </a>
+  <div class="titres">
+    <h1>{titre}</h1>
+    {sousTitre && <p class="sous">{sousTitre}</p>}
+  </div>
+  <slot />
+</header>
+
+<style>
+  .titres {
+    min-width: 0;
+  }
+
+  h1 {
+    font-size: 21px;
+  }
+
+  .sous {
+    margin-top: 2px;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--texte-3);
+  }
+</style>

@@ -1,0 +1,366 @@
+---
+/**
+ * Le panier.
+ *
+ * Il vit dans un cookie du téléphone : des slugs et des quantités, jamais un
+ * prix. Les prix affichés ici sont relus en base à chaque chargement, et
+ * recalculés une dernière fois par la base au moment de commander. Un panier
+ * qui porte ses propres prix est un panier qu'on peut truquer.
+ */
+import Base from '../layouts/Base.astro';
+import Entete from '../components/Entete.astro';
+import Icone from '../components/Icone.astro';
+import Anim from '../components/Anim.astro';
+import Alerte from '../components/Alerte.astro';
+import { clientPublic, baseConfiguree } from '../lib/supabase';
+import { visiteuse, lirePanier, ecrirePanier, comptePanier } from '../lib/session';
+import { prix, prixComplet } from '../lib/format';
+
+if (!baseConfiguree()) return Astro.redirect('/', 302);
+
+// Le prix de la livraison est relu en base au moment de la commande ; ici il
+// n'est qu'affiché, et la base aura le dernier mot.
+const LIVRAISON = 1000;
+
+if (Astro.request.method === 'POST') {
+  const f = await Astro.request.formData();
+  const geste = String(f.get('geste') ?? '');
+  const slug = String(f.get('slug') ?? '');
+  const taille = String(f.get('taille') ?? '') || undefined;
+  const quantite = Math.min(Math.max(Number(f.get('quantite') ?? 1), 1), 20);
+  const lignes = lirePanier(Astro);
+
+  if (geste === 'ajouter' && slug) {
+    // Le même produit dans la même taille s'additionne plutôt que de créer une
+    // deuxième ligne : deux lignes identiques dans un panier sont une erreur
+    // d'affichage, pas un choix.
+    const existante = lignes.find((l) => l.slug === slug && (l.taille ?? '') === (taille ?? ''));
+    if (existante) existante.quantite = Math.min(existante.quantite + quantite, 20);
+    else lignes.push({ slug, taille, quantite });
+    ecrirePanier(Astro, lignes);
+    return Astro.redirect('/panier?ok=ajoute', 303);
+  }
+
+  if (geste === 'retirer') {
+    ecrirePanier(
+      Astro,
+      lignes.filter((l) => !(l.slug === slug && (l.taille ?? '') === (taille ?? '')))
+    );
+    return Astro.redirect('/panier', 303);
+  }
+
+  if (geste === 'quantite') {
+    const ligne = lignes.find((l) => l.slug === slug && (l.taille ?? '') === (taille ?? ''));
+    if (ligne) {
+      ligne.quantite = quantite;
+      ecrirePanier(Astro, lignes);
+    }
+    return Astro.redirect('/panier', 303);
+  }
+
+  if (geste === 'vider') {
+    ecrirePanier(Astro, []);
+    return Astro.redirect('/panier', 303);
+  }
+}
+
+const lignes = lirePanier(Astro);
+const moi = await visiteuse(Astro);
+
+let produits: Record<string, any> = {};
+if (lignes.length > 0) {
+  const { data } = await clientPublic(Astro)
+    .from('produits')
+    .select('slug, nom, prix_cfa, rayon, image, stock, tailles')
+    .in('slug', lignes.map((l) => l.slug));
+  for (const p of data ?? []) produits[p.slug] = p;
+}
+
+// Une ligne dont le produit a disparu du catalogue est retirée : mieux vaut un
+// panier juste qu'une ligne qui fera échouer la commande.
+const vivantes = lignes.filter((l) => produits[l.slug]);
+if (vivantes.length !== lignes.length) ecrirePanier(Astro, vivantes);
+
+const articles = vivantes.reduce((somme, l) => somme + produits[l.slug].prix_cfa * l.quantite, 0);
+const total = articles + (vivantes.length > 0 ? LIVRAISON : 0);
+const nombre = comptePanier(vivantes);
+const rupture = vivantes.filter((l) => produits[l.slug].stock < l.quantite);
+const ajoute = Astro.url.searchParams.get('ok') === 'ajoute';
+
+const DESSINS: Record<string, string> = {
+  serviettes: 'paquet',
+  culottes: 'culotte',
+  lavables: 'tissu',
+  kits: 'trousse',
+};
+---
+
+<Base titre="Mon panier" nav="boutique" panier={nombre}>
+  <main class="page">
+    <Entete titre="Mon panier" retour="/boutique" />
+
+    {ajoute && <div class="marge-bas"><Alerte type="reussite" texte="C'est dans ton panier." /></div>}
+
+    {
+      rupture.length > 0 && (
+        <div class="marge-bas">
+          <Alerte
+            type="attention"
+            texte={`Il n'y a plus assez de « ${produits[rupture[0].slug].nom} » en stock. Baisse la quantité avant de commander.`}
+          />
+        </div>
+      )
+    }
+
+    {
+      vivantes.length === 0 ? (
+        <div class="etat-vide apparait">
+          <Anim nom="etat-panier-vide" classe="dessin-vide" />
+          <h2>Ton panier est vide</h2>
+          <p>Les serviettes, les culottes et les kits sont dans la boutique.</p>
+          <a class="btn btn-rose" href="/boutique">Voir la boutique</a>
+        </div>
+      ) : (
+        <>
+          <section class="carte lignes apparait">
+            {vivantes.map((l) => (
+              <div class="ligne">
+                <span class:list={['vignette', produits[l.slug].rayon === 'culottes' && 'vignette-sombre']}>
+                  {produits[l.slug].image ? (
+                    <img src={produits[l.slug].image} alt="" width="54" height="54" />
+                  ) : (
+                    <Icone nom={DESSINS[produits[l.slug].rayon] ?? 'paquet'} taille={28} />
+                  )}
+                </span>
+                <div class="detail">
+                  <a class="nom" href={`/boutique/${l.slug}`}>{produits[l.slug].nom}</a>
+                  {l.taille && <div class="gris">Taille {l.taille}</div>}
+                  <div class="chiffre prix-ligne">{prix(produits[l.slug].prix_cfa * l.quantite)} FCFA</div>
+                </div>
+                <div class="actions">
+                  <form method="POST" class="compteur">
+                    <input type="hidden" name="geste" value={l.quantite > 1 ? 'quantite' : 'retirer'} />
+                    <input type="hidden" name="slug" value={l.slug} />
+                    {l.taille && <input type="hidden" name="taille" value={l.taille} />}
+                    <button class="pas" type="submit" name="quantite" value={String(l.quantite - 1)} aria-label={l.quantite > 1 ? 'Enlever un' : 'Retirer du panier'}>
+                      {l.quantite > 1 ? '−' : '×'}
+                    </button>
+                  </form>
+                  <span class="chiffre nb">{l.quantite}</span>
+                  <form method="POST" class="compteur">
+                    <input type="hidden" name="geste" value="quantite" />
+                    <input type="hidden" name="slug" value={l.slug} />
+                    {l.taille && <input type="hidden" name="taille" value={l.taille} />}
+                    <button class="pas" type="submit" name="quantite" value={String(l.quantite + 1)} aria-label="Ajouter un" disabled={l.quantite >= Math.min(20, produits[l.slug].stock)}>
+                      +
+                    </button>
+                  </form>
+                </div>
+              </div>
+            ))}
+            <a class="ajouter" href="/boutique">+ Ajouter autre chose</a>
+          </section>
+
+          <section class="carte totaux apparait" data-ordre="2">
+            <div class="ligne-total">
+              <span>{nombre === 1 ? '1 article' : `${nombre} articles`}</span>
+              <span class="chiffre">{prixComplet(articles)}</span>
+            </div>
+            <div class="ligne-total">
+              <span>Livraison à Ouaga</span>
+              <span class="chiffre">{prixComplet(LIVRAISON)}</span>
+            </div>
+            <div class="trait"></div>
+            <div class="ligne-grand-total">
+              <span>À payer à la livraison</span>
+              <span class="chiffre grand">{prix(total)} F</span>
+            </div>
+          </section>
+
+          <form method="POST" class="vider-ligne">
+            <input type="hidden" name="geste" value="vider" />
+            <button class="btn btn-texte" type="submit">Vider mon panier</button>
+          </form>
+
+          <div class="place-barre"></div>
+
+          <div class="barre-action">
+            {moi ? (
+              <a class="btn btn-rose btn-plein" href="/commande">
+                Commander · {prix(total)} F
+              </a>
+            ) : (
+              <a class="btn btn-rose btn-plein" href="/connexion?suite=/commande">
+                Me connecter pour commander
+              </a>
+            )}
+          </div>
+        </>
+      )
+    }
+  </main>
+</Base>
+
+<style>
+  .lignes {
+    padding: 0 var(--e4);
+    margin-bottom: var(--e3);
+  }
+
+  .ligne {
+    display: flex;
+    gap: var(--e3);
+    align-items: center;
+    padding: var(--e3) 0;
+    border-bottom: 1px solid var(--bordure);
+  }
+
+  .vignette {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 54px;
+    height: 54px;
+    flex: none;
+    border-radius: 13px;
+    background: var(--surface-douce);
+    color: var(--rose);
+    overflow: hidden;
+  }
+
+  .vignette-sombre {
+    background: var(--encre);
+    color: var(--rose-clair);
+  }
+
+  .vignette img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .detail {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .nom {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--encre);
+    line-height: 1.3;
+  }
+
+  .gris {
+    font-size: 12px;
+    color: var(--texte-3);
+    margin-top: 2px;
+  }
+
+  .prix-ligne {
+    margin-top: 3px;
+    font-size: 15px;
+    color: var(--rose);
+  }
+
+  .actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: none;
+  }
+
+  .compteur {
+    display: contents;
+  }
+
+  .pas {
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--bordure);
+    border-radius: 11px;
+    background: var(--fond);
+    font-size: 17px;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .pas:hover:not([disabled]) {
+    background: var(--surface-douce);
+  }
+
+  .pas[disabled] {
+    color: var(--texte-3);
+    cursor: not-allowed;
+  }
+
+  .nb {
+    min-width: 16px;
+    text-align: center;
+    font-size: 15px;
+  }
+
+  .ajouter {
+    display: block;
+    padding: var(--e3) 0;
+    font-size: 13.5px;
+    font-weight: 600;
+  }
+
+  .totaux {
+    padding: var(--e3) var(--e4);
+  }
+
+  .ligne-total {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 5px 0;
+    font-size: 14px;
+    color: var(--texte-2);
+  }
+
+  .ligne-total .chiffre {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--encre);
+  }
+
+  .trait {
+    height: 1px;
+    background: var(--bordure);
+    margin: 7px 0;
+  }
+
+  .ligne-grand-total {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: 15px;
+    font-weight: 700;
+  }
+
+  .grand {
+    font-size: 22px;
+    color: var(--rose);
+  }
+
+  .vider-ligne {
+    text-align: center;
+    margin-top: var(--e2);
+  }
+
+  .place-barre {
+    height: 96px;
+  }
+
+  .marge-bas {
+    margin-bottom: var(--e3);
+  }
+
+  .dessin-vide {
+    width: 180px;
+  }
+</style>

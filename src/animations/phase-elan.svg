@@ -1,0 +1,14 @@
+<svg class="md-phase md-phase-elan" viewBox="0 0 120 120" role="img" aria-label="Tu reprends de l'élan" xmlns="http://www.w3.org/2000/svg">
+  <defs><clipPath id="md-clip-elan"><circle cx="60" cy="60" r="54"/></clipPath></defs>
+  <circle class="md-ph-fond md-f-rose-clair" cx="60" cy="60" r="54"/>
+  <g clip-path="url(#md-clip-elan)">
+    <rect class="md-ph-sol md-ph-sol-1 md-f-rose" x="0" y="88" width="120" height="7"/>
+    <rect class="md-ph-sol md-ph-sol-2 md-f-encre" x="0" y="98" width="120" height="2.5"/>
+    <rect class="md-ph-sol md-ph-sol-3 md-f-rose" x="0" y="103.5" width="120" height="6"/>
+  </g>
+  <path class="md-ph-tige" pathLength="100" d="M60 89C60 77 57 66 61.5 52" fill="none" stroke-width="5" stroke-linecap="round"/>
+  <path class="md-ph-feuille-g md-f-rose" d="M59 72C47 72 36 64 32.5 50C46.5 49 57 57 59 72Z"/>
+  <g class="md-ph-balance">
+    <path class="md-ph-feuille-d md-f-rose" d="M61.5 54C63.5 40 74 29.5 90 28.5C89 43.5 77.5 53 61.5 54Z"/>
+  </g>
+</svg>

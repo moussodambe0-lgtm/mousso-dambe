@@ -1,0 +1,107 @@
+---
+/**
+ * Se connecter.
+ *
+ * Le message d'erreur est le même que l'adresse existe ou non : dire « cette
+ * adresse n'a pas de compte » révélerait à un mari curieux si sa femme utilise
+ * l'application. Ce n'est pas une précaution théorique ici.
+ */
+import Base from '../layouts/Base.astro';
+import Symbole from '../components/Symbole.astro';
+import Alerte from '../components/Alerte.astro';
+import { clientPublic, poserSession, baseConfiguree } from '../lib/supabase';
+import { visiteuse } from '../lib/session';
+
+if (baseConfiguree() && (await visiteuse(Astro))) {
+  return Astro.redirect('/', 302);
+}
+
+let erreur = '';
+let emailSaisi = '';
+
+if (Astro.request.method === 'POST') {
+  const f = await Astro.request.formData();
+  emailSaisi = String(f.get('email') ?? '').trim().toLowerCase();
+  const motDePasse = String(f.get('motdepasse') ?? '');
+
+  if (!emailSaisi || !motDePasse) {
+    erreur = 'Remplis les deux champs.';
+  } else {
+    const { data, error } = await clientPublic(Astro).auth.signInWithPassword({
+      email: emailSaisi,
+      password: motDePasse,
+    });
+    if (error || !data.session) {
+      erreur = /not confirmed/i.test(error?.message ?? '')
+        ? "Ton adresse n'est pas encore confirmée. Ouvre l'email qu'on t'a envoyé."
+        : 'Email ou mot de passe incorrect.';
+    } else {
+      poserSession(Astro, {
+        access_token: data.session.access_token,
+        refresh_token: data.session.refresh_token,
+      });
+      return Astro.redirect('/', 303);
+    }
+  }
+}
+---
+
+<Base titre="Me connecter" pleinEcran>
+  <main class="page">
+    <div class="haut">
+      <Symbole taille={44} anime titre="Mousso Dambé" />
+      <h1>Te revoilà</h1>
+    </div>
+
+    <form method="POST" class="apparait">
+      {erreur && <Alerte type="erreur" texte={erreur} />}
+
+      <div class="champ-bloc">
+        <label class="libelle" for="email">Ton email</label>
+        <input class="champ" id="email" name="email" type="email" autocomplete="email" required value={emailSaisi} />
+      </div>
+
+      <div class="champ-bloc">
+        <label class="libelle" for="motdepasse">Ton mot de passe</label>
+        <input class="champ" id="motdepasse" name="motdepasse" type="password" autocomplete="current-password" required />
+      </div>
+
+      <button class="btn btn-rose btn-plein" type="submit">Me connecter</button>
+
+      <p class="centre marge">
+        <a class="btn btn-texte" href="/inscription">Je n'ai pas encore de compte</a>
+      </p>
+    </form>
+  </main>
+</Base>
+
+<style>
+  .haut {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--e3);
+    padding: var(--e7) 0 var(--e5);
+    text-align: center;
+  }
+
+  .haut h1 {
+    font-size: 28px;
+  }
+
+  .champ-bloc {
+    margin-bottom: var(--e4);
+  }
+
+  .marge {
+    margin-top: var(--e3);
+  }
+
+  .centre {
+    text-align: center;
+  }
+
+  form > :global([role='alert']) {
+    margin-bottom: var(--e4);
+  }
+</style>

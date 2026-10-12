@@ -1,0 +1,552 @@
+---
+/**
+ * Mon cycle : le calendrier du mois, l'historique, et la déclaration des
+ * règles.
+ *
+ * Le calendrier est construit côté serveur. Aucun script n'est nécessaire pour
+ * le lire, et changer de mois est un simple lien : sur une connexion lente,
+ * mieux vaut une page qui arrive qu'un calendrier qui attend du JavaScript.
+ */
+import Base from '../layouts/Base.astro';
+import Anim from '../components/Anim.astro';
+import Icone from '../components/Icone.astro';
+import Alerte from '../components/Alerte.astro';
+import { clientSession, baseConfiguree } from '../lib/supabase';
+import { visiteuse, monCycle, lirePanier, comptePanier } from '../lib/session';
+import { PHASES, QUAND_CONSULTER } from '../lib/cycle';
+import {
+  dateDe, enIso, aujourdhui, dateLongue, dateCourte, moisEtAnnee,
+  pluriel, messageErreur,
+} from '../lib/format';
+
+if (!baseConfiguree()) return Astro.redirect('/', 302);
+const moi = await visiteuse(Astro);
+if (!moi) return Astro.redirect('/connexion', 302);
+
+const client = clientSession(Astro)!;
+let message = '';
+let erreur = '';
+
+if (Astro.request.method === 'POST') {
+  const f = await Astro.request.formData();
+  const geste = String(f.get('geste') ?? '');
+  const jour = String(f.get('jour') ?? '');
+
+  if (geste === 'declarer') {
+    const { data, error } = await client.rpc('declarer_regles', { p_debut: jour });
+    if (error || !data?.ok) erreur = messageErreur(data?.erreur);
+    else return Astro.redirect('/cycle?ok=declare', 303);
+  } else if (geste === 'retirer') {
+    const { data, error } = await client.rpc('retirer_regles', { p_debut: jour });
+    if (error || !data?.ok) erreur = messageErreur(data?.erreur);
+    else return Astro.redirect('/cycle?ok=retire', 303);
+  }
+}
+
+if (Astro.url.searchParams.get('ok') === 'declare') message = 'Tes règles sont notées. Tes dates sont recalculées.';
+if (Astro.url.searchParams.get('ok') === 'retire') message = 'C’est retiré de ton calendrier.';
+
+const cycle = await monCycle(Astro);
+
+// Le mois affiché. Par défaut celui d'aujourd'hui.
+const param = Astro.url.searchParams.get('mois') ?? '';
+const base = /^\d{4}-\d{2}$/.test(param) ? dateDe(`${param}-01`) : new Date();
+const premier = new Date(base.getFullYear(), base.getMonth(), 1);
+const dernier = new Date(base.getFullYear(), base.getMonth() + 1, 0);
+const moisPrecedent = new Date(premier.getFullYear(), premier.getMonth() - 1, 1);
+const moisSuivant = new Date(premier.getFullYear(), premier.getMonth() + 1, 1);
+const clefMois = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+
+const { data: cycles } = await client
+  .from('cycles')
+  .select('debut, fin')
+  .order('debut', { ascending: false })
+  .limit(24);
+
+const { data: notes } = await client
+  .from('journal')
+  .select('jour, flux, douleur')
+  .gte('jour', enIso(premier))
+  .lte('jour', enIso(dernier));
+
+const joursRegles = new Set<string>();
+for (const c of cycles ?? []) {
+  const d = dateDe(c.debut);
+  const f = c.fin ? dateDe(c.fin) : d;
+  for (let x = new Date(d); x <= f; x.setDate(x.getDate() + 1)) {
+    joursRegles.add(enIso(x));
+  }
+}
+const joursNotes = new Map<string, string>();
+for (const n of notes ?? []) {
+  if (n.flux && n.flux !== 'rien') joursRegles.add(n.jour);
+  joursNotes.set(n.jour, n.flux);
+}
+
+// Les prévisions : les trois prochains cycles, en pointillés.
+const joursPrevus = new Set<string>();
+const joursFertiles = new Set<string>();
+let jourOvulation = '';
+if (cycle?.aDesDonnees && cycle.debutDernieresRegles) {
+  const depart = dateDe(cycle.debutDernieresRegles);
+  for (let n = 0; n <= 3; n += 1) {
+    const debut = new Date(depart);
+    debut.setDate(debut.getDate() + cycle.cycleMoyen * n);
+    if (n > 0) {
+      for (let j = 0; j < cycle.dureeRegles; j += 1) {
+        const x = new Date(debut);
+        x.setDate(x.getDate() + j);
+        if (!joursRegles.has(enIso(x))) joursPrevus.add(enIso(x));
+      }
+    }
+    const ovu = Math.max(1, cycle.cycleMoyen - 14);
+    for (let j = ovu - 6; j <= ovu - 1; j += 1) {
+      const x = new Date(debut);
+      x.setDate(x.getDate() + j);
+      if (!joursRegles.has(enIso(x))) joursFertiles.add(enIso(x));
+    }
+    if (n === 0 && cycle.ovulation) jourOvulation = cycle.ovulation;
+  }
+}
+
+// La grille, semaine commençant le lundi.
+const decalage = (premier.getDay() + 6) % 7;
+const cases: { iso: string; numero: number }[] = [];
+for (let j = 1; j <= dernier.getDate(); j += 1) {
+  const d = new Date(premier.getFullYear(), premier.getMonth(), j);
+  cases.push({ iso: enIso(d), numero: j });
+}
+
+const hui = aujourdhui();
+const phase = cycle?.aDesDonnees ? PHASES[cycle.phase] : null;
+const panier = comptePanier(lirePanier(Astro));
+
+function classeDuJour(iso: string): string {
+  const classes: string[] = ['jour'];
+  if (joursRegles.has(iso)) classes.push('jour-regles');
+  else if (iso === jourOvulation) classes.push('jour-ovulation');
+  else if (joursFertiles.has(iso)) classes.push('jour-fertile');
+  else if (joursPrevus.has(iso)) classes.push('jour-prevu');
+  if (iso === hui) classes.push('jour-hui');
+  if (iso > hui) classes.push('jour-avenir');
+  return classes.join(' ');
+}
+
+function libelleDuJour(iso: string, numero: number): string {
+  const bouts = [`${numero} ${moisEtAnnee(premier).split(' ')[0]}`];
+  if (joursRegles.has(iso)) bouts.push('règles');
+  else if (iso === jourOvulation) bouts.push('ovulation probable');
+  else if (joursFertiles.has(iso)) bouts.push('période fertile');
+  else if (joursPrevus.has(iso)) bouts.push('règles prévues');
+  if (iso === hui) bouts.push("aujourd'hui");
+  return bouts.join(', ');
+}
+
+// L'historique : les écarts réels entre deux débuts de règles.
+const historique: { debut: string; ecart: number | null }[] = [];
+const tries = [...(cycles ?? [])].sort((a, b) => (a.debut < b.debut ? 1 : -1));
+for (let i = 0; i < Math.min(tries.length, 6); i += 1) {
+  const suivant = tries[i + 1];
+  historique.push({
+    debut: tries[i].debut,
+    ecart: suivant ? Math.round((dateDe(tries[i].debut).getTime() - dateDe(suivant.debut).getTime()) / 86400000) : null,
+  });
+}
+---
+
+<Base titre="Mon cycle" nav="cycle" panier={panier}>
+  <main class="page">
+    <header class="titre-mois">
+      <h1>{moisEtAnnee(premier)}</h1>
+      <div class="fleches">
+        <a class="rond" href={`/cycle?mois=${clefMois(moisPrecedent)}`} aria-label="Mois précédent">
+          <Icone nom="retour" taille={18} epaisseur={2} />
+        </a>
+        <a class="rond" href={`/cycle?mois=${clefMois(moisSuivant)}`} aria-label="Mois suivant">
+          <Icone nom="avant" taille={18} epaisseur={2} />
+        </a>
+      </div>
+    </header>
+
+    {message && <div class="marge-bas"><Alerte type="reussite" texte={message} /></div>}
+    {erreur && <div class="marge-bas"><Alerte type="erreur" texte={erreur} /></div>}
+
+    <section class="carte calendrier apparait">
+      <div class="noms-jours" aria-hidden="true">
+        <span>L</span><span>M</span><span>M</span><span>J</span><span>V</span><span>S</span><span>D</span>
+      </div>
+      <div class="grille">
+        {Array.from({ length: decalage }, () => <span class="vide" />)}
+        {
+          cases.map((c) => (
+            <form method="POST" class="case">
+              <input type="hidden" name="jour" value={c.iso} />
+              <input type="hidden" name="geste" value={joursRegles.has(c.iso) ? 'retirer' : 'declarer'} />
+              <button
+                class={classeDuJour(c.iso)}
+                type="submit"
+                disabled={c.iso > hui}
+                aria-label={libelleDuJour(c.iso, c.numero)}
+              >
+                {c.numero}
+              </button>
+            </form>
+          ))
+        }
+      </div>
+      <p class="aide-calendrier">Touche un jour pour déclarer ou retirer tes règles.</p>
+    </section>
+
+    <div class="legende">
+      <span><i class="pt-regles"></i> Tes règles</span>
+      <span><i class="pt-fertile"></i> Période fertile</span>
+      <span><i class="pt-prevu"></i> Règles prévues</span>
+    </div>
+
+    {
+      cycle?.aDesDonnees && !cycle.depasse && (
+        <section class="carte-sombre bloc prevision apparait" data-ordre="2">
+          <div class="nombre">
+            <span class="chiffre">{Math.max(cycle.joursRestants, 0)}</span>
+            <span class="unite">{cycle.joursRestants === 1 ? 'jour' : 'jours'}</span>
+          </div>
+          <div class="barre-verticale"></div>
+          <div>
+            <div class="fort">
+              {cycle.prochainesRegles ? `Prochaines règles vers le ${dateCourte(cycle.prochainesRegles)}` : ''}
+            </div>
+            <div class="doux-clair">
+              {cycle.cyclesMesures > 0
+                ? `Calculé sur tes ${pluriel(cycle.cyclesMesures, 'dernier cycle', 'derniers cycles')}`
+                : 'Calculé sur ce que tu as déclaré'}
+            </div>
+          </div>
+        </section>
+      )
+    }
+
+    {
+      cycle?.aDesDonnees && cycle.depasse && (
+        <div class="marge-bas">
+          <Alerte
+            type="attention"
+            texte={`Tes dernières règles déclarées datent du ${dateLongue(cycle.debutDernieresRegles!)}. Note-les quand elles arrivent. Si le retard dépasse trois mois sans grossesse, parle-en à une sage-femme.`}
+          />
+        </div>
+      )
+    }
+
+    {
+      phase && (
+        <section class="carte bloc apparait" data-ordre="3">
+          <Anim nom={`phase-${cycle!.phase}` as never} classe="phase-dessin" />
+          <div class="phase-titre">
+            <span class:list={['pastille', phase.couleur === 'violet' ? 'pastille-violette' : phase.couleur === 'encre' ? 'pastille-neutre' : 'pastille-rose']}>
+              {phase.nom}
+            </span>
+            <span class="savant">{phase.savant}</span>
+          </div>
+          <p class="doux">{phase.explique}</p>
+        </section>
+      )
+    }
+
+    <section class="apparait" data-ordre="4">
+      <h2 class="rangee-titre">Tes derniers cycles</h2>
+      {historique.length === 0 ? (
+        <div class="carte bloc">
+          <p class="doux">Rien de noté pour l'instant. Touche un jour du calendrier pour déclarer tes dernières règles.</p>
+        </div>
+      ) : (
+        <div class="rangees">
+          {historique.map((h) => (
+            <div class="rangee">
+              <div>
+                <div class="fort-petit">{dateLongue(h.debut)}</div>
+                <div class="gris">
+                  {joursNotes.has(h.debut) ? 'noté dans ton journal' : 'déclaré'}
+                </div>
+              </div>
+              <div class="pousse chiffre ecart">
+                {h.ecart ? `${h.ecart} j` : '—'}
+              </div>
+            </div>
+          ))}
+          {cycle && cycle.cyclesMesures > 0 && (
+            <div class="rangee">
+              <div class="fort-petit">Ton cycle moyen</div>
+              <div class="pousse chiffre ecart">{cycle.cycleMoyen} j</div>
+            </div>
+          )}
+        </div>
+      )}
+    </section>
+
+    <section class="carte bloc apparait" data-ordre="5">
+      <h3>Quand il faut voir quelqu'un</h3>
+      <ul class="consulter">
+        {QUAND_CONSULTER.map((c) => <li>{c}</li>)}
+      </ul>
+      <p class="gris">Dans ces cas, va au centre de santé le plus proche. Ce n'est pas à endurer.</p>
+    </section>
+
+    <div class="espace"></div>
+  </main>
+</Base>
+
+<style>
+  .titre-mois {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--e5) 0 var(--e4);
+  }
+
+  .titre-mois h1 {
+    font-size: 23px;
+    text-transform: capitalize;
+  }
+
+  .fleches {
+    display: flex;
+    gap: 6px;
+  }
+
+  .calendrier {
+    padding: var(--e3) var(--e2) var(--e3);
+  }
+
+  .noms-jours,
+  .grille {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 2px;
+    justify-items: center;
+  }
+
+  .noms-jours span {
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--texte-3);
+    padding-bottom: 4px;
+  }
+
+  .case {
+    display: contents;
+  }
+
+  .jour {
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid transparent;
+    border-radius: var(--r-champ);
+    background: transparent;
+    font-family: var(--texte);
+    font-size: 14.5px;
+    font-weight: 600;
+    color: var(--encre);
+    cursor: pointer;
+    transition: background-color var(--vite) ease, transform var(--vite) ease;
+  }
+
+  .jour:hover:not([disabled]) {
+    background: var(--surface-douce);
+  }
+
+  .jour:active:not([disabled]) {
+    transform: scale(0.95);
+  }
+
+  .jour[disabled] {
+    cursor: default;
+    color: var(--texte-3);
+  }
+
+  .jour-regles {
+    background: var(--rose);
+    color: #fff;
+  }
+
+  .jour-regles:hover:not([disabled]) {
+    background: var(--rose-fonce);
+  }
+
+  .jour-fertile {
+    background: var(--violet-clair);
+    color: var(--violet-fonce);
+  }
+
+  .jour-ovulation {
+    background: var(--violet-clair);
+    color: var(--violet-fonce);
+    border: 2px solid var(--violet);
+  }
+
+  .jour-prevu {
+    color: var(--rose-fonce);
+    border: 1px dashed var(--rose);
+  }
+
+  .jour-hui {
+    border: 2px solid var(--encre);
+  }
+
+  .jour-avenir.jour-regles {
+    opacity: 0.6;
+  }
+
+  .vide {
+    width: 44px;
+    height: 44px;
+  }
+
+  .aide-calendrier {
+    margin-top: var(--e2);
+    text-align: center;
+    font-size: 12px;
+    color: var(--texte-3);
+  }
+
+  .legende {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--e2) var(--e4);
+    padding: var(--e3) 2px var(--e4);
+  }
+
+  .legende span {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12.5px;
+    color: var(--texte-2);
+    font-weight: 500;
+  }
+
+  .legende i {
+    width: 13px;
+    height: 13px;
+    border-radius: 5px;
+    display: inline-block;
+  }
+
+  .pt-regles {
+    background: var(--rose);
+  }
+
+  .pt-fertile {
+    background: var(--violet-clair);
+    border: 1px solid var(--violet);
+  }
+
+  .pt-prevu {
+    border: 1px dashed var(--rose);
+  }
+
+  .prevision {
+    display: flex;
+    align-items: center;
+    gap: var(--e4);
+  }
+
+  .nombre {
+    text-align: center;
+    flex: none;
+  }
+
+  .nombre .chiffre {
+    display: block;
+    font-size: 32px;
+    line-height: 1;
+    color: #fff;
+  }
+
+  .unite {
+    font-size: 10.5px;
+    font-weight: 600;
+    color: var(--rose-clair);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+  }
+
+  .barre-verticale {
+    width: 1px;
+    height: 38px;
+    background: #4a3a41;
+    flex: none;
+  }
+
+  .fort {
+    font-size: 14.5px;
+    font-weight: 700;
+  }
+
+  .doux-clair {
+    margin-top: 3px;
+    font-size: 12.5px;
+    color: var(--rose-clair);
+  }
+
+  .phase-dessin {
+    width: 110px;
+    margin: 0 auto var(--e2);
+  }
+
+  .phase-titre {
+    display: flex;
+    align-items: center;
+    gap: var(--e2);
+    margin-bottom: var(--e2);
+  }
+
+  .savant {
+    font-size: 12px;
+    color: var(--texte-3);
+  }
+
+  .doux {
+    font-size: 14px;
+    color: var(--texte-2);
+    line-height: 1.5;
+  }
+
+  .fort-petit {
+    font-size: 14.5px;
+    font-weight: 600;
+  }
+
+  .gris {
+    font-size: 12.5px;
+    color: var(--texte-3);
+  }
+
+  .ecart {
+    font-size: 17px;
+    color: var(--rose);
+  }
+
+  .consulter {
+    margin: var(--e2) 0 var(--e3);
+    padding-left: var(--e4);
+    font-size: 13.5px;
+    color: var(--texte-2);
+    line-height: 1.5;
+  }
+
+  .consulter li {
+    margin-bottom: 6px;
+  }
+
+  .marge-bas {
+    margin-bottom: var(--e3);
+  }
+
+  .carte,
+  .carte-sombre,
+  section {
+    margin-bottom: var(--e3);
+  }
+</style>

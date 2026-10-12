@@ -1,0 +1,528 @@
+---
+/**
+ * L'accueil, dans ses deux états.
+ *
+ * Visiteuse : une page qui explique en trois lignes et montre la boutique.
+ * Elle doit pouvoir regarder les prix sans compte, sinon un lien partagé sur
+ * WhatsApp ne mène à rien.
+ *
+ * Connectée : son cycle, d'abord. C'est la raison d'ouvrir l'application, et
+ * elle doit être lisible en une seconde, sans faire défiler.
+ */
+import Base from '../layouts/Base.astro';
+import Symbole from '../components/Symbole.astro';
+import Icone from '../components/Icone.astro';
+import Anneau from '../components/Anneau.astro';
+import Anim from '../components/Anim.astro';
+import CarteProduit from '../components/CarteProduit.astro';
+import Alerte from '../components/Alerte.astro';
+import { clientPublic, baseConfiguree } from '../lib/supabase';
+import { visiteuse, monCycle, lirePanier, comptePanier } from '../lib/session';
+import { PHASES } from '../lib/cycle';
+import { dateLongue, aujourdhui, enJours, pluriel } from '../lib/format';
+
+const installee = baseConfiguree();
+const moi = installee ? await visiteuse(Astro) : null;
+
+// Elle a un compte mais n'a pas répondu au questionnaire : on ne peut rien
+// calculer, et un accueil vide ne dit pas quoi faire.
+if (moi && !moi.questionnaireFini) {
+  return Astro.redirect('/bienvenue', 302);
+}
+
+const cycle = moi ? await monCycle(Astro) : null;
+const panier = comptePanier(lirePanier(Astro));
+
+let produits: any[] = [];
+if (installee) {
+  const { data } = await clientPublic(Astro)
+    .from('produits')
+    .select('slug, nom, prix_cfa, rayon, image, etiquette, stock')
+    .eq('publie', true)
+    .order('ordre')
+    .limit(4);
+  produits = data ?? [];
+}
+
+const phase = cycle?.aDesDonnees ? PHASES[cycle.phase] : null;
+const ICONE_PHASE = { regles: 'goutte', elan: 'pousse', fertile: 'soleil', lune: 'lune' } as const;
+---
+
+<Base
+  titre="Mousso Dambé"
+  nav={moi ? 'accueil' : null}
+  panier={panier}
+  pleinEcran={!moi}
+>
+  {
+    !installee && (
+      <main class="page">
+        <div class="espace" />
+        <Alerte
+          type="attention"
+          texte="L'application n'est pas encore branchée à sa base de données. Les deux clés Supabase manquent dans le fichier .env."
+        />
+      </main>
+    )
+  }
+
+  {
+    installee && !moi && (
+      <main class="accueil-visiteuse">
+        <Anim nom="accueil" classe="bandeau" />
+        <div class="page">
+          <div class="haut apparait">
+            <Symbole taille={54} anime titre="Mousso Dambé" />
+            <h1>Mousso Dambé</h1>
+            <p class="promesse">
+              Tes règles, sans gêne et sans mauvaise surprise. Suis ton cycle, trouve tes protections, pose tes
+              questions.
+            </p>
+          </div>
+
+          <ul class="trois apparait" data-ordre="2">
+            <li>
+              <span class="rond-icone"><Icone nom="cycle" taille={20} /></span>
+              <div>
+                <strong>Sache quand elles arrivent</strong>
+                <span>Tu réponds à six questions, l'application calcule le reste.</span>
+              </div>
+            </li>
+            <li>
+              <span class="rond-icone"><Icone nom="camion" taille={20} /></span>
+              <div>
+                <strong>Serviettes et culottes livrées</strong>
+                <span>Colis neutre, livré à Ouaga, tu paies à la remise.</span>
+              </div>
+            </li>
+            <li>
+              <span class="rond-icone"><Icone nom="dambe" taille={20} /></span>
+              <div>
+                <strong>Dambé répond à tout</strong>
+                <span>Les questions qu'on n'ose pas poser, sans jugement.</span>
+              </div>
+            </li>
+          </ul>
+
+          <div class="apparait" data-ordre="3">
+            <a class="btn btn-rose btn-plein" href="/inscription">Commencer</a>
+            <div class="centre">
+              <a class="btn btn-texte" href="/connexion">J'ai déjà un compte</a>
+            </div>
+          </div>
+
+          {produits.length > 0 && (
+            <section class="apparait" data-ordre="4">
+              <div class="section-titre">
+                <h2>La boutique</h2>
+                <a href="/boutique">Tout voir</a>
+              </div>
+              <div class="grille-produits">
+                {produits.slice(0, 2).map((p) => (
+                  <CarteProduit
+                    slug={p.slug}
+                    nom={p.nom}
+                    prixCfa={p.prix_cfa}
+                    rayon={p.rayon}
+                    image={p.image}
+                    etiquette={p.etiquette}
+                    stock={p.stock}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
+          <p class="discret apparait" data-ordre="5">
+            Ce que tu notes reste à toi. Personne de ton entourage ne peut le voir, et rien n'est vendu à personne.
+          </p>
+        </div>
+      </main>
+    )
+  }
+
+  {
+    moi && (
+      <main class="page">
+        <header class="barre-haute apparait">
+          <div class="marque">
+            <Symbole taille={30} anime />
+            <div>
+              <div class="nom-appli">Mousso Dambé</div>
+              <div class="date">{dateLongue(aujourdhui())}</div>
+            </div>
+          </div>
+          <a class="rond" href="/compte" aria-label="Mon compte">
+            <Icone nom="compte" taille={20} />
+          </a>
+        </header>
+
+        {cycle?.aDesDonnees ? (
+          <section class="carte bloc centre apparait" data-ordre="1">
+            <Anneau
+              jour={Math.min(cycle.jourDuCycle, cycle.cycleMoyen)}
+              dureeRegles={cycle.dureeRegles}
+              cycle={cycle.cycleMoyen}
+              phase={phase?.nom ?? ''}
+            >
+              <span class="etiquette-jour">Jour</span>
+              <span class="chiffre grand chiffre-arrive">{cycle.jourDuCycle}</span>
+              <span class="etiquette-jour">sur {cycle.cycleMoyen}</span>
+            </Anneau>
+
+            <div class:list={['pastille', `pastille-${phase?.couleur === 'violet' ? 'violette' : phase?.couleur === 'encre' ? 'neutre' : 'rose'}`]}>
+              <Icone nom={ICONE_PHASE[cycle.phase]} taille={16} />
+              {phase?.nom}
+            </div>
+
+            {cycle.depasse ? (
+              <div class="prevision">
+                <div class="fort">Tes règles ont du retard</div>
+                <div class="doux">
+                  Rien n'est noté depuis {pluriel(cycle.jourDuCycle - 1, 'jour')}. Note-les quand elles arrivent, ou
+                  parle à une sage-femme si le retard dure.
+                </div>
+              </div>
+            ) : (
+              <div class="prevision">
+                <div class="fort">
+                  {cycle.joursRestants > 0
+                    ? `Tes prochaines règles ${enJours(cycle.joursRestants)}`
+                    : 'Tes règles sont attendues aujourd’hui'}
+                </div>
+                <div class="doux">
+                  {cycle.prochainesRegles ? `Vers le ${dateLongue(cycle.prochainesRegles)}` : ''}
+                  {cycle.cyclesMesures > 0
+                    ? ` · calculé sur tes ${cycle.cyclesMesures === 1 ? 'derniers cycles' : `${cycle.cyclesMesures} derniers cycles`}`
+                    : ' · à affiner quand tu auras noté un cycle'}
+                </div>
+              </div>
+            )}
+
+            <div class="deux-boutons">
+              <a class="btn btn-rose sans-retour" href="/journal">Noter aujourd'hui</a>
+              <a class="btn btn-contour" href="/cycle">Calendrier</a>
+            </div>
+          </section>
+        ) : (
+          <section class="carte bloc apparait" data-ordre="1">
+            <h2>On ne connaît pas encore ton cycle</h2>
+            <p class="doux haut-marge">
+              Dis-moi quand ont commencé tes dernières règles, et je te donne tes prochaines dates.
+            </p>
+            <a class="btn btn-rose btn-plein haut-marge" href="/cycle">Déclarer mes règles</a>
+          </section>
+        )}
+
+        {phase && (
+          <section class="carte bloc phase-carte apparait" data-ordre="2">
+            <Anim nom={`phase-${cycle!.phase}` as never} classe="phase-dessin" />
+            <div>
+              <h3>{phase.nom}</h3>
+              <p class="doux haut-marge">{phase.explique}</p>
+              <p class="conseil">{phase.conseil}</p>
+            </div>
+          </section>
+        )}
+
+        <a class="carte-sombre bloc dambe apparait" data-ordre="3" href="/dambe">
+          <span class="rond-rose-plein"><Icone nom="dambe" taille={22} /></span>
+          <span class="dambe-texte">
+            <strong>Demande à Dambé</strong>
+            <span>Une question sur tes règles, tes douleurs, ton hygiène ?</span>
+          </span>
+          <Icone nom="avant" taille={18} />
+        </a>
+
+        {produits.length > 0 && (
+          <section class="apparait" data-ordre="4">
+            <div class="section-titre">
+              <h2>Pour tes règles</h2>
+              <a href="/boutique">Tout voir</a>
+            </div>
+            <Anim nom="accueil" classe="bandeau-mince" />
+            <div class="grille-produits haut-marge">
+              {produits.slice(0, 2).map((p) => (
+                <CarteProduit
+                  slug={p.slug}
+                  nom={p.nom}
+                  prixCfa={p.prix_cfa}
+                  rayon={p.rayon}
+                  image={p.image}
+                  etiquette={p.etiquette}
+                  stock={p.stock}
+                />
+              ))}
+            </div>
+          </section>
+        )}
+
+        <div class="espace" />
+      </main>
+    )
+  }
+</Base>
+
+<style>
+  /* --- Accueil de la visiteuse --- */
+  .accueil-visiteuse {
+    padding: var(--e6) 0 var(--e6);
+  }
+
+  .haut {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--e3);
+    text-align: center;
+    padding-bottom: var(--e5);
+  }
+
+  .haut h1 {
+    font-size: 34px;
+    font-weight: 800;
+  }
+
+  .promesse {
+    max-width: 330px;
+    font-size: 15.5px;
+    color: var(--texte-2);
+  }
+
+  .trois {
+    list-style: none;
+    margin: var(--e5) 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--e4);
+  }
+
+  .trois li {
+    display: flex;
+    gap: var(--e3);
+    align-items: flex-start;
+  }
+
+  .trois strong {
+    display: block;
+    font-size: 15px;
+  }
+
+  .trois span {
+    font-size: 13.5px;
+    color: var(--texte-2);
+    line-height: 1.45;
+  }
+
+  .rond-icone {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    flex: none;
+    border-radius: 13px;
+    background: var(--surface-douce);
+    color: var(--rose);
+  }
+
+  .centre {
+    display: flex;
+    justify-content: center;
+    margin-top: var(--e2);
+  }
+
+  .discret {
+    margin-top: var(--e5);
+    font-size: 12.5px;
+    color: var(--texte-3);
+    text-align: center;
+    line-height: 1.5;
+  }
+
+  /* --- Accueil de la connectée --- */
+  .barre-haute {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--e5) 0 var(--e3);
+  }
+
+  .marque {
+    display: flex;
+    align-items: center;
+    gap: var(--e3);
+  }
+
+  .nom-appli {
+    font-family: var(--titre);
+    font-size: 16px;
+    font-weight: 700;
+  }
+
+  .date {
+    font-size: 11.5px;
+    color: var(--texte-3);
+    font-weight: 500;
+  }
+
+  .centre {
+    text-align: center;
+  }
+
+  .carte.centre {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .etiquette-jour {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--texte-3);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+  }
+
+  .grand {
+    font-size: 64px;
+    line-height: 1;
+    letter-spacing: -2px;
+  }
+
+  .pastille {
+    margin-top: var(--e3);
+    padding: 7px 14px;
+    font-size: 14px;
+  }
+
+  .prevision {
+    margin-top: var(--e3);
+    text-align: center;
+  }
+
+  .fort {
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  .doux {
+    font-size: 13px;
+    color: var(--texte-2);
+    line-height: 1.5;
+  }
+
+  .conseil {
+    margin-top: var(--e2);
+    padding-top: var(--e2);
+    border-top: 1px solid var(--bordure);
+    font-size: 13.5px;
+    color: var(--encre);
+  }
+
+  .haut-marge {
+    margin-top: var(--e2);
+  }
+
+  .deux-boutons {
+    display: flex;
+    gap: var(--e2);
+    width: 100%;
+    margin-top: var(--e4);
+  }
+
+  .deux-boutons > * {
+    flex: 1;
+  }
+
+  /* « Noter aujourd'hui » passait sur deux lignes dans la moitié d'écran :
+     l'icône en plus ne tenait pas. On garde les mots, on enlève l'icône, et
+     on donne un peu plus de place au bouton principal. */
+  .sans-retour {
+    flex: 1.25;
+    white-space: nowrap;
+    padding: 0 var(--e2);
+  }
+
+  .carte,
+  .carte-sombre,
+  section {
+    margin-bottom: var(--e3);
+  }
+
+  .dambe {
+    display: flex;
+    align-items: center;
+    gap: var(--e3);
+    color: #fff;
+  }
+
+  .rond-rose-plein {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    flex: none;
+    border-radius: 13px;
+    background: var(--rose);
+    color: #fff;
+  }
+
+  .dambe-texte {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .dambe-texte strong {
+    display: block;
+    font-size: 15px;
+  }
+
+  .dambe-texte span {
+    font-size: 12.5px;
+    color: var(--rose-clair);
+    line-height: 1.4;
+  }
+
+  .section-titre {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: var(--e2);
+  }
+
+  .section-titre a {
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  /* Le bandeau tissé de Motion, pleine largeur en haut de la page. */
+  .bandeau {
+    margin-bottom: var(--e5);
+  }
+
+  /* Le même, en séparateur fin : on ne garde qu'une tranche du tissage. */
+  .bandeau-mince {
+    height: 20px;
+    overflow: hidden;
+    margin-bottom: var(--e3);
+    border-radius: 4px;
+  }
+
+  .bandeau-mince :global(svg) {
+    margin-top: -42px;
+  }
+
+  .phase-carte {
+    display: flex;
+    gap: var(--e3);
+    align-items: flex-start;
+  }
+
+  .phase-dessin {
+    flex: none;
+    width: 76px;
+  }
+</style>
