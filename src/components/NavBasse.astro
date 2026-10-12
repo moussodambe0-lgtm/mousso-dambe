@@ -1,27 +1,39 @@
 ---
 /**
- * La barre basse : cinq onglets, dans l'ordre voulu par Arthur le 12 octobre
- * 2026. L'onglet du milieu est à la place où le pouce tombe naturellement, et
- * le compte a quitté le coin de l'accueil pour venir ici, aligné avec le
- * reste.
+ * LA BARRE BASSE, NAVIGATION LIQUIDE.
  *
- * L'onglet du milieu s'appelle « Discussions » depuis la section 7 de son
- * cahier : il mène à la liste où IA Dambé est épinglée au-dessus de la
- * conversation avec la boutique. On ne perd pas la mention « IA » pour
- * autant : elle est portée par la ligne d'IA Dambé dans la liste et par le
- * titre de sa page. Une utilisatrice qui lit un prénom ne devine pas qu'elle
- * parle à une machine, et le dire est une question d'honnêteté.
+ * Code donné par Arthur le 12 octobre 2026 au soir, intégré ici. Un cercle
+ * creuse une encoche dans la barre sous l'onglet actif, l'icône monte dedans,
+ * son libellé apparaît en dessous, et le cercle s'étire pendant qu'il glisse.
  *
- * La pilule qui glisse sous l'onglet actif (section 11) est entièrement en
- * CSS : la barre porte la position en attribut, une règle place la pilule.
- * Zéro octet de JavaScript, et elle est juste même si rien ne se charge.
+ * TROIS CHOSES ONT CHANGÉ PAR RAPPORT À SON CODE, et chacune pour une raison :
+ *
+ *   1. La position du cercle est posée PAR LE SERVEUR, dans `data-place`, et
+ *      non par JavaScript au clic. Chaque onglet est une vraie page ici : si
+ *      le cercle attendait un script, il partirait du premier onglet à chaque
+ *      chargement, puis sauterait. Posé par le serveur, il est au bon endroit
+ *      avant le premier pixel, et la barre reste juste même si le script ne
+ *      se charge jamais.
+ *
+ *   2. La couleur de l'encoche suit la page. Dans son code, `--page-bg` est
+ *      écrit en dur. Ici l'accueil a un fond différent du reste ; l'encoche
+ *      lit donc `--encoche`, que chaque page règle. Avec une couleur figée,
+ *      on verrait un rectangle d'une autre teinte autour du cercle.
+ *
+ *   3. Le libellé de l'onglet actif reste, mais les autres gardent leur
+ *      texte dans la page, caché à l'œil et lu par les lecteurs d'écran.
+ *      Une barre dont quatre onglets sur cinq n'ont plus de nom n'est pas
+ *      utilisable par quelqu'un qui n'y voit pas.
+ *
+ * Le mouvement (étirement du cercle, rebond de l'icône, vibration) est un
+ * confort ajouté par `src/scripts/nav.ts`. Sans lui, tout marche encore.
  */
 import Icone from './Icone.astro';
 
 interface Props {
   actif: 'accueil' | 'cycle' | 'discussions' | 'boutique' | 'compte';
   panier?: number;
-  /** Messages de la boutique non lus, pour la pastille de l'onglet. */
+  /** Messages non lus, pour la pastille de l'onglet Discussions. */
   messages?: number;
 }
 
@@ -32,7 +44,7 @@ const ONGLETS = [
   { id: 'cycle', lien: '/cycle', icone: 'cycle', libelle: 'Mon cycle' },
   { id: 'discussions', lien: '/discussions', icone: 'dambe', libelle: 'Discussions' },
   { id: 'boutique', lien: '/boutique', icone: 'boutique', libelle: 'Boutique' },
-  { id: 'compte', lien: '/compte', icone: 'compte', libelle: 'Mon compte' },
+  { id: 'compte', lien: '/compte', icone: 'compte', libelle: 'Compte' },
 ] as const;
 
 const place = Math.max(
@@ -42,27 +54,37 @@ const place = Math.max(
 ---
 
 <nav class="nav-basse" aria-label="Navigation principale" data-place={place}>
-  <span class="nav-pilule" aria-hidden="true"></span>
-  {
-    ONGLETS.map((o) => (
-      <a class="nav-item" href={o.lien} aria-current={actif === o.id ? 'page' : undefined}>
-        <span class="nav-icone">
-          <Icone nom={o.icone} taille={21} />
-          {o.id === 'boutique' && panier > 0 && (
-            <span class="nav-pastille">
-              {panier}
-              <span class="lecture-seule">articles dans ton panier</span>
+  <ul class="nav-liste">
+    {
+      ONGLETS.map((o, i) => (
+        <li class:list={['nav-item', i === place && 'nav-item-actif']}>
+          <a href={o.lien} aria-label={o.libelle} aria-current={i === place ? 'page' : undefined}>
+            <span class="nav-icone">
+              <Icone nom={o.icone} taille={25} epaisseur={1.9} />
+              {o.id === 'boutique' && panier > 0 && (
+                <span class="nav-pastille">
+                  {panier}
+                  <span class="lecture-seule">articles dans ton panier</span>
+                </span>
+              )}
+              {o.id === 'discussions' && messages > 0 && (
+                <span class="nav-pastille">
+                  {messages}
+                  <span class="lecture-seule">messages non lus</span>
+                </span>
+              )}
             </span>
-          )}
-          {o.id === 'discussions' && messages > 0 && (
-            <span class="nav-pastille">
-              {messages}
-              <span class="lecture-seule">messages non lus</span>
-            </span>
-          )}
-        </span>
-        {o.libelle}
-      </a>
-    ))
-  }
+            {/* Le libellé est toujours dans la page : visible pour l'onglet
+                actif, et lu par les lecteurs d'écran pour tous les autres. */}
+            <span class="nav-texte">{o.libelle}</span>
+          </a>
+        </li>
+      ))
+    }
+    <span class="nav-cercle" aria-hidden="true"></span>
+  </ul>
 </nav>
+
+<script>
+  import '../scripts/nav';
+</script>

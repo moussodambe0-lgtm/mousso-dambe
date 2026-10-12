@@ -37,7 +37,9 @@ const phrase = prenom ? `Une question, ${prenom} ?` : 'Une question ?';
   .flottante {
     position: fixed;
     right: 14px;
-    bottom: calc(86px + env(safe-area-inset-bottom, 0px));
+    /* Au-dessus du cercle de la barre basse, qui dépasse de 32 px : plus bas,
+       la bulle lui rentrerait dedans. */
+    bottom: calc(118px + env(safe-area-inset-bottom, 0px));
     z-index: 19;
     display: flex;
     align-items: center;

@@ -39,6 +39,7 @@ const ECRANS = [
   { nom: '01-ouverture', url: '/ouverture', connectee: false },
   { nom: '03-connexion', url: '/connexion', connectee: false },
   { nom: '04-accueil', url: '/', connectee: true },
+  { nom: '04b-accueil-ecran', url: '/', connectee: true, ecranSeul: true },
   { nom: '05-questionnaire-1', url: '/bienvenue?etape=1', connectee: true },
   { nom: '05b-questionnaire-2', url: '/bienvenue?etape=2', connectee: true },
   { nom: '05c-questionnaire-3', url: '/bienvenue?etape=3', connectee: true },
@@ -209,9 +210,14 @@ try {
       awaitPromise: true,
     });
 
+    // `ecranSeul` ne prend que ce qu'on voit, sans dérouler la page : c'est le
+    // seul moyen de juger ce qui est posé en bas de l'écran (la barre basse,
+    // la bulle de la mascotte). Sur une capture déroulée, ces éléments
+    // flottent au milieu de rien et on ne peut rien en dire.
     const { data } = await envoyer('Page.captureScreenshot', {
       format: 'png',
-      captureBeyondViewport: true,
+      captureBeyondViewport: !ecran.ecranSeul,
+      clip: ecran.ecranSeul ? { x: 0, y: 0, width: 390, height: 844, scale: 2 } : undefined,
     });
     fs.writeFileSync(path.join(SORTIE, `${ecran.nom}.png`), Buffer.from(data, 'base64'));
     console.log(`  ${ecran.nom}.png`);

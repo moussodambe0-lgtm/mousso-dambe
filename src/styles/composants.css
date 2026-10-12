@@ -436,73 +436,186 @@ button.rangee:hover {
 }
 
 /* --- Barre basse -------------------------------------------------------- */
+/* --- LA BARRE BASSE, NAVIGATION LIQUIDE -------------------------------
+ * D'après le code donné par Arthur le 12 octobre 2026. Un cercle creuse une
+ * encoche dans la barre sous l'onglet actif : sa bordure a la couleur du fond
+ * de la page, donc elle y disparaît. Deux pseudo-éléments arrondissent les
+ * coins de l'encoche, c'est ce qui donne l'effet « liquide ».
+ *
+ * `--encoche` doit valoir EXACTEMENT la couleur du fond derrière la barre,
+ * sinon on voit un halo d'une autre teinte autour du cercle. Chaque page qui
+ * change de fond la redéfinit (voir l'accueil).
+ */
 .nav-basse {
+  --nav-h: 70px;
+  --nav-cercle: 64px;
+  --encoche: var(--fond);
+
   position: fixed;
   left: 0;
   right: 0;
   bottom: 0;
   z-index: 20;
   display: flex;
+  justify-content: center;
   max-width: 480px;
+  height: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px));
   margin: 0 auto;
-  padding: 6px 8px calc(10px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
   background: var(--encre);
-  border-radius: 24px 24px 0 0;
+  border-radius: 22px 22px 0 0;
 }
 
-/* La pilule qui glisse d'un onglet à l'autre (section 11 du cahier d'Arthur).
- * Cinq onglets de largeur égale : la pilule mesure un cinquième de la barre
- * moins les marges, et se déplace d'un cran par onglet. La transition joue
- * entre deux pages parce que la barre est reprise par la transition de vue. */
-.nav-pilule {
-  position: absolute;
-  top: 6px;
-  bottom: calc(10px + env(safe-area-inset-bottom, 0px));
-  left: 8px;
-  width: calc((100% - 16px) / 5);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.13);
-  view-transition-name: nav-pilule;
-  transition: transform 0.42s cubic-bezier(0.34, 1.56, 0.64, 1);
+.nav-liste {
+  position: relative;
+  display: flex;
+  width: 100%;
+  max-width: 400px;
+  height: var(--nav-h);
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
-
-.nav-basse[data-place='0'] .nav-pilule { transform: translateX(0); }
-.nav-basse[data-place='1'] .nav-pilule { transform: translateX(100%); }
-.nav-basse[data-place='2'] .nav-pilule { transform: translateX(200%); }
-.nav-basse[data-place='3'] .nav-pilule { transform: translateX(300%); }
-.nav-basse[data-place='4'] .nav-pilule { transform: translateX(400%); }
 
 .nav-item {
   position: relative;
   z-index: 1;
   flex: 1;
   min-width: 0;
+  height: var(--nav-h);
+}
+
+.nav-item > a {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  min-height: 48px;
-  padding: var(--e2) 2px;
-  color: var(--texte-3-sombre);
-  /* Cinq onglets depuis le 12 octobre 2026 : à 390 px chacun a 76 px, et le
-     libellé doit tenir sur une ligne sans se couper. */
-  font-size: 10.5px;
-  font-weight: 600;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
   text-align: center;
+}
+
+.nav-icone {
+  position: relative;
+  display: grid;
+  place-items: center;
+  line-height: 0;
+  color: #fff;
+  transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.3s;
+}
+
+/* Le libellé : caché tant que l'onglet n'est pas actif, mais toujours dans la
+   page pour les lecteurs d'écran. */
+.nav-texte {
+  position: absolute;
+  color: #fff;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.4s, transform 0.5s;
 }
 
-.nav-item[aria-current='page'] {
-  color: var(--rose-clair);
+/* L'onglet actif : l'icône monte dans le cercle, le libellé apparaît. */
+.nav-item-actif .nav-icone {
+  transform: translateY(-30px);
+  color: var(--rose);
 }
 
+.nav-item-actif .nav-texte {
+  opacity: 1;
+  transform: translateY(13px);
+}
+
+/* --- Le cercle --- */
+.nav-cercle {
+  position: absolute;
+  top: calc(var(--nav-cercle) / -2);
+  width: var(--nav-cercle);
+  height: var(--nav-cercle);
+  border: 6px solid var(--encoche);
+  border-radius: 50%;
+  background: var(--surface);
+  view-transition-name: nav-cercle;
+  /* On déplace par `left` et non par `translate` : un pourcentage de
+     `translate` se compte sur la largeur DU CERCLE, pas sur celle de la
+     barre. Le cercle se posait donc à 64 px par cran au lieu d'un
+     cinquième de l'écran, et il tombait entre deux onglets. */
+  transition: left 0.5s cubic-bezier(0.65, 0, 0.35, 1);
+  /* Le milieu du premier onglet (un dixième de la liste), moins la moitié du
+     cercle. */
+  left: calc(10% - var(--nav-cercle) / 2);
+}
+
+/* La position vient du serveur : le cercle est au bon endroit avant le
+   premier pixel, et même si aucun script ne se charge. */
+.nav-basse[data-place='0'] .nav-cercle { left: calc(10% - var(--nav-cercle) / 2); }
+.nav-basse[data-place='1'] .nav-cercle { left: calc(30% - var(--nav-cercle) / 2); }
+.nav-basse[data-place='2'] .nav-cercle { left: calc(50% - var(--nav-cercle) / 2); }
+.nav-basse[data-place='3'] .nav-cercle { left: calc(70% - var(--nav-cercle) / 2); }
+.nav-basse[data-place='4'] .nav-cercle { left: calc(90% - var(--nav-cercle) / 2); }
+
+/* Les coins arrondis de l'encoche, à gauche et à droite du cercle. */
+.nav-cercle::before,
+.nav-cercle::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 20px;
+  height: 20px;
+  background: transparent;
+}
+
+.nav-cercle::before {
+  left: -26px;
+  border-top-right-radius: 20px;
+  box-shadow: 1px -10px 0 0 var(--encoche);
+}
+
+.nav-cercle::after {
+  right: -26px;
+  border-top-left-radius: 20px;
+  box-shadow: -1px -10px 0 0 var(--encoche);
+}
+
+/* L'étirement pendant le déplacement, et le rebond de l'icône qui arrive. */
+.nav-cercle.liquide {
+  animation: nav-liquide 0.5s ease;
+}
+
+@keyframes nav-liquide {
+  0% { scale: 1 1; }
+  35% { scale: 1.22 0.82; }
+  65% { scale: 0.92 1.08; }
+  100% { scale: 1 1; }
+}
+
+.nav-icone.rebond {
+  animation: nav-rebond 0.55s 0.15s ease;
+}
+
+@keyframes nav-rebond {
+  0%, 100% { transform: translateY(-30px); }
+  40% { transform: translateY(-37px); }
+  70% { transform: translateY(-28px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-cercle,
+  .nav-icone,
+  .nav-texte {
+    transition: none;
+    animation: none;
+  }
+}
+
+/* La pastille des non-lus, posée sur l'icône. */
 .nav-pastille {
   position: absolute;
-  top: -5px;
-  right: -7px;
+  top: -6px;
+  right: -9px;
   min-width: 19px;
   height: 19px;
   display: flex;
@@ -514,27 +627,14 @@ button.rangee:hover {
   color: #fff;
   font-size: 11px;
   font-weight: 700;
+  line-height: 1;
 }
 
-.nav-icone {
-  position: relative;
-}
-
-/* --- Barre d'action en bas d'écran ------------------------------------- */
-.barre-action {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 21;
-  display: flex;
-  gap: var(--e3);
-  align-items: center;
-  max-width: 480px;
-  margin: 0 auto;
-  padding: var(--e3) var(--e4) calc(var(--e5) + env(safe-area-inset-bottom, 0px));
-  background: var(--surface);
-  border-top: 1px solid var(--bordure);
+/* L'icône de l'onglet actif monte dans le cercle : sa pastille la suit, mais
+   elle ne doit pas se poser sur le cercle blanc. */
+.nav-item-actif .nav-pastille {
+  top: -4px;
+  right: -11px;
 }
 
 /* --- La bande tissée, clin d'œil au Faso Dan Fani ---------------------- */

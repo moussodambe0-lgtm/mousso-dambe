@@ -18,7 +18,9 @@ const peutVibrer = typeof navigator !== 'undefined' && typeof navigator.vibrate 
 const calme = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 if (peutVibrer && !calme) {
-  const CIBLES = '.nav-item, .btn-rose, .carte-choix, .carte-carree, .carte-coche, .commencer, .goutte-choix, .carte-courte, .puce';
+  // La barre basse n'est pas dans la liste : elle a sa propre vibration dans
+  // `nav.ts`, et deux vibrations pour un seul doigt se sentent comme un bug.
+  const CIBLES = '.btn-rose, .carte-choix, .carte-carree, .carte-coche, .commencer, .goutte-choix, .carte-courte, .puce';
 
   document.addEventListener(
     'pointerdown',

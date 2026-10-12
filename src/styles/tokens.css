@@ -122,7 +122,9 @@
   --ombre: 0 2px 8px rgba(27, 17, 22, 0.06), 0 8px 24px rgba(27, 17, 22, 0.05);
 
   /* Hauteur de la barre basse, pour que rien ne passe dessous */
-  --nav-hauteur: 72px;
+  /* 70 px de barre, plus les 32 px dont le cercle dépasse au-dessus : sans
+     cette marge, le bas d'une page passe sous le cercle. */
+  --nav-hauteur: 102px;
 
   /* Mouvement */
   --vite: 150ms;
