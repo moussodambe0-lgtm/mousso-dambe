@@ -1,0 +1,45 @@
+<svg class="md-qh md-qh-q5" viewBox="0 0 390 300" role="img" aria-label="Deux rythmes côte à côte, deux pagnes : à gauche des gouttes à intervalles égaux, à droite des gouttes à intervalles changeants" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <pattern id="q5-regularite-wax" width="44" height="44" patternUnits="userSpaceOnUse">
+      <circle class="md-qh-t md-qh-s-blanc" stroke-width="2" cx="22" cy="22" r="10"/>
+      <circle class="md-qh-blanc" cx="22" cy="22" r="3.4"/>
+      <path class="md-qh-t md-qh-s-blanc" stroke-width="2" d="M0 7A7 7 0 0 0 7 0M37 0A7 7 0 0 0 44 7M44 37A7 7 0 0 0 37 44M7 44A7 7 0 0 0 0 37"/>
+    </pattern>
+    <clipPath id="q5-regularite-pagnes"><rect x="50" y="186" width="124" height="44" rx="14"/><rect x="216" y="186" width="124" height="44" rx="14"/></clipPath>
+  </defs>
+  <circle class="md-qh-fond md-qh-rosec" cx="195" cy="150" r="130"/>
+  <g class="md-qh-wax"><circle cx="195" cy="150" r="130" fill="url(#q5-regularite-wax)"/></g>
+  <g class="md-qh-q5-gauche">
+    <rect class="md-qh-bord" x="41" y="68" width="148" height="184" rx="22"/>
+    <rect class="md-qh-blanc" x="38" y="62" width="148" height="184" rx="22"/>
+    <path class="md-qh-t md-qh-s-bord" stroke-width="2.4" d="M50 156H174"/>
+    <g class="md-qh-q5-arc md-qh-q5-a1"><path class="md-qh-t md-qh-s-rose" stroke-width="3" stroke-dasharray="0 6.5" d="M67 112Q83.0 86 99 112"/></g>
+    <g class="md-qh-q5-arc md-qh-q5-a2"><path class="md-qh-t md-qh-s-rose" stroke-width="3" stroke-dasharray="0 6.5" d="M99 112Q115.0 86 131 112"/></g>
+    <g class="md-qh-q5-arc md-qh-q5-a3"><path class="md-qh-t md-qh-s-rose" stroke-width="3" stroke-dasharray="0 6.5" d="M131 112Q147.0 86 163 112"/></g>
+    <g class="md-qh-q5-berce1">
+      <g class="md-qh-q5-goutte md-qh-q5-g1"><g transform="translate(67 151)"><path class="md-qh-rose" d="M0 -32C8 -22 13 -15 13 -8A13 13 0 0 1 -13 -8C-13 -15 -8 -22 0 -32Z"/><path class="md-qh-t md-qh-s-blanc" stroke-width="2.4" d="M-6.5 -7Q-6.5 -12 -3.5 -16"/></g></g>
+      <g class="md-qh-q5-goutte md-qh-q5-g2"><g transform="translate(99 151)"><path class="md-qh-rose" d="M0 -32C8 -22 13 -15 13 -8A13 13 0 0 1 -13 -8C-13 -15 -8 -22 0 -32Z"/><path class="md-qh-t md-qh-s-blanc" stroke-width="2.4" d="M-6.5 -7Q-6.5 -12 -3.5 -16"/></g></g>
+      <g class="md-qh-q5-goutte md-qh-q5-g3"><g transform="translate(131 151)"><path class="md-qh-rose" d="M0 -32C8 -22 13 -15 13 -8A13 13 0 0 1 -13 -8C-13 -15 -8 -22 0 -32Z"/><path class="md-qh-t md-qh-s-blanc" stroke-width="2.4" d="M-6.5 -7Q-6.5 -12 -3.5 -16"/></g></g>
+      <g class="md-qh-q5-goutte md-qh-q5-g4"><g transform="translate(163 151)"><path class="md-qh-rose" d="M0 -32C8 -22 13 -15 13 -8A13 13 0 0 1 -13 -8C-13 -15 -8 -22 0 -32Z"/><path class="md-qh-t md-qh-s-blanc" stroke-width="2.4" d="M-6.5 -7Q-6.5 -12 -3.5 -16"/></g></g>
+    </g>
+    <rect class="md-qh-rosec" x="50" y="186" width="124" height="44" rx="14"/>
+    <g clip-path="url(#q5-regularite-pagnes)"><g class="md-qh-q5-tisse"><rect class="md-qh-rose" x="58" y="186" width="8" height="44"/><rect class="md-qh-blanc" x="71" y="186" width="3" height="44"/><rect class="md-qh-rose" x="84" y="186" width="8" height="44"/><rect class="md-qh-blanc" x="97" y="186" width="3" height="44"/><rect class="md-qh-rose" x="110" y="186" width="8" height="44"/><rect class="md-qh-blanc" x="123" y="186" width="3" height="44"/><rect class="md-qh-rose" x="136" y="186" width="8" height="44"/><rect class="md-qh-blanc" x="149" y="186" width="3" height="44"/><rect class="md-qh-rose" x="162" y="186" width="8" height="44"/><rect class="md-qh-blanc" x="175" y="186" width="3" height="44"/></g></g>
+  </g>
+  <g class="md-qh-q5-droite">
+    <rect class="md-qh-bord" x="207" y="68" width="148" height="184" rx="22"/>
+    <rect class="md-qh-blanc" x="204" y="62" width="148" height="184" rx="22"/>
+    <path class="md-qh-t md-qh-s-bord" stroke-width="2.4" d="M216 156H340"/>
+    <g class="md-qh-q5-arc md-qh-q5-a1"><path class="md-qh-t md-qh-s-rose" stroke-width="3" stroke-dasharray="0 6.5" d="M226 112Q240.0 90 254 112"/></g>
+    <g class="md-qh-q5-arc md-qh-q5-a2"><path class="md-qh-t md-qh-s-rose" stroke-width="3" stroke-dasharray="0 6.5" d="M254 112Q275.0 78 296 112"/></g>
+    <g class="md-qh-q5-arc md-qh-q5-a3"><path class="md-qh-t md-qh-s-rose" stroke-width="3" stroke-dasharray="0 6.5" d="M296 112Q315.0 82 334 112"/></g>
+    <g class="md-qh-q5-berce2">
+      <g class="md-qh-q5-goutte md-qh-q5-g1"><g transform="translate(226 151)"><path class="md-qh-rose" d="M0 -32C8 -22 13 -15 13 -8A13 13 0 0 1 -13 -8C-13 -15 -8 -22 0 -32Z"/><path class="md-qh-t md-qh-s-blanc" stroke-width="2.4" d="M-6.5 -7Q-6.5 -12 -3.5 -16"/></g></g>
+      <g class="md-qh-q5-goutte md-qh-q5-g2"><g transform="translate(254 151)"><path class="md-qh-rose" d="M0 -32C8 -22 13 -15 13 -8A13 13 0 0 1 -13 -8C-13 -15 -8 -22 0 -32Z"/><path class="md-qh-t md-qh-s-blanc" stroke-width="2.4" d="M-6.5 -7Q-6.5 -12 -3.5 -16"/></g></g>
+      <g class="md-qh-q5-goutte md-qh-q5-g3"><g transform="translate(296 151)"><path class="md-qh-rose" d="M0 -32C8 -22 13 -15 13 -8A13 13 0 0 1 -13 -8C-13 -15 -8 -22 0 -32Z"/><path class="md-qh-t md-qh-s-blanc" stroke-width="2.4" d="M-6.5 -7Q-6.5 -12 -3.5 -16"/></g></g>
+      <g class="md-qh-q5-goutte md-qh-q5-g4"><g transform="translate(334 151)"><path class="md-qh-rose" d="M0 -32C8 -22 13 -15 13 -8A13 13 0 0 1 -13 -8C-13 -15 -8 -22 0 -32Z"/><path class="md-qh-t md-qh-s-blanc" stroke-width="2.4" d="M-6.5 -7Q-6.5 -12 -3.5 -16"/></g></g>
+    </g>
+    <rect class="md-qh-rosec" x="216" y="186" width="124" height="44" rx="14"/>
+    <g clip-path="url(#q5-regularite-pagnes)"><g class="md-qh-q5-tisse"><rect class="md-qh-rose" x="222" y="186" width="5" height="44"/><rect class="md-qh-blanc" x="232" y="186" width="3" height="44"/><rect class="md-qh-rose" x="242" y="186" width="14" height="44"/><rect class="md-qh-blanc" x="262" y="186" width="3" height="44"/><rect class="md-qh-rose" x="270" y="186" width="6" height="44"/><rect class="md-qh-blanc" x="290" y="186" width="3" height="44"/><rect class="md-qh-rose" x="300" y="186" width="15" height="44"/><rect class="md-qh-blanc" x="322" y="186" width="3" height="44"/><rect class="md-qh-rose" x="330" y="186" width="5" height="44"/></g></g>
+  </g>
+  <path class="md-qh-pop md-qh-d10 md-qh-rose" d="M195 30Q195 40 205 40Q195 40 195 50Q195 40 185 40Q195 40 195 30Z"/>
+</svg>

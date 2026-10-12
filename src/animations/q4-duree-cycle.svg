@@ -1,0 +1,29 @@
+<svg class="md-qh md-qh-q4" viewBox="0 0 390 300" role="img" aria-label="Un cercle de vingt-huit jours tourne autour d'une lune, de la première goutte de règles jusqu'au cycle suivant" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <pattern id="q4-duree-cycle-wax" width="44" height="44" patternUnits="userSpaceOnUse">
+      <circle class="md-qh-t md-qh-s-blanc" stroke-width="2" cx="22" cy="22" r="10"/>
+      <circle class="md-qh-blanc" cx="22" cy="22" r="3.4"/>
+      <path class="md-qh-t md-qh-s-blanc" stroke-width="2" d="M0 7A7 7 0 0 0 7 0M37 0A7 7 0 0 0 44 7M44 37A7 7 0 0 0 37 44M7 44A7 7 0 0 0 0 37"/>
+    </pattern>
+  </defs>
+  <circle class="md-qh-fond md-qh-rosec" cx="195" cy="150" r="130"/>
+  <g class="md-qh-wax"><circle cx="195" cy="150" r="130" fill="url(#q4-duree-cycle-wax)"/></g>
+  <g class="md-qh-q4-nuit"><circle class="md-qh-encre" cx="195" cy="150" r="106"/></g>
+  <g class="md-qh-q4-anneau">
+    <path class="md-qh-blanc md-qh-q4-jours" d="M270.7 113.6m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0M276.9 131.3m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0M279.0 150.0m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0M276.9 168.7m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0M270.7 186.4m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0M260.7 202.4m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0M247.4 215.7m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0M231.4 225.7m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0M213.7 231.9m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0M195.0 234.0m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0M176.3 231.9m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0M158.6 225.7m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0M142.6 215.7m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0M129.3 202.4m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0M119.3 186.4m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0M113.1 168.7m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0M111.0 150.0m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0M113.1 131.3m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0M119.3 113.6m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0M129.3 97.6m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0M142.6 84.3m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0M158.6 74.3m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0M176.3 68.1m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0"/>
+    <path class="md-qh-rose" d="M213.7 68.1m-5 0a5 5 0 1 0 10 0a5 5 0 1 0-10 0M231.4 74.3m-5 0a5 5 0 1 0 10 0a5 5 0 1 0-10 0M247.4 84.3m-5 0a5 5 0 1 0 10 0a5 5 0 1 0-10 0M260.7 97.6m-5 0a5 5 0 1 0 10 0a5 5 0 1 0-10 0"/>
+    <path class="md-qh-rose" d="M195 54C201 61 205 66 205 71A10 10 0 0 1 185 71C185 66 189 61 195 54Z"/>
+  </g>
+  <g class="md-qh-q4-lune">
+    <g class="md-qh-q4-berce">
+      <circle class="md-qh-creme" cx="195" cy="150" r="38"/>
+      <circle class="md-qh-encre" cx="214" cy="137" r="33"/>
+      <circle class="md-qh-bord" cx="174" cy="160" r="4"/>
+      <circle class="md-qh-bord" cx="186" cy="176" r="2.6"/>
+    </g>
+  </g>
+  <path class="md-qh-pop md-qh-d8 md-qh-blanc" d="M236 189Q236 196 243 196Q236 196 236 203Q236 196 229 196Q236 196 236 189Z"/>
+  <path class="md-qh-pop md-qh-d9 md-qh-blanc" d="M160 107Q160 112 165 112Q160 112 160 117Q160 112 155 112Q160 112 160 107Z"/>
+  <path class="md-qh-pop md-qh-d10 md-qh-rose" d="M330 53Q330 64 341 64Q330 64 330 75Q330 64 319 64Q330 64 330 53Z"/>
+  <circle class="md-qh-pop md-qh-d9 md-qh-rosef" cx="60" cy="214" r="4"/>
+</svg>

@@ -1,0 +1,173 @@
+/* Mousso Dambé : les huit illustrations du questionnaire d'accueil
+   (q1-prenom à q8-protection). Toutes en viewBox 0 0 390 300, à poser
+   EN LIGNE dans la moitié haute de l'écran.
+   Règles : l'entrée se joue une fois et finit avant 1,2 s ; ensuite au plus
+   un mouvement lent qui boucle. N'anime que transform et opacity.
+   Aucun style en ligne, aucun script : tout passe par ces classes. */
+
+.md-qh { display: block; width: 100%; max-width: 390px; height: auto; margin: 0 auto; overflow: visible; }
+
+/* Couleurs : jetons du DESIGN.md (le violet n'apparaît nulle part ici),
+   plus la peau et les lèvres de la mascotte */
+.md-qh-rose { fill: var(--rose, #D0206A); }
+.md-qh-rosef { fill: var(--rose-fonce, #9C1450); }
+.md-qh-rosec { fill: var(--rose-clair, #FFDCE9); }
+.md-qh-douce { fill: var(--surface-douce, #FFEEF4); }
+.md-qh-bord { fill: var(--bordure, #F6D9E4); }
+.md-qh-blanc { fill: var(--surface, #FFFFFF); }
+.md-qh-creme { fill: var(--creme, #FFF8F2); }
+.md-qh-encre { fill: var(--encre, #1B1116); }
+.md-qh-corail { fill: var(--corail, #F2614A); }
+.md-qh-peau { fill: var(--md-peau, #6E3B26); }
+.md-qh-peauo { fill: var(--md-peau-ombre, #55291A); }
+.md-qh-levb { fill: #6E2838; }
+.md-qh-t { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.md-qh-s-rose { stroke: var(--rose, #D0206A); }
+.md-qh-s-rosef { stroke: var(--rose-fonce, #9C1450); }
+.md-qh-s-rosec { stroke: var(--rose-clair, #FFDCE9); }
+.md-qh-s-bord { stroke: var(--bordure-forte, #E4C3D1); }
+.md-qh-s-blanc { stroke: var(--surface, #FFFFFF); }
+.md-qh-s-encre { stroke: var(--encre, #1B1116); }
+.md-qh-s-peche { stroke: var(--peche, #C2652A); }
+.md-qh-s-peau { stroke: var(--md-peau, #6E3B26); }
+.md-qh-s-peauo { stroke: var(--md-peau-ombre, #55291A); }
+
+/* Le motif wax, en filigrane sur le disque */
+.md-qh-wax { opacity: .5; }
+
+/* Entrées communes. Chaque délai + durée reste sous 1,2 s. */
+.md-qh-fond { transform-box: fill-box; transform-origin: 50% 50%; animation: md-qh-pose .4s cubic-bezier(.2, .8, .2, 1) both; }
+.md-qh-wax { animation: md-qh-wax .5s .15s ease-out both; }
+.md-qh-monte { animation: md-qh-monte .55s .1s cubic-bezier(.2, .8, .2, 1) both; }
+.md-qh-pop { transform-box: fill-box; transform-origin: 50% 50%; animation: md-qh-pop .3s cubic-bezier(.34, 1.56, .64, 1) both; }
+.md-qh-d8 { animation-delay: .8s; }
+.md-qh-d9 { animation-delay: .86s; }
+.md-qh-d10 { animation-delay: .9s; }
+
+/* Boucles lentes, après l'entrée */
+.md-qh-flotte { animation: md-qh-flotte 4.2s 1.2s ease-in-out infinite; }
+
+/* 1. Prénom : elle monte dans le cadre, salue trois fois, la carte du prénom
+   arrive et la ligne du nom s'écrit ; ensuite la carte flotte doucement. */
+.md-qh-q1-bras { transform-box: view-box; transform-origin: 100.6px 210.4px; animation: md-qh-salue .9s .25s ease-in-out both; }
+.md-qh-q1-noeud { transform-box: fill-box; transform-origin: 50% 85%; animation: md-qh-noue .4s .45s cubic-bezier(.34, 1.56, .64, 1) both; }
+.md-qh-q1-carte { animation-delay: .5s; }
+.md-qh-q1-ligne { transform-box: fill-box; transform-origin: 0 50%; animation: md-qh-trace .35s .8s cubic-bezier(.2, .8, .2, 1) both; }
+
+/* 2. Date : la goutte tombe sur le calendrier, s'écrase un peu en se posant
+   dans la case, une onde part ; ensuite la goutte respire. */
+.md-qh-q2-chute { animation: md-qh-q2-chute .55s .25s cubic-bezier(.55, 0, .7, .4) both; }
+.md-qh-q2-goutte { transform-box: fill-box; transform-origin: 50% 100%; animation: md-qh-ecrase .32s .8s ease-out both, md-qh-respire 3.6s 1.2s ease-in-out infinite; }
+.md-qh-q2-case { transform-box: fill-box; transform-origin: 50% 50%; animation: md-qh-pop .3s .8s cubic-bezier(.34, 1.56, .64, 1) both; }
+.md-qh-q2-onde { opacity: 0; transform-box: fill-box; transform-origin: 50% 50%; animation: md-qh-onde .4s .8s ease-out both; }
+
+/* 3. Durée des règles : les sept gouttes se posent, cinq se remplissent une à
+   une pendant que la barre des jours avance ; ensuite la cinquième flotte. */
+.md-qh-q3-g { transform-box: fill-box; transform-origin: 50% 100%; animation: md-qh-pop .3s cubic-bezier(.34, 1.56, .64, 1) both; }
+.md-qh-q3-g2 { animation-delay: .04s; }
+.md-qh-q3-g3 { animation-delay: .08s; }
+.md-qh-q3-g4 { animation-delay: .12s; }
+.md-qh-q3-g5 { animation-delay: .16s; }
+.md-qh-q3-g6 { animation-delay: .2s; }
+.md-qh-q3-g7 { animation-delay: .24s; }
+.md-qh-q3-r { transform-box: fill-box; transform-origin: 50% 100%; animation: md-qh-remplit .26s cubic-bezier(.2, .8, .2, 1) both; }
+.md-qh-q3-r1 { animation-delay: .35s; }
+.md-qh-q3-r2 { animation-delay: .47s; }
+.md-qh-q3-r3 { animation-delay: .59s; }
+.md-qh-q3-r4 { animation-delay: .71s; }
+.md-qh-q3-r5 { animation-delay: .83s; }
+.md-qh-q3-barre { transform-box: fill-box; transform-origin: 0 50%; animation: md-qh-trace .74s .35s linear both; }
+.md-qh-q3-flotte { animation: md-qh-flotte 4s 1.2s ease-in-out infinite; }
+
+/* 4. Durée du cycle : la nuit se pose, le cercle des jours fait un demi-tour
+   pour se mettre en place, la lune se lève ; ensuite la lune se berce. */
+.md-qh-q4-nuit { transform-box: fill-box; transform-origin: 50% 50%; animation: md-qh-pose .45s .05s cubic-bezier(.2, .8, .2, 1) both; }
+.md-qh-q4-anneau { transform-box: view-box; transform-origin: 195px 150px; animation: md-qh-q4-tour 1s .15s cubic-bezier(.2, .7, .2, 1) both; }
+.md-qh-q4-jours { opacity: .4; }
+.md-qh-q4-lune { animation: md-qh-monte .5s .45s cubic-bezier(.2, .8, .2, 1) both; }
+.md-qh-q4-berce { transform-box: view-box; transform-origin: 195px 150px; animation: md-qh-berce 6s 1.2s ease-in-out infinite; }
+
+/* 5. Régularité : deux cartes, deux pagnes ; les gouttes se posent au même
+   moment des deux côtés, les bonds se dessinent ; ensuite chaque côté se
+   balance à son propre rythme. Aucun des deux n'est « le bon ». */
+.md-qh-q5-gauche { animation: md-qh-de-gauche .45s .05s cubic-bezier(.2, .8, .2, 1) both; }
+.md-qh-q5-droite { animation: md-qh-de-droite .45s .05s cubic-bezier(.2, .8, .2, 1) both; }
+.md-qh-q5-tisse { transform-box: fill-box; transform-origin: 0 50%; animation: md-qh-trace .45s .3s cubic-bezier(.2, .8, .2, 1) both; }
+.md-qh-q5-goutte { transform-box: fill-box; transform-origin: 50% 100%; animation: md-qh-pop .3s cubic-bezier(.34, 1.56, .64, 1) both; }
+.md-qh-q5-g1 { animation-delay: .4s; }
+.md-qh-q5-g2 { animation-delay: .52s; }
+.md-qh-q5-g3 { animation-delay: .64s; }
+.md-qh-q5-g4 { animation-delay: .76s; }
+.md-qh-q5-arc { transform-box: fill-box; transform-origin: 0 100%; animation: md-qh-arc .26s cubic-bezier(.2, .8, .2, 1) both; }
+.md-qh-q5-a1 { animation-delay: .5s; }
+.md-qh-q5-a2 { animation-delay: .62s; }
+.md-qh-q5-a3 { animation-delay: .74s; }
+.md-qh-q5-berce1 { animation: md-qh-flotte 3.2s 1.2s ease-in-out infinite; }
+.md-qh-q5-berce2 { animation: md-qh-flotte 4.1s 1.2s ease-in-out infinite; }
+.md-qh-q6-wax { opacity: .55; }
+
+/* 6. Ressentis : elle s'installe, le foulard se pose, la chaleur sous sa main
+   apparaît, la tasse fume ; ensuite elle respire lentement. Apaisée, pas
+   souffrante : yeux fermés, sourire léger. */
+.md-qh-q6-souffle { transform-box: view-box; transform-origin: 195px 236px; animation: md-qh-souffle 5s 1.2s ease-in-out infinite; }
+.md-qh-q6-tasse { animation: md-qh-monte .45s .6s cubic-bezier(.2, .8, .2, 1) both; }
+
+/* 7. Objectif : trois chemins poussent depuis le même point, chacun arrive à
+   son signe (suivre son cycle, éviter une grossesse, avoir un bébé) ; ensuite
+   le point de départ respire. Les trois signes ont la même taille. */
+.md-qh-q7-route { transform-box: view-box; transform-origin: 195px 258px; animation: md-qh-pousse .45s cubic-bezier(.2, .8, .2, 1) both; }
+.md-qh-q7-r1 { animation-delay: .2s; }
+.md-qh-q7-r2 { animation-delay: .28s; }
+.md-qh-q7-r3 { animation-delay: .36s; }
+.md-qh-q7-b1 { animation-delay: .6s; }
+.md-qh-q7-b2 { animation-delay: .68s; }
+.md-qh-q7-b3 { animation-delay: .76s; }
+.md-qh-q7-depart { transform-box: fill-box; transform-origin: 50% 50%; animation: md-qh-pop .3s .05s cubic-bezier(.34, 1.56, .64, 1) both; }
+.md-qh-q7-voile { opacity: .25; }
+.md-qh-q7-halo { transform-box: fill-box; transform-origin: 50% 50%; animation: md-qh-respire 3.4s 1.2s ease-in-out infinite; }
+
+/* 8. Protection : le tissu se pose, la serviette, la culotte et la serviette
+   lavable s'y déposent une à une, trois éclats ; ensuite un éclat tourne
+   lentement. Rien de taché, rien de caché. */
+.md-qh-q8-tissu { transform-box: fill-box; transform-origin: 50% 50%; animation: md-qh-pose .4s .05s cubic-bezier(.2, .8, .2, 1) both; }
+.md-qh-q8-objet { animation: md-qh-depose .42s cubic-bezier(.2, .8, .2, 1) both; }
+.md-qh-q8-o1 { animation-delay: .25s; }
+.md-qh-q8-o2 { animation-delay: .4s; }
+.md-qh-q8-o3 { animation-delay: .55s; }
+.md-qh-q8-brille { transform-box: fill-box; transform-origin: 50% 50%; animation: md-qh-tourne 6s 1.2s ease-in-out infinite; }
+
+/* Mouvements */
+@keyframes md-qh-pose { from { opacity: 0; transform: scale(.86); } to { opacity: 1; transform: scale(1); } }
+@keyframes md-qh-wax { from { opacity: 0; } to { opacity: .5; } }
+@keyframes md-qh-monte { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes md-qh-pop { from { opacity: 0; transform: scale(.3); } to { opacity: 1; transform: scale(1); } }
+@keyframes md-qh-trace { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes md-qh-remplit { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@keyframes md-qh-noue { from { opacity: 0; transform: scale(.4) rotate(-24deg); } to { opacity: 1; transform: scale(1) rotate(0); } }
+@keyframes md-qh-salue {
+  0% { opacity: 0; transform: rotate(18deg); }
+  15% { opacity: 1; transform: rotate(-12deg); }
+  38% { transform: rotate(9deg); }
+  60% { transform: rotate(-8deg); }
+  80% { transform: rotate(4deg); }
+  100% { opacity: 1; transform: rotate(0); }
+}
+@keyframes md-qh-q2-chute { 0% { opacity: 0; transform: translateY(-120px); } 30% { opacity: 1; } 100% { opacity: 1; transform: translateY(0); } }
+@keyframes md-qh-ecrase { 0% { transform: scale(1.18, .76); } 55% { transform: scale(.94, 1.06); } 100% { transform: scale(1); } }
+@keyframes md-qh-onde { from { opacity: .9; transform: scale(.7); } to { opacity: 0; transform: scale(1.7); } }
+@keyframes md-qh-q4-tour { from { opacity: 0; transform: rotate(-200deg) scale(.82); } 40% { opacity: 1; } to { opacity: 1; transform: rotate(0) scale(1); } }
+@keyframes md-qh-de-gauche { from { opacity: 0; transform: translateX(-28px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes md-qh-de-droite { from { opacity: 0; transform: translateX(28px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes md-qh-arc { from { opacity: 0; transform: scale(.2, .6); } to { opacity: 1; transform: scale(1); } }
+@keyframes md-qh-pousse { from { opacity: 0; transform: scale(.08); } 30% { opacity: 1; } to { opacity: 1; transform: scale(1); } }
+@keyframes md-qh-depose { from { opacity: 0; transform: translateY(-30px) rotate(-5deg); } to { opacity: 1; transform: translateY(0) rotate(0); } }
+@keyframes md-qh-flotte { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+@keyframes md-qh-respire { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+@keyframes md-qh-berce { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(-6deg); } }
+@keyframes md-qh-souffle { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.012, 1.018); } }
+@keyframes md-qh-tourne { 0%, 100% { transform: rotate(0) scale(1); } 50% { transform: rotate(45deg) scale(.9); } }
+
+/* Mouvement réduit : tout est posé d'emblée, rien ne bouge */
+@media (prefers-reduced-motion: reduce) {
+  .md-qh, .md-qh * { animation: none !important; }
+}

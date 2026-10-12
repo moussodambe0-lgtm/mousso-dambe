@@ -13,7 +13,8 @@ import Base from '../layouts/Base.astro';
 import Entete from '../components/Entete.astro';
 import Icone from '../components/Icone.astro';
 import Alerte from '../components/Alerte.astro';
-import { clientSession, baseConfiguree } from '../lib/supabase';
+import BoutonGoogle from '../components/BoutonGoogle.astro';
+import { clientSession, jetonDeSession, poserSession, baseConfiguree } from '../lib/supabase';
 import { visiteuse, monCycle, lirePanier, comptePanier } from '../lib/session';
 import { messageErreur, pluriel } from '../lib/format';
 
@@ -45,12 +46,64 @@ if (Astro.request.method === 'POST') {
     valeurs.p_duree = Number(f.get('duree') ?? moi.dureeRegles);
   }
 
-  const { data, error } = await client.rpc('enregistrer_reglages', valeurs);
-  if (error || !data?.ok) erreur = messageErreur(data?.erreur);
-  else return Astro.redirect('/compte?ok=1', 303);
+  if (geste === 'garder') {
+    // Attacher une adresse à l'identité anonyme déjà là. L'identifiant ne
+    // change pas, donc rien n'est perdu : ni ses cycles, ni son journal, ni
+    // ses commandes. C'est la décision d'Arthur du 12 octobre 2026 : anonyme,
+    // mais récupérable.
+    const email = String(f.get('email') ?? '').trim().toLowerCase();
+    const motDePasse = String(f.get('motdepasse') ?? '');
+
+    if (!/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(email)) {
+      erreur = 'Cette adresse email ne ressemble pas à une adresse.';
+    } else if (motDePasse.length < 8) {
+      erreur = 'Choisis un mot de passe de 8 caractères au moins.';
+    } else {
+      // `updateUser` ne lit pas l'en-tête Authorization du client : il lui
+      // faut une session en mémoire, qui n'existe pas côté serveur. On la lui
+      // pose à partir du cookie, sinon il répond « session manquante » et on
+      // afficherait « réessaie plus tard » pour une raison qui n'a rien à
+      // voir. Même famille de défaut que `getUser()` le 12 octobre 2026.
+      const jeton = jetonDeSession(Astro)!;
+      await client.auth.setSession({
+        access_token: jeton.access_token,
+        refresh_token: jeton.refresh_token ?? '',
+      });
+
+      const { error: errLien } = await client.auth.updateUser({ email, password: motDePasse });
+      if (errLien) {
+        // On ne dit jamais « cette adresse a déjà un compte » : ce serait dire
+        // à n'importe qui si une personne utilise l'application.
+        erreur = /already|registered|exists/i.test(errLien.message)
+          ? "Impossible d'utiliser cette adresse. Si tu as déjà un compte, déconnecte-toi et connecte-toi avec."
+          : "L'enregistrement n'a pas marché. Réessaie dans un moment.";
+      } else {
+        // Le jeton change quand l'identité change : si on garde l'ancien dans
+        // le cookie, la page suivante la croit déconnectée.
+        const { data: neuve } = await client.auth.getSession();
+        if (neuve?.session) {
+          poserSession(Astro, {
+            access_token: neuve.session.access_token,
+            refresh_token: neuve.session.refresh_token,
+          });
+        }
+        return Astro.redirect('/compte?ok=garde', 303);
+      }
+    }
+  }
+
+  if (!erreur) {
+    const { data, error } = await client.rpc('enregistrer_reglages', valeurs);
+    if (error || !data?.ok) erreur = messageErreur(data?.erreur);
+    else return Astro.redirect('/compte?ok=1', 303);
+  }
 }
 
-if (Astro.url.searchParams.get('ok')) message = 'C’est enregistré.';
+if (Astro.url.searchParams.get('ok') === 'garde') {
+  message = 'C’est gardé. Avec cette adresse, tu retrouveras tout sur un autre téléphone.';
+} else if (Astro.url.searchParams.get('ok')) {
+  message = 'C’est enregistré.';
+}
 
 const cycle = await monCycle(Astro);
 const panier = comptePanier(lirePanier(Astro));
@@ -68,9 +121,53 @@ const initiales = (moi.prenom || moi.email || '?').slice(0, 2).toUpperCase();
       <span class="initiales chiffre">{initiales}</span>
       <div class="qui">
         <div class="prenom">{moi.prenom || 'Toi'}</div>
-        <div class="gris">{moi.email}</div>
+        <div class="gris">{moi.email ?? 'Sans compte, sans mot de passe'}</div>
       </div>
     </section>
+
+    {
+      !moi.email && (
+        <section class="garder apparait" data-ordre="2">
+          <div class="garder-tete">
+            <span class="garder-rond"><Icone nom="bouclier-coche" taille={20} /></span>
+            <div>
+              <h2>Garde ton compte</h2>
+              <p>
+                Tu es entrée sans compte, et c'est bien ainsi. Mais si tu changes de téléphone, ou si tu le perds, ce
+                que tu as noté part avec lui. Une adresse email suffit à le retrouver, et personne ne la voit.
+              </p>
+            </div>
+          </div>
+
+          <BoutonGoogle texte="Garder avec Google" />
+
+          <div class="garder-ou"><span>ou</span></div>
+
+          <form method="POST" class="garder-form">
+            <input type="hidden" name="geste" value="garder" />
+            <label class="libelle-petit" for="g-email">Ton adresse email</label>
+            <input class="champ" id="g-email" type="email" name="email" autocomplete="email" required placeholder="toi@exemple.com" />
+            <label class="libelle-petit" for="g-mdp">Un mot de passe</label>
+            <input
+              class="champ"
+              id="g-mdp"
+              type="password"
+              name="motdepasse"
+              autocomplete="new-password"
+              minlength="8"
+              required
+              placeholder="8 caractères au moins"
+            />
+            <button class="btn btn-rose btn-plein" type="submit">Garder mon compte</button>
+          </form>
+
+          <p class="garder-note">
+            Ton adresse sert à retrouver ton compte, et à rien d'autre. Aucun email de publicité, et elle n'est jamais
+            montrée à personne.
+          </p>
+        </section>
+      )
+    }
 
     <h2 class="rangee-titre">Ma vie privée</h2>
     <div class="rangees apparait" data-ordre="2">
@@ -245,6 +342,83 @@ const initiales = (moi.prenom || moi.email || '?').slice(0, 2).toUpperCase();
 
   .marge {
     margin-top: var(--e3);
+  }
+
+  .garder {
+    margin-bottom: var(--e5);
+    padding: var(--e4);
+    border: 1px solid var(--rose-clair);
+    border-radius: var(--r-carte);
+    background: var(--poudre);
+  }
+
+  .garder-tete {
+    display: flex;
+    gap: var(--e3);
+    margin-bottom: var(--e3);
+  }
+
+  .garder-rond {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    flex: none;
+    border-radius: 13px;
+    background: var(--surface);
+    color: var(--rose);
+  }
+
+  .garder h2 {
+    font-size: 16px;
+    font-weight: 700;
+  }
+
+  .garder-tete p {
+    margin-top: 4px;
+    font-size: 13px;
+    color: var(--texte-2);
+    line-height: 1.45;
+  }
+
+  .garder-ou {
+    display: flex;
+    align-items: center;
+    gap: var(--e2);
+    margin: var(--e3) 0;
+    color: var(--texte-3);
+    font-size: 12px;
+  }
+
+  .garder-ou::before,
+  .garder-ou::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--bordure);
+  }
+
+  .garder-form {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .garder-form .btn {
+    margin-top: var(--e2);
+  }
+
+  .libelle-petit {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--texte-2);
+  }
+
+  .garder-note {
+    margin-top: var(--e3);
+    font-size: 11.5px;
+    color: var(--texte-3);
+    line-height: 1.45;
   }
 
   .deconnexion {

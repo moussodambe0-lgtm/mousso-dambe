@@ -1,0 +1,45 @@
+<svg class="md-qh md-qh-q7" viewBox="0 0 390 300" role="img" aria-label="Trois chemins partent du même point : l'un mène à suivre ton cycle, l'autre à éviter une grossesse, le troisième à avoir un bébé" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <pattern id="q7-objectif-wax" width="44" height="44" patternUnits="userSpaceOnUse">
+      <circle class="md-qh-t md-qh-s-blanc" stroke-width="2" cx="22" cy="22" r="10"/>
+      <circle class="md-qh-blanc" cx="22" cy="22" r="3.4"/>
+      <path class="md-qh-t md-qh-s-blanc" stroke-width="2" d="M0 7A7 7 0 0 0 7 0M37 0A7 7 0 0 0 44 7M44 37A7 7 0 0 0 37 44M7 44A7 7 0 0 0 0 37"/>
+    </pattern>
+  </defs>
+  <circle class="md-qh-fond md-qh-rosec" cx="195" cy="150" r="130"/>
+  <g class="md-qh-wax"><circle cx="195" cy="150" r="130" fill="url(#q7-objectif-wax)"/></g>
+  <g class="md-qh-q7-route md-qh-q7-r1">
+    <path class="md-qh-t md-qh-s-blanc" stroke-width="18" d="M195 256C195 196 92 196 88 130"/>
+    <path class="md-qh-t md-qh-s-rose" stroke-width="2.6" stroke-dasharray="1 9" d="M195 256C195 196 92 196 88 130"/>
+  </g>
+  <g class="md-qh-q7-route md-qh-q7-r2">
+    <path class="md-qh-t md-qh-s-blanc" stroke-width="18" d="M195 256V98"/>
+    <path class="md-qh-t md-qh-s-rose" stroke-width="2.6" stroke-dasharray="1 9" d="M195 256V98"/>
+  </g>
+  <g class="md-qh-q7-route md-qh-q7-r3">
+    <path class="md-qh-t md-qh-s-blanc" stroke-width="18" d="M195 256C195 196 298 196 302 130"/>
+    <path class="md-qh-t md-qh-s-rose" stroke-width="2.6" stroke-dasharray="1 9" d="M195 256C195 196 298 196 302 130"/>
+  </g>
+  <g class="md-qh-pop md-qh-q7-b1">
+    <circle class="md-qh-blanc md-qh-s-rose" stroke-width="3" cx="88" cy="100" r="31"/>
+    <circle class="md-qh-t md-qh-s-rose" stroke-width="4" cx="88" cy="103" r="14"/>
+    <path class="md-qh-rose" d="M88 78C93 84 96 88 96 92A8 8 0 0 1 80 92C80 88 83 84 88 78Z"/>
+    <path class="md-qh-t md-qh-s-blanc" stroke-width="2" d="M84.5 92Q84.5 89 86 87"/>
+    <circle class="md-qh-rosef" cx="88" cy="103" r="3.5"/>
+  </g>
+  <g class="md-qh-pop md-qh-q7-b2">
+    <circle class="md-qh-encre" cx="195" cy="66" r="31"/>
+    <path class="md-qh-blanc" d="M195 47L211 53V65C211 75 204 82 195 86C186 82 179 75 179 65V53Z"/>
+    <path class="md-qh-t md-qh-s-rose" stroke-width="3.6" d="M188 66L193.5 71.5L203 61"/>
+  </g>
+  <g class="md-qh-pop md-qh-q7-b3">
+    <circle class="md-qh-rose" cx="302" cy="100" r="31"/>
+    <path class="md-qh-blanc" d="M292 96C285 96 283 104 284 110C285 116 289 118 292 118C296 118 298 114 297 108C296 102 297 96 292 96ZM312 86C307 86 304 92 305 98C306 104 309 108 313 108C317 108 319 103 318 97C317 91 316 86 312 86Z"/>
+    <path class="md-qh-blanc" d="M286.5 91.5a2 2 0 1 0 0.1 0M290.5 89.5a2.2 2.2 0 1 0 0.1 0M295 89.5a2.2 2.2 0 1 0 0.1 0M298.6 92a1.9 1.9 0 1 0 0.1 0M306.5 81.5a2 2 0 1 0 0.1 0M310.5 79.5a2.2 2.2 0 1 0 0.1 0M315 79.5a2.2 2.2 0 1 0 0.1 0M318.6 82a1.9 1.9 0 1 0 0.1 0"/>
+  </g>
+  <g class="md-qh-q7-depart">
+    <g class="md-qh-q7-halo"><circle class="md-qh-rose md-qh-q7-voile" cx="195" cy="258" r="22"/></g>
+    <circle class="md-qh-rose" cx="195" cy="258" r="13"/>
+    <circle class="md-qh-blanc" cx="195" cy="258" r="5"/>
+  </g>
+</svg>

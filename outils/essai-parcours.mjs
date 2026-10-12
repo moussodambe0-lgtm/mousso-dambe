@@ -222,5 +222,70 @@ console.log('\nCommander');
   verifier('la commande part', r.statut === 303 && (r.vers ?? '').includes('nouvelle=MD-'), `${r.statut} ${r.vers}`);
 }
 
+console.log('\nEntrer sans compte, et garder son compte ensuite');
+{
+  // Un deuxième jeu de cookies : c'est une autre personne, sur un autre
+  // téléphone, qui n'a jamais rien créé.
+  const avant = cookies;
+  cookies = new Map();
+
+  let r = await envoyer('/commencer', {});
+  verifier(
+    '« Commencer » mène droit au questionnaire',
+    r.statut === 303 && r.vers === '/bienvenue',
+    `${r.statut} ${r.vers}`
+  );
+  verifier('une session est posée sans qu’on ait rien demandé', cookies.has('md_session'));
+
+  const page = await ouvrir('/bienvenue?etape=1');
+  verifier('le questionnaire s’ouvre', etapeAffichee(page.html) === 1, `écran ${etapeAffichee(page.html)}`);
+
+  // On remplit d'un coup : ce parcours-ci vérifie l'entrée, pas les écrans.
+  r = await envoyer('/bienvenue', {
+    etape: '8',
+    prenom: 'Salimata',
+    dernieres: ilYAJours(2),
+    sait: 'oui',
+    duree: '5',
+    cycle: '29',
+    regularite: 'oui',
+    objectif: 'suivre',
+    protection: 'jetables',
+  });
+  verifier('le questionnaire s’enregistre sans compte', r.statut === 303, `${r.statut}`);
+
+  const compte = await ouvrir('/compte');
+  verifier('la page Compte propose de garder son compte', compte.html.includes('Garde ton compte'));
+  verifier('et dit qu’elle n’en a pas', compte.html.includes('Sans compte, sans mot de passe'));
+
+  const adresse = `salimata-${Date.now()}@essai.bf`;
+  r = await envoyer('/compte', { geste: 'garder', email: adresse, motdepasse: 'motdepasse123' });
+  verifier(
+    'une adresse s’attache à l’identité déjà là',
+    r.statut === 303 && (r.vers ?? '').includes('ok=garde'),
+    `${r.statut} ${r.vers}`
+  );
+
+  // Un troisième téléphone : elle se connecte avec l'adresse qu'elle vient
+  // d'attacher, et doit retrouver EXACTEMENT ce qu'elle avait.
+  cookies = new Map();
+  r = await envoyer('/connexion', { email: adresse, motdepasse: 'motdepasse123' });
+  verifier('elle se reconnecte avec cette adresse', r.statut === 303, `${r.statut}`);
+
+  const accueil = await ouvrir('/');
+  verifier(
+    'elle retrouve son prénom sur un autre téléphone',
+    accueil.html.includes('Bonjour, Salimata'),
+    'le compte anonyme n’a pas été récupéré'
+  );
+  verifier(
+    'et son cycle, calculé depuis la date qu’elle avait donnée',
+    /Jour 3\s+de (tes règles|ton cycle)/.test(accueil.html),
+    'les données du compte anonyme sont perdues'
+  );
+
+  cookies = avant;
+}
+
 console.log(`\nParcours complet : ${total - rates} sur ${total} vérifications passées.`);
 if (rates > 0) process.exitCode = 1;

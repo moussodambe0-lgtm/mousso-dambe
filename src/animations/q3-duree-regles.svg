@@ -1,0 +1,55 @@
+<svg class="md-qh md-qh-q3" viewBox="0 0 390 300" role="img" aria-label="Sept gouttes en ligne : elles se remplissent de rose une à une, une par jour de règles" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <pattern id="q3-duree-regles-wax" width="44" height="44" patternUnits="userSpaceOnUse">
+      <circle class="md-qh-t md-qh-s-blanc" stroke-width="2" cx="22" cy="22" r="10"/>
+      <circle class="md-qh-blanc" cx="22" cy="22" r="3.4"/>
+      <path class="md-qh-t md-qh-s-blanc" stroke-width="2" d="M0 7A7 7 0 0 0 7 0M37 0A7 7 0 0 0 44 7M44 37A7 7 0 0 0 37 44M7 44A7 7 0 0 0 0 37"/>
+    </pattern>
+    <clipPath id="q3-duree-regles-clip"><path d="M0 -27C9 -15 15 -5 15 6A15 15 0 0 1 -15 6C-15 -5 -9 -15 0 -27Z"/></clipPath>
+  </defs>
+  <circle class="md-qh-fond md-qh-rosec" cx="195" cy="150" r="130"/>
+  <g class="md-qh-wax"><circle cx="195" cy="150" r="130" fill="url(#q3-duree-regles-wax)"/></g>
+    <g class="md-qh-q3-g md-qh-q3-g1"><g transform="translate(75 150)">
+      <path class="md-qh-blanc" d="M0 -27C9 -15 15 -5 15 6A15 15 0 0 1 -15 6C-15 -5 -9 -15 0 -27Z"/>
+      <g clip-path="url(#q3-duree-regles-clip)"><g class="md-qh-q3-r md-qh-q3-r1"><rect class="md-qh-rose" x="-20" y="-30" width="40" height="56"/><path class="md-qh-t md-qh-s-blanc" stroke-width="3.4" d="M-8 8Q-8 0 -4.5 -5"/></g></g>
+      <path class="md-qh-t md-qh-s-rose" stroke-width="3" d="M0 -27C9 -15 15 -5 15 6A15 15 0 0 1 -15 6C-15 -5 -9 -15 0 -27Z"/>
+    </g></g>
+    <g class="md-qh-q3-g md-qh-q3-g2"><g transform="translate(115 150)">
+      <path class="md-qh-blanc" d="M0 -27C9 -15 15 -5 15 6A15 15 0 0 1 -15 6C-15 -5 -9 -15 0 -27Z"/>
+      <g clip-path="url(#q3-duree-regles-clip)"><g class="md-qh-q3-r md-qh-q3-r2"><rect class="md-qh-rose" x="-20" y="-30" width="40" height="56"/><path class="md-qh-t md-qh-s-blanc" stroke-width="3.4" d="M-8 8Q-8 0 -4.5 -5"/></g></g>
+      <path class="md-qh-t md-qh-s-rose" stroke-width="3" d="M0 -27C9 -15 15 -5 15 6A15 15 0 0 1 -15 6C-15 -5 -9 -15 0 -27Z"/>
+    </g></g>
+    <g class="md-qh-q3-g md-qh-q3-g3"><g transform="translate(155 150)">
+      <path class="md-qh-blanc" d="M0 -27C9 -15 15 -5 15 6A15 15 0 0 1 -15 6C-15 -5 -9 -15 0 -27Z"/>
+      <g clip-path="url(#q3-duree-regles-clip)"><g class="md-qh-q3-r md-qh-q3-r3"><rect class="md-qh-rose" x="-20" y="-30" width="40" height="56"/><path class="md-qh-t md-qh-s-blanc" stroke-width="3.4" d="M-8 8Q-8 0 -4.5 -5"/></g></g>
+      <path class="md-qh-t md-qh-s-rose" stroke-width="3" d="M0 -27C9 -15 15 -5 15 6A15 15 0 0 1 -15 6C-15 -5 -9 -15 0 -27Z"/>
+    </g></g>
+    <g class="md-qh-q3-g md-qh-q3-g4"><g transform="translate(195 150)">
+      <path class="md-qh-blanc" d="M0 -27C9 -15 15 -5 15 6A15 15 0 0 1 -15 6C-15 -5 -9 -15 0 -27Z"/>
+      <g clip-path="url(#q3-duree-regles-clip)"><g class="md-qh-q3-r md-qh-q3-r4"><rect class="md-qh-rose" x="-20" y="-30" width="40" height="56"/><path class="md-qh-t md-qh-s-blanc" stroke-width="3.4" d="M-8 8Q-8 0 -4.5 -5"/></g></g>
+      <path class="md-qh-t md-qh-s-rose" stroke-width="3" d="M0 -27C9 -15 15 -5 15 6A15 15 0 0 1 -15 6C-15 -5 -9 -15 0 -27Z"/>
+    </g></g>
+    <g class="md-qh-q3-flotte">
+    <g class="md-qh-q3-g md-qh-q3-g5"><g transform="translate(235 150)">
+      <path class="md-qh-blanc" d="M0 -27C9 -15 15 -5 15 6A15 15 0 0 1 -15 6C-15 -5 -9 -15 0 -27Z"/>
+      <g clip-path="url(#q3-duree-regles-clip)"><g class="md-qh-q3-r md-qh-q3-r5"><rect class="md-qh-rose" x="-20" y="-30" width="40" height="56"/><path class="md-qh-t md-qh-s-blanc" stroke-width="3.4" d="M-8 8Q-8 0 -4.5 -5"/></g></g>
+      <path class="md-qh-t md-qh-s-rose" stroke-width="3" d="M0 -27C9 -15 15 -5 15 6A15 15 0 0 1 -15 6C-15 -5 -9 -15 0 -27Z"/>
+    </g></g>
+    </g>
+    <g class="md-qh-q3-g md-qh-q3-g6"><g transform="translate(275 150)">
+      <path class="md-qh-blanc" d="M0 -27C9 -15 15 -5 15 6A15 15 0 0 1 -15 6C-15 -5 -9 -15 0 -27Z"/>
+      <path class="md-qh-t md-qh-s-rose" stroke-width="3" d="M0 -27C9 -15 15 -5 15 6A15 15 0 0 1 -15 6C-15 -5 -9 -15 0 -27Z"/>
+    </g></g>
+    <g class="md-qh-q3-g md-qh-q3-g7"><g transform="translate(315 150)">
+      <path class="md-qh-blanc" d="M0 -27C9 -15 15 -5 15 6A15 15 0 0 1 -15 6C-15 -5 -9 -15 0 -27Z"/>
+      <path class="md-qh-t md-qh-s-rose" stroke-width="3" d="M0 -27C9 -15 15 -5 15 6A15 15 0 0 1 -15 6C-15 -5 -9 -15 0 -27Z"/>
+    </g></g>
+  <g class="md-qh-monte">
+    <rect class="md-qh-blanc md-qh-t md-qh-s-bord" stroke-width="1.5" x="56" y="194" width="278" height="20" rx="10"/>
+    <circle class="md-qh-bord" cx="275" cy="204" r="3"/><circle class="md-qh-bord" cx="315" cy="204" r="3"/>
+    <g class="md-qh-q3-barre"><rect class="md-qh-rose" x="60" y="198" width="181" height="12" rx="6"/></g>
+    <g class="md-qh-pop md-qh-d10"><circle class="md-qh-blanc" cx="75" cy="204" r="3"/><circle class="md-qh-blanc" cx="115" cy="204" r="3"/><circle class="md-qh-blanc" cx="155" cy="204" r="3"/><circle class="md-qh-blanc" cx="195" cy="204" r="3"/><circle class="md-qh-blanc" cx="235" cy="204" r="3"/></g>
+  </g>
+  <path class="md-qh-pop md-qh-d9 md-qh-rosef" d="M300 70Q300 82 312 82Q300 82 300 94Q300 82 288 82Q300 82 300 70Z"/>
+  <circle class="md-qh-pop md-qh-d10 md-qh-rose" cx="88" cy="88" r="4"/>
+</svg>

@@ -1,0 +1,81 @@
+<svg class="md-qh md-qh-q1" viewBox="0 0 390 300" role="img" aria-label="Une jeune femme au foulard corail sourit et te fait coucou de la main, à côté d'une carte où ton prénom va s'écrire" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <pattern id="q1-prenom-wax" width="44" height="44" patternUnits="userSpaceOnUse">
+      <circle class="md-qh-t md-qh-s-blanc" stroke-width="2" cx="22" cy="22" r="10"/>
+      <circle class="md-qh-blanc" cx="22" cy="22" r="3.4"/>
+      <path class="md-qh-t md-qh-s-blanc" stroke-width="2" d="M0 7A7 7 0 0 0 7 0M37 0A7 7 0 0 0 44 7M44 37A7 7 0 0 0 37 44M7 44A7 7 0 0 0 0 37"/>
+    </pattern>
+    <clipPath id="q1-prenom-clip"><circle cx="195" cy="150" r="130"/></clipPath>
+    <clipPath id="q1-prenom-haut"><path d="M24 220C24 186 38 163 68 153C80 148 90 145 100 145C110 145 120 148 132 153C162 163 176 186 176 220Z"/></clipPath>
+  </defs>
+  <circle class="md-qh-fond md-qh-rosec" cx="195" cy="150" r="130"/>
+  <g class="md-qh-wax"><circle cx="195" cy="150" r="130" fill="url(#q1-prenom-wax)"/></g>
+  <g class="md-qh-monte">
+    <g clip-path="url(#q1-prenom-clip)">
+      <g transform="translate(55 22) scale(1.2)">
+        <path class="md-qh-rose" d="M24 220C24 186 38 163 68 153C80 148 90 145 100 145C110 145 120 148 132 153C162 163 176 186 176 220Z"/>
+        <g clip-path="url(#q1-prenom-haut)">
+          <rect class="md-qh-encre" x="20" y="184" width="160" height="5"/>
+          <rect class="md-qh-blanc" x="20" y="193" width="160" height="12"/>
+          <rect class="md-qh-encre" x="20" y="209" width="160" height="5"/>
+          <path class="md-qh-corail" d="M40 195L45 199L40 203L35 199ZM64 195L69 199L64 203L59 199ZM88 195L93 199L88 203L83 199ZM112 195L117 199L112 203L107 199ZM136 195L141 199L136 203L131 199ZM160 195L165 199L160 203L155 199Z"/>
+        </g>
+      </g>
+    </g>
+    <g class="md-qh-q1-bras">
+      <g transform="translate(55 22) scale(1.2)">
+        <path class="md-qh-t md-qh-s-rose" stroke-width="21" d="M58 164L38 157"/>
+        <path class="md-qh-t md-qh-s-peau" stroke-width="13" d="M38 157L33.5 124"/>
+        <path class="md-qh-t md-qh-s-peau" stroke-width="4.6" d="M27.2 106L26.5 92.5M31.3 105L31 89.5M35.4 105L35.6 91M39.4 107L40 95.5M26.5 116L19.5 107.5"/>
+        <path class="md-qh-peau" d="M25 105H41.8C42.4 113 41.4 121 39.6 128H27.2C25.6 121 24.6 113 25 105Z"/>
+        <path class="md-qh-t md-qh-s-peauo" stroke-width="1" d="M29.2 104V96M33.4 103.5V94M37.5 104.5V97"/>
+      </g>
+    </g>
+    <g transform="translate(55 22) scale(1.2)">
+      <path class="md-qh-peauo" d="M89 116V144C92 155 108 155 111 144V116Z"/>
+      <ellipse class="md-qh-peauo" cx="71" cy="97" rx="5" ry="7"/>
+      <ellipse class="md-qh-peauo" cx="129" cy="97" rx="5" ry="7"/>
+      <circle class="md-qh-corail" cx="70" cy="108" r="3.4"/>
+      <circle class="md-qh-corail" cx="130" cy="108" r="3.4"/>
+      <path class="md-qh-peau" d="M100 60C119 60 129 73 129 92C129 111 117 128 100 128C83 128 71 111 71 92C71 73 81 60 100 60Z"/>
+      <path class="md-qh-t md-qh-s-encre" stroke-width="2.2" d="M80 82.4Q87 77.8 94 81.2M106 81.2Q113 77.8 120 82.4"/>
+      <g>
+        <ellipse class="md-qh-encre" cx="87" cy="94.6" rx="3.8" ry="4.4"/>
+        <ellipse class="md-qh-encre" cx="113" cy="94.6" rx="3.8" ry="4.4"/>
+        <circle class="md-qh-blanc" cx="88.4" cy="93" r="1.3"/>
+        <circle class="md-qh-blanc" cx="114.4" cy="93" r="1.3"/>
+        <path class="md-qh-t md-qh-s-encre" stroke-width="2" d="M82.2 93.8Q86.8 88.2 92 92.6M82.2 93.8L79.4 92M117.8 93.8Q113.2 88.2 108 92.6M117.8 93.8L120.6 92"/>
+      </g>
+      <path class="md-qh-t md-qh-s-peauo" stroke-width="2.2" d="M94.8 105.4Q100 108.8 105.2 105.4"/>
+      <path class="md-qh-levb" d="M87.5 110.6Q100 113.6 112.5 110.6Q109 121.6 100 122Q91 121.6 87.5 110.6Z"/>
+      <path class="md-qh-blanc" d="M90.4 112Q100 114.4 109.6 112Q109 114.8 107.4 115.8Q100 117 92.6 115.8Q91 114.8 90.4 112Z"/>
+      <path class="md-qh-t md-qh-s-peauo" stroke-width="1.2" d="M85.6 109.2Q86.6 111 88.2 111.4M114.4 109.2Q113.4 111 111.8 111.4"/>
+      <path class="md-qh-corail" d="M66 92C58 62 70 30 100 28C130 30 142 62 134 92C131 78 122 68 100 67C78 68 69 78 66 92Z"/>
+      <path class="md-qh-t md-qh-s-encre" stroke-width="3.4" d="M70 76Q100 46 130 76"/>
+      <path class="md-qh-t md-qh-s-blanc" stroke-width="2.6" stroke-dasharray="0 6.5" d="M76 62Q100 38 124 62"/>
+      <path class="md-qh-t md-qh-s-blanc" stroke-width="2.6" stroke-dasharray="0 6.5" d="M84 47Q100 34 116 47"/>
+    </g>
+    <g class="md-qh-q1-noeud">
+      <g transform="translate(55 22) scale(1.2)">
+        <path class="md-qh-rose" d="M104 34C108 14 126 4 142 10C138 22 124 32 110 38Z"/>
+        <path class="md-qh-corail" d="M98 36C90 18 74 12 62 18C68 28 82 36 94 40Z"/>
+        <path class="md-qh-t md-qh-s-encre" stroke-width="2" d="M111 31C118 22 128 16 137 13"/>
+        <ellipse class="md-qh-rosef" cx="101" cy="35" rx="9" ry="7"/>
+      </g>
+    </g>
+  </g>
+  <g class="md-qh-pop md-qh-q1-carte">
+    <g class="md-qh-flotte">
+      <g transform="rotate(6 302 104)">
+        <rect class="md-qh-blanc" x="252" y="72" width="104" height="64" rx="16"/>
+        <circle class="md-qh-rosec" cx="276" cy="104" r="14"/>
+        <circle class="md-qh-rose" cx="276" cy="99" r="5"/>
+        <path class="md-qh-rose" d="M267 113C268 107 272 105 276 105C280 105 284 107 285 113Z"/>
+        <g class="md-qh-q1-ligne"><rect class="md-qh-encre" x="298" y="94" width="44" height="7" rx="3.5"/></g>
+        <rect class="md-qh-rosec" x="298" y="108" width="28" height="7" rx="3.5"/>
+      </g>
+    </g>
+  </g>
+  <path class="md-qh-pop md-qh-d9 md-qh-rose" d="M330 168Q330 180 342 180Q330 180 330 192Q330 180 318 180Q330 180 330 168Z"/>
+  <path class="md-qh-pop md-qh-d10 md-qh-rosef" d="M62 64Q62 71 69 71Q62 71 62 78Q62 71 55 71Q62 71 62 64Z"/>
+</svg>

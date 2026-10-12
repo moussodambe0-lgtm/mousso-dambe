@@ -1,0 +1,41 @@
+<svg class="md-qh md-qh-q2" viewBox="0 0 390 300" role="img" aria-label="Un calendrier : une goutte rose tombe et se pose sur le jour où tes dernières règles ont commencé" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <pattern id="q2-date-wax" width="44" height="44" patternUnits="userSpaceOnUse">
+      <circle class="md-qh-t md-qh-s-blanc" stroke-width="2" cx="22" cy="22" r="10"/>
+      <circle class="md-qh-blanc" cx="22" cy="22" r="3.4"/>
+      <path class="md-qh-t md-qh-s-blanc" stroke-width="2" d="M0 7A7 7 0 0 0 7 0M37 0A7 7 0 0 0 44 7M44 37A7 7 0 0 0 37 44M7 44A7 7 0 0 0 0 37"/>
+    </pattern>
+    <linearGradient id="q2-date-goutte" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#F0508E"/>
+      <stop offset=".55" stop-color="#D0206A"/>
+      <stop offset="1" stop-color="#9C1450"/>
+    </linearGradient>
+  </defs>
+  <circle class="md-qh-fond md-qh-rosec" cx="195" cy="150" r="130"/>
+  <g class="md-qh-wax"><circle cx="195" cy="150" r="130" fill="url(#q2-date-wax)"/></g>
+  <g class="md-qh-monte">
+    <g transform="rotate(-4 195 163)">
+      <rect class="md-qh-bord" x="93" y="80" width="212" height="180" rx="22"/>
+      <rect class="md-qh-blanc" x="89" y="74" width="212" height="180" rx="22"/>
+      <path class="md-qh-encre" d="M89 118V96A22 22 0 0 1 111 74H279A22 22 0 0 1 301 96V118Z"/>
+      <rect class="md-qh-blanc" x="165" y="91" width="60" height="9" rx="4.5"/>
+      <path class="md-qh-t md-qh-s-blanc" stroke-width="3" d="M114 96L108 100L114 104M276 96L282 100L276 104"/>
+      <rect class="md-qh-rosef" x="124" y="62" width="10" height="26" rx="5"/>
+      <rect class="md-qh-rosef" x="256" y="62" width="10" height="26" rx="5"/>
+      <path class="md-qh-douce" d="M184 159h22v22h-22zM103 132h22v22h-22zM130 132h22v22h-22zM157 132h22v22h-22zM184 132h22v22h-22zM211 132h22v22h-22zM238 132h22v22h-22zM265 132h22v22h-22zM103 159h22v22h-22zM130 159h22v22h-22zM157 159h22v22h-22zM211 159h22v22h-22zM238 159h22v22h-22zM265 159h22v22h-22zM103 186h22v22h-22zM130 186h22v22h-22zM157 186h22v22h-22zM184 186h22v22h-22zM211 186h22v22h-22zM238 186h22v22h-22zM265 186h22v22h-22zM103 213h22v22h-22zM130 213h22v22h-22zM157 213h22v22h-22zM184 213h22v22h-22zM211 213h22v22h-22z"/>
+      <g class="md-qh-q2-onde"><circle class="md-qh-t md-qh-s-rose" stroke-width="3" cx="195" cy="170" r="20"/></g>
+      <g class="md-qh-q2-case">
+                  <rect class="md-qh-rosec md-qh-s-rose" stroke-width="3" x="182" y="157" width="26" height="26" rx="8"/>
+      </g>
+    </g>
+  </g>
+  <g class="md-qh-q2-chute">
+    <g class="md-qh-q2-goutte">
+      <path fill="url(#q2-date-goutte)" d="M195 137C203 147 209 156 209 166A14 14 0 0 1 181 166C181 156 187 147 195 137Z"/>
+      <path class="md-qh-t md-qh-s-blanc" stroke-width="3" d="M187.5 165Q187.5 158 191 153"/>
+    </g>
+  </g>
+  <path class="md-qh-pop md-qh-d9 md-qh-rose" d="M318 58Q318 70 330 70Q318 70 318 82Q318 70 306 70Q318 70 318 58Z"/>
+  <path class="md-qh-pop md-qh-d8 md-qh-rosef" d="M70 214Q70 221 77 221Q70 221 70 228Q70 221 63 221Q70 221 70 214Z"/>
+  <circle class="md-qh-pop md-qh-d9 md-qh-encre" cx="84" cy="70" r="3.5"/>
+</svg>

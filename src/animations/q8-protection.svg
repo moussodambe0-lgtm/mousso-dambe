@@ -1,0 +1,47 @@
+<svg class="md-qh md-qh-q8" viewBox="0 0 390 300" role="img" aria-label="Une serviette hygiénique, une culotte menstruelle et une serviette encore dans son sachet, posées à plat sur un tissu propre" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <pattern id="q8-protection-wax" width="44" height="44" patternUnits="userSpaceOnUse">
+      <circle class="md-qh-t md-qh-s-blanc" stroke-width="2" cx="22" cy="22" r="10"/>
+      <circle class="md-qh-blanc" cx="22" cy="22" r="3.4"/>
+      <path class="md-qh-t md-qh-s-blanc" stroke-width="2" d="M0 7A7 7 0 0 0 7 0M37 0A7 7 0 0 0 44 7M44 37A7 7 0 0 0 37 44M7 44A7 7 0 0 0 0 37"/>
+    </pattern>
+  </defs>
+  <circle class="md-qh-fond md-qh-rosec" cx="195" cy="150" r="130"/>
+  <g class="md-qh-wax"><circle cx="195" cy="150" r="130" fill="url(#q8-protection-wax)"/></g>
+  <g class="md-qh-q8-tissu">
+    <g transform="rotate(-4 195 154)">
+      <rect class="md-qh-bord" x="88" y="70" width="222" height="182" rx="18"/>
+      <rect class="md-qh-blanc" x="84" y="64" width="222" height="182" rx="18"/>
+      <path class="md-qh-t md-qh-s-rosec" stroke-width="3" d="M98 78H292M98 232H292"/>
+      <path class="md-qh-t md-qh-s-rose" stroke-width="2" stroke-dasharray="0 7" d="M98 86H292M98 224H292"/>
+    </g>
+  </g>
+  <g class="md-qh-q8-objet md-qh-q8-o1">
+    <g transform="translate(146 155) rotate(-12)">
+      <path class="md-qh-douce md-qh-s-bord" stroke-width="2" d="M0 -68C15 -68 21 -57 21 -43V-24C21 -20 24 -18 30 -16L37 -12C43 -9 43 9 37 12L30 16C24 18 21 20 21 24V43C21 57 15 68 0 68C-15 68 -21 57 -21 43V24C-21 20 -24 18 -30 16L-37 12C-43 9 -43 -9 -37 -12L-30 -16C-24 -18 -21 -20 -21 -24V-43C-21 -57 -15 -68 0 -68Z"/>
+      <rect class="md-qh-blanc" x="-12" y="-54" width="24" height="108" rx="12"/>
+      <rect class="md-qh-t md-qh-s-rose" stroke-width="2.2" stroke-dasharray="0 6" x="-16" y="-59" width="32" height="118" rx="16"/>
+      <path class="md-qh-t md-qh-s-rosec" stroke-width="2.6" d="M-6 -30H6M-6 -10H6M-6 10H6M-6 30H6"/>
+    </g>
+  </g>
+  <g class="md-qh-q8-objet md-qh-q8-o2">
+    <g transform="translate(250 124) rotate(9) scale(.66) translate(-80 -50)">
+      <path class="md-qh-rose" d="M2 2Q80 11 158 2Q162 2 161 8L160 24C146 50 124 74 108 100H52C36 74 14 50 0 24L-1 8Q-2 2 2 2Z"/>
+      <path class="md-qh-rosef" d="M2 2Q80 11 158 2Q162 2 161 8L160 16Q80 25 0 16L-1 8Q-2 2 2 2Z"/>
+      <path class="md-qh-t md-qh-s-rosec" stroke-width="3" d="M1 19Q80 28 159 19"/>
+      <path class="md-qh-t md-qh-s-rosef" stroke-width="3.4" stroke-dasharray="1 7" d="M6 30C20 52 38 74 52 94M154 30C140 52 122 74 108 94"/>
+      <path class="md-qh-t md-qh-s-rosec" stroke-width="3" stroke-dasharray="0 6.5" d="M62 66H98L95 94H65Z"/>
+    </g>
+  </g>
+  <g class="md-qh-q8-objet md-qh-q8-o3">
+    <g transform="translate(254 202) rotate(-7)">
+      <rect class="md-qh-rosec" x="-28" y="-28" width="56" height="56" rx="10"/>
+      <path class="md-qh-t md-qh-s-blanc" stroke-width="2.4" d="M-28-6H28"/>
+      <rect class="md-qh-rose" x="10" y="-35" width="13" height="16" rx="4"/>
+      <path class="md-qh-t md-qh-s-rose" stroke-width="2.6" d="M-16 12C-10 6-5 18 0 12C5 6 10 18 16 12"/>
+    </g>
+  </g>
+  <g class="md-qh-pop md-qh-d8"><g class="md-qh-q8-brille"><path class="md-qh-rose" d="M206 70Q206 82 218 82Q206 82 206 94Q206 82 194 82Q206 82 206 70Z"/></g></g>
+  <path class="md-qh-pop md-qh-d9 md-qh-rosef" d="M110 218Q110 226 118 226Q110 226 110 234Q110 226 102 226Q110 226 110 218Z"/>
+  <path class="md-qh-pop md-qh-d10 md-qh-rose" d="M326 222Q326 231 335 231Q326 231 326 240Q326 231 317 231Q326 231 326 222Z"/>
+</svg>

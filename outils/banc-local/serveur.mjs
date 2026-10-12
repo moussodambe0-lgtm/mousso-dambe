@@ -266,10 +266,23 @@ function valeurPostgres(v) {
 }
 
 function jetonPour(utilisateur) {
-  const corps = Buffer.from(
-    JSON.stringify({ sub: utilisateur.id, email: utilisateur.email, role: 'authenticated', exp: 9999999999 })
-  ).toString('base64url');
-  return `banc.${corps}.local`;
+  // Les trois morceaux sont du base64url, comme un vrai jeton. Ce n'est pas
+  // du zèle : supabase-js décode l'en-tête avant d'accepter une session, et
+  // avec « banc. » en tête il répondait « JWT not in base64url format ». La
+  // page Compte affichait alors « réessaie plus tard » pour une raison qui
+  // n'avait rien à voir. Trouvé le 12 octobre 2026.
+  const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url');
+  const entete = b64({ alg: 'none', typ: 'JWT' });
+  const corps = b64({
+    sub: utilisateur.id,
+    email: utilisateur.email,
+    role: 'authenticated',
+    aud: 'authenticated',
+    exp: 9999999999,
+  });
+  // La signature n'est jamais vérifiée ici : c'est un banc local, pas une
+  // base en ligne. En production, Supabase signe pour de vrai.
+  return `${entete}.${corps}.bancmousso`;
 }
 
 function claimsDe(entetes) {
@@ -278,9 +291,13 @@ function claimsDe(entetes) {
   // on prend la dernière, celle que la bibliothèque a posée en dernier.
   const jeton = brut.split(/,\s*/).pop().replace(/^Bearer\s+/i, '');
   const morceaux = jeton.split('.');
-  if (morceaux.length !== 3 || morceaux[0] !== 'banc') return { role: 'anon', sub: null };
+  if (morceaux.length !== 3) return { role: 'anon', sub: null };
+  // La signature n'est pas vérifiée : c'est un banc local. Mais le jeton doit
+  // avoir la FORME d'un vrai jeton, parce que supabase-js refuse les autres.
+  if (morceaux[2] !== 'bancmousso') return { role: 'anon', sub: null };
   try {
     const lu = JSON.parse(Buffer.from(morceaux[1], 'base64url').toString('utf8'));
+    if (!lu.sub) return { role: 'anon', sub: null };
     return { role: 'authenticated', sub: lu.sub, email: lu.email };
   } catch {
     return { role: 'anon', sub: null };
@@ -329,12 +346,16 @@ const serveur = createServer(async (requete, reponse) => {
     // --- Authentification ---
     if (chemin === '/auth/v1/signup') {
       const corps = await corpsJson(requete);
-      const existe = await utilisateurPar('email', corps.email);
+      // Sans adresse, c'est une entrée anonyme (`signInAnonymously`), qui
+      // passe par la même porte dans le vrai Supabase. Elle ne doit surtout
+      // pas être confondue avec « une utilisatrice sans email existe déjà ».
+      const anonyme = !corps.email;
+      const existe = anonyme ? null : await utilisateurPar('email', corps.email);
       if (existe) return repondre(400, { message: 'User already registered' });
       await db.exec('reset role;');
       const { rows } = await db.query(
         `insert into auth.users (email, mot_de_passe, raw_user_meta_data) values ($1, $2, $3) returning id, email`,
-        [corps.email, corps.password, JSON.stringify(corps.data ?? {})]
+        [corps.email ?? null, corps.password ?? null, JSON.stringify(corps.data ?? {})]
       );
       const u = rows[0];
       return repondre(200, {
@@ -372,13 +393,42 @@ const serveur = createServer(async (requete, reponse) => {
       });
     }
 
-    if (chemin === '/auth/v1/user') {
+    if (chemin === '/auth/v1/user' && requete.method === 'GET') {
       if (!claims.sub) return repondre(401, { message: 'invalid claim' });
       const u = await utilisateurPar('id', claims.sub);
       if (!u) return repondre(401, { message: 'user not found' });
       return repondre(200, {
         id: u.id, email: u.email, aud: 'authenticated', role: 'authenticated',
         app_metadata: {}, user_metadata: u.raw_user_meta_data ?? {}, created_at: new Date().toISOString(),
+      });
+    }
+
+    // Attacher une adresse (et un mot de passe) à une identité déjà là.
+    // C'est ce qui rend une entrée anonyme récupérable : même identifiant,
+    // donc mêmes cycles, même journal, mêmes commandes.
+    if (chemin === '/auth/v1/user' && (requete.method === 'PUT' || requete.method === 'PATCH')) {
+      if (!claims.sub) return repondre(401, { message: 'pas de session' });
+      const corps = await corpsJson(requete);
+      if (corps.email) {
+        const pris = await utilisateurPar('email', corps.email);
+        if (pris && pris.id !== claims.sub) return repondre(422, { message: 'User already registered' });
+      }
+      await db.exec('reset role;');
+      await db.query(
+        `update auth.users
+            set email = coalesce($2, email),
+                mot_de_passe = coalesce($3, mot_de_passe)
+          where id = $1`,
+        [claims.sub, corps.email ?? null, corps.password ?? null]
+      );
+      const u = await utilisateurPar('id', claims.sub);
+      return repondre(200, {
+        id: u.id,
+        email: u.email,
+        aud: 'authenticated',
+        role: 'authenticated',
+        app_metadata: {},
+        user_metadata: {},
       });
     }
 

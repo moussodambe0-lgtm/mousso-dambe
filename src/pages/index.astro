@@ -265,7 +265,16 @@ const dateDuJour = `${dateDe(hui).getDate()} ${MOIS_COURTS[dateDe(hui).getMonth(
           </ul>
 
           <div class="apparait" data-ordre="3">
-            <a class="btn btn-rose btn-plein" href="/inscription">Commencer</a>
+            {/* Plus d'inscription : « Commencer » crée une identité anonyme
+                côté serveur et mène droit au questionnaire. C'est un
+                formulaire et non un lien, pour qu'une adresse ouverte par
+                hasard ne crée pas un compte toute seule. */}
+            <form method="post" action="/commencer">
+              <button class="btn btn-rose btn-plein" type="submit">Commencer</button>
+            </form>
+            <p class="sans-compte">
+              Pas de compte à créer, pas de mot de passe. On te demande juste ton prénom.
+            </p>
             <div class="centre">
               <a class="btn btn-texte" href="/connexion">J'ai déjà un compte</a>
             </div>
@@ -586,6 +595,14 @@ const dateDuJour = `${dateDe(hui).getDate()} ${MOIS_COURTS[dateDe(hui).getMonth(
     border-radius: 13px;
     background: var(--surface-douce);
     color: var(--rose);
+  }
+
+  .sans-compte {
+    margin-top: var(--e2);
+    font-size: 12.5px;
+    color: var(--texte-3);
+    text-align: center;
+    line-height: 1.45;
   }
 
   .centre {

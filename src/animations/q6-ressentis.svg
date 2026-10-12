@@ -1,0 +1,63 @@
+<svg class="md-qh md-qh-q6" viewBox="0 0 390 300" role="img" aria-label="Une femme assise en tailleur, les yeux fermés, pose la main sur le bas de son ventre ; elle est apaisée, une tasse chaude fume à côté d'elle" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <pattern id="q6-ressentis-wax" width="44" height="44" patternUnits="userSpaceOnUse">
+      <circle class="md-qh-t md-qh-s-blanc" stroke-width="2" cx="22" cy="22" r="10"/>
+      <circle class="md-qh-blanc" cx="22" cy="22" r="3.4"/>
+      <path class="md-qh-t md-qh-s-blanc" stroke-width="2" d="M0 7A7 7 0 0 0 7 0M37 0A7 7 0 0 0 44 7M44 37A7 7 0 0 0 37 44M7 44A7 7 0 0 0 0 37"/>
+    </pattern>
+    <clipPath id="q6-ressentis-pagne"><path d="M86 266C84 246 104 232 150 228C170 226 220 226 240 228C286 232 306 246 304 266C250 274 140 274 86 266Z"/></clipPath>
+  </defs>
+  <circle class="md-qh-fond md-qh-rosec" cx="195" cy="150" r="130"/>
+  <g class="md-qh-wax"><circle cx="195" cy="150" r="130" fill="url(#q6-ressentis-wax)"/></g>
+  <ellipse class="md-qh-pop md-qh-bord" cx="190" cy="272" rx="140" ry="9"/>
+  <g class="md-qh-monte">
+    <g class="md-qh-q6-souffle">
+      <path class="md-qh-rose" d="M146 238C142 200 144 176 160 164C172 157 184 154 195 154C206 154 218 157 230 164C246 176 248 200 244 238Z"/>
+      <path class="md-qh-peauo" d="M184 118V146C187 157 203 157 206 146V118Z"/>
+      <path class="md-qh-t md-qh-s-rosec" stroke-width="3.6" stroke-dasharray="0 5.2" d="M182 149Q195 162 208 149"/>
+      <path class="md-qh-t md-qh-s-rosef" stroke-width="23" d="M158 172L146 206M232 172L249 205"/>
+      <path class="md-qh-t md-qh-s-rose" stroke-width="19" d="M158 172L146 206M232 172L249 205"/>
+      <path class="md-qh-t md-qh-s-peau" stroke-width="13" d="M146 207L174 220M249 206L276 236"/>
+      <g transform="translate(95 2)">
+        <ellipse class="md-qh-peauo" cx="71" cy="97" rx="5" ry="7"/>
+        <ellipse class="md-qh-peauo" cx="129" cy="97" rx="5" ry="7"/>
+        <circle class="md-qh-t md-qh-s-rose" stroke-width="2.6" cx="70" cy="111" r="6.5"/>
+        <circle class="md-qh-t md-qh-s-rose" stroke-width="2.6" cx="130" cy="111" r="6.5"/>
+        <path class="md-qh-peau" d="M100 58C119 58 130 72 130 92C130 111 118 129 100 129C82 129 70 111 70 92C70 72 81 58 100 58Z"/>
+        <path class="md-qh-t md-qh-s-encre" stroke-width="2.2" d="M80 83Q87 79 94 82M106 82Q113 79 120 83"/>
+        <path class="md-qh-t md-qh-s-encre" stroke-width="2.4" d="M81.5 95Q87 100 92.5 95M107.5 95Q113 100 118.5 95M81.5 95L79 93.6M118.5 95L121 93.6"/>
+        <path class="md-qh-t md-qh-s-peauo" stroke-width="2.2" d="M94.8 105.4Q100 108.8 105.2 105.4"/>
+        <path class="md-qh-levb" d="M90 112Q100 117.5 110 112Q107 118 100 118.4Q93 118 90 112Z"/>
+        <path class="md-qh-t md-qh-s-peauo" stroke-width="1.2" d="M88.4 110.8Q89.2 112.4 90.6 112.9M111.6 110.8Q110.8 112.4 109.4 112.9"/>
+        <path class="md-qh-rosef" d="M66 92C58 62 70 30 100 28C130 30 142 62 134 92C131 78 122 68 100 67C78 68 69 78 66 92Z"/>
+        <path class="md-qh-t md-qh-s-rose" stroke-width="5" d="M70 76Q100 46 130 76"/>
+        <path class="md-qh-t md-qh-s-blanc" stroke-width="2.6" stroke-dasharray="0 6.5" d="M78 58Q100 36 122 58"/>
+        <path class="md-qh-rose" d="M104 34C108 14 126 4 142 10C138 22 124 32 110 38Z"/>
+        <path class="md-qh-rosef" d="M98 36C90 18 74 12 62 18C68 28 82 36 94 40Z"/>
+        <ellipse class="md-qh-rose" cx="101" cy="35" rx="9" ry="7"/>
+      </g>
+    </g>
+    <path class="md-qh-corail" d="M86 266C84 246 104 232 150 228C170 226 220 226 240 228C286 232 306 246 304 266C250 274 140 274 86 266Z"/>
+    <g clip-path="url(#q6-ressentis-pagne)">
+      <path class="md-qh-t md-qh-s-blanc md-qh-q6-wax" stroke-width="2" d="M118 247A8 8 0 1 0 118.1 247M168 238A8 8 0 1 0 168.1 238M222 238A8 8 0 1 0 222.1 238M272 247A8 8 0 1 0 272.1 247"/>
+      <rect class="md-qh-encre" x="80" y="258" width="230" height="5"/>
+      <rect class="md-qh-blanc" x="80" y="266" width="230" height="3"/>
+      <path class="md-qh-t md-qh-s-encre" stroke-width="6" d="M146 229.5Q195 225 244 229.5"/>
+    </g>
+    <path class="md-qh-t md-qh-s-peche" stroke-width="2.6" d="M158 252Q195 238 232 252"/>
+    <path class="md-qh-peau" d="M150 266C152 259 166 256 184 259C196 261 200 266 196 269C180 272 160 272 152 270C150 269 149 268 150 266Z"/>
+    <path class="md-qh-peau" d="M240 266C238 259 224 256 206 259C194 261 190 266 194 269C210 272 230 272 238 270C240 269 241 268 240 266Z"/>
+    <path class="md-qh-t md-qh-s-peauo" stroke-width="1.2" d="M188 262.5Q192 265 191 268.5M202 262.5Q198 265 199 268.5"/>
+    <path class="md-qh-peau" d="M270 238C276 230 292 231 296 239C296 245 286 248 278 246C272 245 268 242 270 238Z"/>
+    <path class="md-qh-peau" d="M169 214C179 208 197 208 208 213C213 215 213 221 207 223C196 226 182 227 172 225C166 223 164 217 169 214Z"/>
+    <path class="md-qh-t md-qh-s-peauo" stroke-width="1.3" d="M195 215.6H208.5M194 219.8H207.5"/>
+  </g>
+  <g class="md-qh-pop md-qh-d8"><path class="md-qh-t md-qh-s-blanc" stroke-width="2.6" d="M217 205Q222 213 217 221M225 200Q232 213 225 226"/></g>
+  <g class="md-qh-q6-tasse">
+    <path class="md-qh-t md-qh-s-rosef" stroke-width="2.6" d="M68 228Q62 220 68 212Q74 204 68 196M80 226Q75 219 80 212"/>
+    <path class="md-qh-blanc" d="M52 236H96V250C96 262 88 268 74 268C60 268 52 262 52 250Z"/>
+    <path class="md-qh-t md-qh-s-blanc" stroke-width="4" d="M96 242C106 242 106 256 95 256"/>
+    <rect class="md-qh-rose" x="52" y="241" width="44" height="5"/>
+  </g>
+  <path class="md-qh-pop md-qh-d10 md-qh-rose" d="M300 62Q300 74 312 74Q300 74 300 86Q300 74 288 74Q300 74 300 62Z"/>
+</svg>
