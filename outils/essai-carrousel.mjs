@@ -106,11 +106,23 @@ await cmd('Network.enable');
 await cmd('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
 await cmd('Network.setCookie', { name: 'md_session', value: cookie, domain: '127.0.0.1', path: '/' });
 await cmd('Page.navigate', { url: `${SITE}/` });
-await attendre(3000);
+
+// On attend que la bande SOIT LÀ, au lieu d'attendre un temps fixe. Quand le
+// serveur de développement recompile, trois secondes ne suffisent pas, et
+// l'essai échouait sans que rien ne soit casse. Un essai qui ment de temps en
+// temps est pire que pas d'essai du tout : la fois suivante, on ne sait plus
+// s'il faut le croire.
+let aUnRail = false;
+for (let i = 0; i < 40; i += 1) {
+  aUnRail = await evaluer(`!!document.getElementById('vedettes')`);
+  if (aUnRail) break;
+  await attendre(400);
+}
+// Puis le temps des animations d'arrivée, qui déplacent encore les cartes.
+await attendre(1200);
 
 console.log('\nLe carrousel de l’accueil');
 
-const aUnRail = await evaluer(`!!document.getElementById('vedettes')`);
 verifier('la bande des cartes est là', aUnRail === true);
 
 // On défile vers le bas, comme Arthur.
