@@ -482,9 +482,10 @@ body:has(.accueil) .nav-basse {
   display: flex;
   flex: 0 0 100%;
   align-items: flex-end;
-  gap: 8px;
-  min-height: 158px;
-  padding: 18px 0 16px 18px;
+  gap: 4px;
+  /* Plus haute qu'avant : Arthur veut voir la personne, pas une vignette. */
+  min-height: 182px;
+  padding: 18px 0 0 18px;
   border-radius: 26px;
   scroll-snap-align: center;
   overflow: hidden;
@@ -541,24 +542,26 @@ body:has(.accueil) .nav-basse {
 /* La personne occupe la droite et déborde un peu du bas, comme sur la
    maquette qu'Arthur a envoyée : elle n'est pas posée dans un cadre, elle
    sort de la carte. */
+/* La personne occupe toute la hauteur de la carte et touche le bas : elle est
+   DANS le panneau, pas posée dedans. */
 .banniere-visage {
   position: relative;
   z-index: 1;
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  width: 140px;
+  width: 164px;
   flex: none;
-  margin-bottom: -16px;
-  align-self: flex-end;
+  align-self: stretch;
+  margin-right: -4px;
 }
 
 .banniere-visage img {
   display: block;
   width: 100%;
-  height: auto;
+  height: 100%;
   object-fit: contain;
-  object-position: bottom;
+  object-position: bottom center;
 }
 
 /* La mascotte tient la place tant que la photo n'est pas déposée. */
@@ -571,7 +574,7 @@ body:has(.accueil) .nav-basse {
 
 @media (max-width: 360px) {
   .banniere-visage {
-    width: 112px;
+    width: 132px;
   }
 
   .banniere-mots h2 {

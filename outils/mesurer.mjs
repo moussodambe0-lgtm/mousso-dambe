@@ -39,6 +39,12 @@ for (const c of rep.headers.getSetCookie?.() ?? []) {
   if (nom === 'md_session') cookie = reste.join('=');
 }
 
+// Le profil est jeté à chaque fois. Sans ça, l'agent de service garde les
+// feuilles de style de la veille, et on mesure une page d'il y a trois
+// versions en croyant mesurer celle d'aujourd'hui. C'est exactement ce qui
+// s'est passé le 12 octobre 2026.
+fs.rmSync(path.join(RACINE, 'captures', '.profil-mesure'), { recursive: true, force: true });
+
 const nav = spawn(
   CHROME,
   [

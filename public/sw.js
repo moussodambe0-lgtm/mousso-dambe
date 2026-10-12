@@ -15,7 +15,10 @@
  *    vente perdue sur une connexion lente.
  */
 
-const RESERVE = 'mousso-dambe-v1';
+// Le nom change quand la façon de garder change : à l'activation, tout ce qui
+// porte un autre nom est effacé. C'est ce qui débarrasse les téléphones de la
+// réserve fabriquée par la version précédente.
+const RESERVE = 'mousso-dambe-v2';
 
 // Ce qui ne change pas et ne parle de personne.
 const SOCLE = ['/fonts/figtree.woff2', '/fonts/bricolage.woff2', '/manifest.webmanifest', '/favicon.svg'];
@@ -110,14 +113,30 @@ self.addEventListener('fetch', (e) => {
   if (estPrive(url)) return;
 
   // Les polices, les images et les icônes : la réserve d'abord, c'est ce qui
-  // économise le plus de données sur un forfait compté.
-  const estFichier = /\.(woff2|png|svg|webp|jpg|jpeg|css|js)$/.test(url.pathname);
+  // économise le plus de données sur un forfait compté. Leur contenu ne change
+  // pas sous la même adresse.
+  const estFige = /\.(woff2|png|svg|webp|jpg|jpeg|ico)$/.test(url.pathname);
+
+  // Les styles et les scripts : LE RÉSEAU D'ABORD.
+  //
+  // Pourquoi ils ne sont pas traités comme les images, et ça a coûté une
+  // soirée à Arthur le 12 octobre 2026 : la réserve d'abord servait l'ancienne
+  // feuille de style indéfiniment. Il voyait une barre de navigation de trois
+  // versions en arrière et me disait, à juste titre, que son code n'était pas
+  // appliqué. En production les fichiers construits portent une empreinte dans
+  // leur nom, donc le cas est rare ; mais « rare » n'est pas « jamais », et le
+  // jour où ça arrive, personne ne comprend ce qui se passe.
+  //
+  // On garde quand même une copie, pour que l'application reste consultable
+  // hors connexion : simplement, elle ne sert qu'en dernier recours.
+  const estStyleOuScript = /\.(css|js|mjs)$/.test(url.pathname);
+  const estFichier = estFige || estStyleOuScript;
 
   e.respondWith(
     (async () => {
       const reserve = await ouvrirReserve();
 
-      if (estFichier && reserve) {
+      if (estFige && reserve) {
         const garde = await reserve.match(requete);
         if (garde) return garde;
       }

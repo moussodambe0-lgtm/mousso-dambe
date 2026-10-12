@@ -227,33 +227,46 @@ const BANNIERES = [
     sous: "Une douleur, un retard, une question que tu n'oses poser à personne. Écris, c'est lu.",
     bouton: 'Écrire au médecin',
     ton: 'banniere-rose',
+    pose: 0,
   },
   {
     titre: 'Pas sûre que ce soit normal ?',
     sous: 'Demande avant de t’inquiéter toute seule, ou avant de faire la route jusqu’au centre de santé.',
     bouton: 'Poser ma question',
     ton: 'banniere-encre',
+    pose: 1,
   },
   {
     titre: 'Ce que tu écris reste entre vous',
     sous: 'Le médecin voit ta question et ton prénom. Jamais ton calendrier, jamais ton journal.',
     bouton: 'Commencer',
     ton: 'banniere-lilas',
+    pose: 2,
   },
 ];
 
-// La photo du médecin, si elle a été déposée. On regarde le fichier au lieu
-// de l'écrire en dur : sans ça, une image manquante laisse une icône cassée
-// en plein milieu de l'accueil, et c'est l'application qui a l'air abîmée.
-const PHOTO_MEDECIN = '/accueil/medecin-detoure-600.webp';
-const PHOTO_MEDECIN_GRANDE = '/accueil/medecin-detoure-1200.webp';
+// Les photos du médecin. Une par message, et la même femme sur toutes :
+// Arthur veut plusieurs images qui défilent, pas une seule répétée.
+//
+// On regarde si le fichier existe vraiment, au lieu d'écrire son adresse en
+// dur : une image manquante laisserait une icône cassée en plein milieu de
+// l'accueil, et c'est l'application qui aurait l'air abîmée. Tant qu'une pose
+// n'est pas livrée, son message reprend la photo précédente, et la bannière
+// reste entière.
+const POSES = ['medecin-detoure', 'medecin-pose2-detoure', 'medecin-pose3-detoure'];
 const dossierPublic = new URL('../../public', import.meta.url);
 const existe = (chemin: string) => fsExiste(new URL(`.${chemin}`, `${dossierPublic}/`));
-const photoMedecin = existe(PHOTO_MEDECIN) ? PHOTO_MEDECIN : null;
-const photoMedecinJeu =
-  photoMedecin && existe(PHOTO_MEDECIN_GRANDE)
-    ? `${PHOTO_MEDECIN} 600w, ${PHOTO_MEDECIN_GRANDE} 1200w`
-    : undefined;
+
+const photos = POSES.map((nom) => {
+  const petite = `/accueil/${nom}-600.webp`;
+  const grande = `/accueil/${nom}-1200.webp`;
+  if (!existe(petite)) return null;
+  return { src: petite, jeu: existe(grande) ? `${petite} 600w, ${grande} 1200w` : undefined };
+}).filter((p): p is { src: string; jeu: string | undefined } => p !== null);
+
+/** La photo du message numéro `i`, ou la dernière livrée si celle-là manque. */
+const photoDe = (i: number) => photos[i] ?? photos[photos.length - 1] ?? null;
+const photoMedecin = photos.length > 0;
 
 const MOIS_COURTS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
 const dateDuJour = `${dateDe(hui).getDate()} ${MOIS_COURTS[dateDe(hui).getMonth()]}`;
@@ -365,19 +378,19 @@ const dateDuJour = `${dateDe(hui).getDate()} ${MOIS_COURTS[dateDe(hui).getMonth(
 
                 <div class="banniere-visage">
                   {
-                    photoMedecin ? (
+                    photoDe(b.pose) ? (
                       <img
-                        src={photoMedecin}
-                        srcset={photoMedecinJeu}
+                        src={photoDe(b.pose)!.src}
+                        srcset={photoDe(b.pose)!.jeu}
                         sizes="180px"
                         alt=""
                         width="180"
                         height="200"
-                        loading="lazy"
+                        loading={b.pose === 0 ? 'eager' : 'lazy'}
                         decoding="async"
                       />
                     ) : (
-                      // Tant que la photo n'est pas déposée, on ne laisse pas
+                      // Tant qu'aucune photo n'est déposée, on ne laisse pas
                       // un trou : la mascotte tient la place, et l'écran reste
                       // entier.
                       <Mascotte etat="ecoute" taille={160} titre={null} />
