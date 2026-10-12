@@ -1,0 +1,563 @@
+/*
+ * LE CALENDRIER.
+ *
+ * Reprise fidèle du code de référence d'Arthur (12 octobre 2026) : mêmes
+ * couleurs, mêmes tailles, mêmes rayons, mêmes animations.
+ *
+ * Trois écarts volontaires, et leur raison :
+ *   1. Aucun attribut `style=` : la politique de sécurité du contenu les
+ *      refuse. Le décalage en cascade des icônes passe donc par des règles
+ *      `nth-child` plutôt que par une variable posée sur chaque case.
+ *   2. Les polices de l'application (Figtree, Bricolage) remplacent Outfit.
+ *      Figtree est de la même famille de formes, et elle est déjà
+ *      auto-hébergée : une troisième police coûterait 25 Ko sur une 3G.
+ *   3. Les dégradés sont autorisés ICI, dans les icônes de goutte et de bébé,
+ *      parce qu'ils font l'objet lui-même. Le DESIGN.md interdit les dégradés
+ *      décoratifs, pas les objets dessinés.
+ */
+
+.ecran-calendrier {
+  --blood: #e01e3a;
+  --blood-soft: #ffe3e8;
+  --fertile: #9c7cf0;
+  --fertile-soft: #f1eaff;
+  --safe: #dcf2e3;
+  --safe-ink: #2f6b45;
+  --cal-card: #ffffff;
+  --cal-ink: #2a1a2e;
+  --cal-muted: #9a8c9d;
+  --cal-line: #f1e6eb;
+  --rayon-carte: 30px;
+  --ombre-carte: 0 18px 40px -18px rgba(150, 40, 80, 0.28), 0 2px 6px rgba(150, 40, 80, 0.06);
+  --hauteur-case: 56px;
+  --ressort: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  background: #fcf1f4;
+  color: var(--cal-ink);
+  min-height: 100vh;
+}
+
+/* --- Le résumé ----------------------------------------------------------- */
+.cal-resume {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.cal-resume-carte {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: 20px;
+  background: var(--cal-card);
+  box-shadow: 0 6px 18px -12px rgba(150, 40, 80, 0.35);
+  animation: cal-monte 0.5s ease both;
+}
+
+.cal-resume-carte:nth-child(2) {
+  animation-delay: 0.08s;
+}
+
+.cal-resume-carte svg {
+  flex: none;
+}
+
+.cal-resume-quoi {
+  font-size: 12px;
+  color: var(--cal-muted);
+}
+
+.cal-resume-valeur {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.cal-resume-quand {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.cal-resume-quand.rouge {
+  color: var(--blood);
+}
+
+.cal-resume-quand.lilas {
+  color: var(--fertile);
+}
+
+/* --- La carte du calendrier ---------------------------------------------- */
+.cal-carte {
+  padding: 20px 14px 18px;
+  border-radius: var(--rayon-carte);
+  background: var(--cal-card);
+  box-shadow: var(--ombre-carte);
+  overflow: hidden;
+  animation: cal-monte 0.55s 0.1s ease both;
+}
+
+.cal-marque {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+  font-family: var(--titre);
+  font-weight: 800;
+  font-size: 15px;
+  color: var(--blood);
+  letter-spacing: 0.2px;
+}
+
+.cal-mois {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.cal-mois-titre {
+  font-family: var(--titre);
+  font-size: 20px;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.cal-fleche {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 50%;
+  background: #fbf3f6;
+  color: var(--cal-ink);
+  cursor: pointer;
+}
+
+.cal-fleche:hover {
+  background: #f6e9ef;
+}
+
+.cal-jours-noms {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  margin-bottom: 8px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--cal-muted);
+}
+
+.cal-grille {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  row-gap: 8px;
+}
+
+/* --- Une case ------------------------------------------------------------ */
+.cal-case {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: var(--hauteur-case);
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.cal-case[disabled] {
+  cursor: default;
+}
+
+.cal-vide {
+  height: var(--hauteur-case);
+}
+
+.cal-icone {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  animation: cal-pop 0.45s var(--ressort) both;
+}
+
+/* Le décalage en cascade, sans attribut style : une règle par colonne de la
+   grille suffit à donner l'impression d'une vague. */
+.cal-grille > *:nth-child(7n + 1) .cal-icone { animation-delay: 20ms; }
+.cal-grille > *:nth-child(7n + 2) .cal-icone { animation-delay: 40ms; }
+.cal-grille > *:nth-child(7n + 3) .cal-icone { animation-delay: 60ms; }
+.cal-grille > *:nth-child(7n + 4) .cal-icone { animation-delay: 80ms; }
+.cal-grille > *:nth-child(7n + 5) .cal-icone { animation-delay: 100ms; }
+.cal-grille > *:nth-child(7n + 6) .cal-icone { animation-delay: 120ms; }
+.cal-grille > *:nth-child(7n + 7) .cal-icone { animation-delay: 140ms; }
+
+.cal-num {
+  position: relative;
+  z-index: 2;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.cal-case.passe:not(.jour-regles) .cal-num {
+  opacity: 0.75;
+}
+
+.goutte {
+  display: block;
+  width: 36px;
+  height: 43px;
+  filter: drop-shadow(0 3px 4px rgba(160, 15, 35, 0.25));
+}
+
+.goutte-prevue {
+  filter: none;
+}
+
+.bebe {
+  display: block;
+  width: 44px;
+  height: 44px;
+}
+
+.cal-badge {
+  position: absolute;
+  bottom: -3px;
+  right: -4px;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background: #fff;
+  color: var(--fertile);
+  font-size: 10px;
+  font-weight: 700;
+  box-shadow: 0 1px 4px rgba(90, 50, 160, 0.25);
+}
+
+.halo {
+  transform-origin: 24px 26px;
+  animation: cal-halo 2.2s ease-in-out infinite;
+}
+
+/* --- La bande verte des jours à risque faible ---------------------------- */
+.bande {
+  position: absolute;
+  z-index: 1;
+  top: 7px;
+  bottom: 7px;
+  left: 0;
+  right: 0;
+  background: var(--safe);
+}
+
+.bande-debut {
+  left: 3px;
+  border-radius: 999px 0 0 999px;
+}
+
+.bande-fin {
+  right: 3px;
+  border-radius: 0 999px 999px 0;
+}
+
+.bande-seule {
+  left: 3px;
+  right: 3px;
+  border-radius: 999px;
+}
+
+.jour-faible .cal-num {
+  color: var(--safe-ink);
+}
+
+/* --- Aujourd'hui --------------------------------------------------------- */
+.cal-case.aujourdhui::after {
+  content: '';
+  position: absolute;
+  z-index: 3;
+  width: 48px;
+  height: 48px;
+  border: 2.5px solid var(--cal-ink);
+  border-radius: 50%;
+  pointer-events: none;
+  animation: cal-aujourdhui 0.6s 0.3s var(--ressort) both;
+}
+
+.jour-faible.aujourdhui .cal-rond-plein {
+  position: absolute;
+  z-index: 2;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--cal-ink);
+}
+
+.jour-faible.aujourdhui .cal-num {
+  color: #fff;
+}
+
+.cal-case:active .cal-icone,
+.cal-case:active .cal-num {
+  transform: scale(0.9);
+  transition: transform 0.1s;
+}
+
+.cal-case:focus-visible {
+  outline: 2px solid var(--blood);
+  outline-offset: -4px;
+  border-radius: 14px;
+}
+
+/* --- La légende ---------------------------------------------------------- */
+.cal-legende {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 8px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--cal-line);
+}
+
+.cal-legende div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.cal-legende svg {
+  flex: none;
+}
+
+.cal-legende-large {
+  grid-column: 1 / -1;
+}
+
+.cal-legende-bande {
+  width: 30px;
+  height: 16px;
+  flex: none;
+  border-radius: 999px;
+  background: var(--safe);
+}
+
+/* --- L'avertissement, qui ne se retire pas ------------------------------- */
+.cal-avertissement {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid #f6e3b4;
+  border-radius: 18px;
+  background: #fff8e9;
+  color: #6b5420;
+  font-size: 13px;
+  line-height: 1.45;
+  animation: cal-monte 0.5s 0.25s ease both;
+}
+
+.cal-avertissement b {
+  color: #4d3b12;
+}
+
+.cal-avertissement svg {
+  flex: none;
+  margin-top: 1px;
+}
+
+/* --- La fiche d'un jour -------------------------------------------------- */
+.cal-voile {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(42, 26, 46, 0.35);
+  animation: cal-apparait 0.25s ease both;
+}
+
+.cal-fiche {
+  position: fixed;
+  left: 50%;
+  bottom: 0;
+  z-index: 51;
+  width: 100%;
+  max-width: 480px;
+  padding: 10px 20px calc(28px + env(safe-area-inset-bottom, 0px));
+  border-radius: 28px 28px 0 0;
+  background: var(--cal-card);
+  transform: translateX(-50%);
+  animation: cal-fiche-monte 0.38s var(--ressort) both;
+}
+
+.cal-poignee {
+  width: 42px;
+  height: 5px;
+  margin: 0 auto 16px;
+  border-radius: 9px;
+  background: #e7dce2;
+}
+
+.cal-fiche-haut {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.cal-fiche-icone {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  flex: none;
+  border-radius: 18px;
+}
+
+.fond-regles { background: #ffe9ed; }
+.fond-fertile { background: var(--fertile-soft); }
+.fond-faible { background: var(--safe); }
+
+.cal-fiche-date {
+  font-family: var(--titre);
+  font-size: 20px;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.cal-fiche-type {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.texte-regles { color: var(--blood); }
+.texte-fertile { color: var(--fertile); }
+.texte-faible { color: var(--safe-ink); }
+
+.cal-risque {
+  margin-bottom: 12px;
+  padding: 14px;
+  border-radius: 18px;
+  background: #fbf3f6;
+}
+
+.cal-risque-ligne {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.cal-jauge {
+  height: 10px;
+  border-radius: 9px;
+  background: #efe3e9;
+  overflow: hidden;
+}
+
+.cal-jauge i {
+  display: block;
+  height: 100%;
+  border-radius: 9px;
+  animation: cal-jauge 0.6s 0.1s var(--ressort) both;
+}
+
+.jauge-faible { width: 25%; background: #58b97a; }
+.jauge-eleve { width: 75%; background: #9c7cf0; }
+.jauge-tres-eleve { width: 96%; background: #7a52e6; }
+
+.cal-fiche-texte {
+  margin-bottom: 16px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #5e4e61;
+}
+
+.cal-bouton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 54px;
+  border: none;
+  border-radius: 999px;
+  background: var(--blood);
+  color: #fff;
+  font-family: var(--texte);
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 10px 22px -10px rgba(224, 30, 58, 0.7);
+}
+
+.cal-bouton:active {
+  transform: scale(0.98);
+}
+
+.cal-bouton-pale {
+  background: #fbf3f6;
+  color: var(--cal-muted);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+/* --- Animations ---------------------------------------------------------- */
+@keyframes cal-pop {
+  from { opacity: 0; transform: scale(0.3); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes cal-halo {
+  0%, 100% { transform: scale(0.92); opacity: 0.75; }
+  50% { transform: scale(1.08); opacity: 1; }
+}
+
+@keyframes cal-aujourdhui {
+  from { transform: scale(0.4); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@keyframes cal-monte {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes cal-apparait {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes cal-fiche-monte {
+  from { transform: translate(-50%, 105%); }
+  to { transform: translate(-50%, 0); }
+}
+
+@keyframes cal-jauge {
+  from { width: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cal-icone,
+  .cal-resume-carte,
+  .cal-carte,
+  .cal-avertissement,
+  .cal-case.aujourdhui::after,
+  .halo,
+  .cal-voile,
+  .cal-fiche,
+  .cal-jauge i {
+    animation: none;
+  }
+
+  .cal-fiche {
+    transform: translate(-50%, 0);
+  }
+}

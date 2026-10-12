@@ -21,7 +21,7 @@ import { fileURLToPath } from 'node:url';
 
 const RACINE = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SORTIE = path.join(RACINE, 'captures');
-const SITE = 'http://localhost:4322';
+const SITE = 'http://127.0.0.1:4322';
 const PORT_DEBUG = 9333;
 
 const CHROME = [

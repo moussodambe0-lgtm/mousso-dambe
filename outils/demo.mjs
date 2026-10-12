@@ -66,16 +66,20 @@ lancer('dambé', process.execPath, ['outils/banc-local/faux-ollama.mjs']);
 
 // Le site attend que la base ait fini de rejouer les migrations.
 setTimeout(() => {
-  lancer('site', 'npx', ['astro', 'dev', '--port', '4322'], true);
+  // « --host 127.0.0.1 » n'est pas un détail : sans lui, Astro n'écoute qu'en
+  // IPv6 (« [::1] »), et tout ce qui appelle en IPv4 tombe sur un lien mort.
+  // C'est le cas du navigateur intégré de VS Code. Trouvé le 12 octobre 2026,
+  // quand Arthur m'a dit « le lien ne marche pas ».
+  lancer('site', 'npx', ['astro', 'dev', '--port', '4322', '--host', '127.0.0.1'], true);
   // Le site met une bonne trentaine de secondes à être prêt sur cette
   // machine : on n'annonce l'adresse qu'une fois qu'elle répond vraiment,
   // sinon on envoie Arthur sur une page blanche.
   const guetter = setInterval(async () => {
     try {
-      await fetch('http://localhost:4322/');
+      await fetch('http://127.0.0.1:4322/');
       clearInterval(guetter);
       console.log('\n========================================================');
-      console.log('  Ouvre http://localhost:4322 dans ton navigateur.');
+      console.log('  Ouvre http://127.0.0.1:4322 dans ton navigateur.');
       console.log('  Connexion : awa@essai.bf   mot de passe : motdepasse');
       console.log('  Ctrl+C pour tout arrêter.');
       console.log('========================================================\n');

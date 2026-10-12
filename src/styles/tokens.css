@@ -75,6 +75,27 @@
   --rouge: #b3261e;
   --rouge-clair: #fdeceb;
 
+
+  /* --- Les couleurs des phases, ajoutées le 12 octobre 2026 ---------------
+     Arthur : « rouge grenat/framboise pour les règles, rose poudré, corail,
+     crème, vert doux pour les jours sans risque, lilas pour la fertilité ».
+     Chaque phase a son fond, son trait et son texte, pour que la couleur ne
+     soit jamais le seul porteur de l'information. */
+  --grenat: #9e1038;
+  --grenat-clair: #ffe3ea;
+  --framboise: #d0206a;
+  --poudre: #ffeef4;
+  --corail: #f2614a;
+  --corail-clair: #ffeae5;
+  --creme: #fff8f2;
+  --vert-doux: #2f8f5b;
+  --vert-doux-fond: #e4f5ea;
+  --lilas: #7b55d6;
+  --lilas-fond: #ece5fb;
+  --lilas-fort: #5a2fb8;
+  --peche: #c2652a;
+  --peche-fond: #ffeedd;
+
   /* Polices */
   --titre: 'Bricolage', 'Segoe UI', system-ui, sans-serif;
   --texte: 'Figtree', 'Segoe UI', system-ui, sans-serif;

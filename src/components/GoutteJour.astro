@@ -1,0 +1,71 @@
+---
+/**
+ * La goutte des jours de règles, reprise du code de référence d'Arthur.
+ *
+ * Le chiffre du jour est écrit DANS la goutte : c'est ce qui permet à l'icône
+ * de remplacer le nombre sans qu'on perde jamais la date.
+ *
+ * Deux états : pleine pour des règles déclarées ou déjà vécues, en pointillé
+ * pour des règles seulement prévues. La différence se voit au trait et au
+ * remplissage, pas seulement à la couleur.
+ */
+interface Props {
+  numero?: number | string;
+  prevue?: boolean;
+  largeur?: number;
+  hauteur?: number;
+  titre?: string;
+}
+
+const { numero = '', prevue = false, largeur = 36, hauteur = 43, titre } = Astro.props;
+const CHEMIN = 'M20 2C20 2 5 20 5 31a15 15 0 0 0 30 0C35 20 20 2 20 2Z';
+---
+
+<svg
+  class:list={['goutte', prevue && 'goutte-prevue']}
+  width={largeur}
+  height={hauteur}
+  viewBox="0 0 40 48"
+  role={titre ? 'img' : undefined}
+  aria-label={titre}
+  aria-hidden={titre ? undefined : 'true'}
+>
+  {
+    prevue ? (
+      <path
+        d={CHEMIN}
+        fill="var(--blood-soft)"
+        stroke="var(--blood)"
+        stroke-width="2"
+        stroke-dasharray="3.2 3"
+      />
+    ) : (
+      <>
+        <path d={CHEMIN} fill="url(#g-sang)" />
+        <ellipse
+          cx="13.5"
+          cy="21"
+          rx="2.4"
+          ry="5"
+          fill="#fff"
+          opacity=".45"
+          transform="rotate(-25 13.5 21)"
+        />
+      </>
+    )
+  }
+  {
+    numero !== '' && (
+      <text
+        x="20"
+        y={prevue ? 36 : 36.5}
+        text-anchor="middle"
+        font-size="13"
+        font-weight="700"
+        fill={prevue ? 'var(--blood)' : '#fff'}
+      >
+        {numero}
+      </text>
+    )
+  }
+</svg>

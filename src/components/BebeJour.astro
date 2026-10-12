@@ -1,0 +1,65 @@
+---
+/**
+ * La tête de bébé des jours fertiles, reprise du code de référence d'Arthur.
+ *
+ * Le jour d'ovulation se distingue par les yeux en cœur, les joues plus roses
+ * et un halo qui respire : trois différences, pas seulement une couleur.
+ *
+ * Choix assumé : une tête de bébé sur les jours fertiles dit, sans un mot,
+ * « c'est là qu'une grossesse peut commencer ». C'est plus clair qu'un code
+ * de couleurs pour quelqu'un qui découvre son cycle.
+ */
+interface Props {
+  ovulation?: boolean;
+  taille?: number;
+  titre?: string;
+}
+
+const { ovulation = false, taille = 44, titre } = Astro.props;
+
+/** Un cœur dessiné autour d'un point, pour les yeux du jour d'ovulation. */
+function coeur(cx: number, cy: number, s: number): string {
+  return `M${cx} ${cy + s * 0.9}C${cx - s * 1.7} ${cy - s * 0.1} ${cx - s * 0.65} ${cy - s * 1.35} ${cx} ${cy - s * 0.35}C${cx + s * 0.65} ${cy - s * 1.35} ${cx + s * 1.7} ${cy - s * 0.1} ${cx} ${cy + s * 0.9}Z`;
+}
+---
+
+<svg
+  class="bebe"
+  width={taille}
+  height={taille}
+  viewBox="0 0 48 48"
+  role={titre ? 'img' : undefined}
+  aria-label={titre}
+  aria-hidden={titre ? undefined : 'true'}
+>
+  {ovulation && <circle class="halo" cx="24" cy="26" r="23" fill="url(#g-halo)" />}
+  <circle cx="7.6" cy="28" r="3.6" fill="#B97A50" />
+  <circle cx="40.4" cy="28" r="3.6" fill="#B97A50" />
+  <circle cx="24" cy="27" r="17" fill="url(#g-peau)" />
+  <path d="M22.6 11.2C19.6 7.4 22.4 3.4 26.6 4.6C24 5.4 23.4 8 26 10.2Z" fill="#3A2215" />
+  <circle cx="13.5" cy="32" r="3.2" fill="#FF7E96" opacity={ovulation ? '.8' : '.5'} />
+  <circle cx="34.5" cy="32" r="3.2" fill="#FF7E96" opacity={ovulation ? '.8' : '.5'} />
+  {
+    ovulation ? (
+      <>
+        <path d={coeur(18, 27, 3.2)} fill="#E8325A" />
+        <path d={coeur(30, 27, 3.2)} fill="#E8325A" />
+        <ellipse cx="24" cy="35" rx="2.1" ry="2.5" fill="#8A2E3B" />
+      </>
+    ) : (
+      <>
+        <ellipse cx="18" cy="27.5" rx="1.9" ry="2.3" fill="#2A1A2E" />
+        <ellipse cx="30" cy="27.5" rx="1.9" ry="2.3" fill="#2A1A2E" />
+        <circle cx="18.7" cy="26.6" r=".7" fill="#fff" />
+        <circle cx="30.7" cy="26.6" r=".7" fill="#fff" />
+        <path
+          d="M20.5 33.6Q24 37 27.5 33.6"
+          stroke="#6B2E2E"
+          stroke-width="1.8"
+          fill="none"
+          stroke-linecap="round"
+        />
+      </>
+    )
+  }
+</svg>

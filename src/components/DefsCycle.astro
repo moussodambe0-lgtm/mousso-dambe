@@ -1,0 +1,40 @@
+---
+/**
+ * Les dégradés partagés par la goutte, le bébé et le halo.
+ *
+ * Ils sont définis une seule fois par page, dans un SVG de taille nulle, et
+ * toutes les icônes y renvoient. C'est ce que fait le code de référence
+ * d'Arthur, et c'est ce qui évite de répéter trois dégradés dans chacune des
+ * quarante-deux cases du calendrier.
+ *
+ * À poser une fois, en haut de toute page qui affiche une goutte ou un bébé.
+ */
+---
+
+<svg width="0" height="0" class="defs-cycle" aria-hidden="true" focusable="false">
+  <defs>
+    <linearGradient id="g-sang" x1="0.2" y1="0" x2="0.6" y2="1">
+      <stop offset="0" stop-color="#FF5C70"></stop>
+      <stop offset=".55" stop-color="#E01E3A"></stop>
+      <stop offset="1" stop-color="#9E0D24"></stop>
+    </linearGradient>
+    <radialGradient id="g-peau" cx=".38" cy=".32" r=".8">
+      <stop offset="0" stop-color="#E9B892"></stop>
+      <stop offset=".65" stop-color="#C98A5E"></stop>
+      <stop offset="1" stop-color="#A9693F"></stop>
+    </radialGradient>
+    <radialGradient id="g-halo" cx=".5" cy=".5" r=".5">
+      <stop offset=".55" stop-color="#C9B2FF" stop-opacity=".9"></stop>
+      <stop offset="1" stop-color="#C9B2FF" stop-opacity="0"></stop>
+    </radialGradient>
+  </defs>
+</svg>
+
+<style>
+  .defs-cycle {
+    position: absolute;
+    width: 0;
+    height: 0;
+    overflow: hidden;
+  }
+</style>
