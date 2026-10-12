@@ -88,20 +88,13 @@ const initiales = (moi.prenom || moi.email || '?').slice(0, 2).toUpperCase();
           <span></span>
         </button>
       </form>
-      <form method="POST" class="rangee">
-        <input type="hidden" name="geste" value="code" />
+      {/* Pas d'interrupteur tant que le verrou n'existe pas : un réglage de
+          vie privée qui ne protège rien est pire que pas de réglage. */}
+      <div class="rangee inactive">
         <Icone nom="cadenas" taille={20} classe="i-encre" />
         <span class="pousse-droite">Code à l'ouverture</span>
-        <button
-          class="bascule pousse"
-          type="submit"
-          role="switch"
-          aria-checked={moi.codeOuverture}
-          aria-label="Demander un code à l'ouverture"
-        >
-          <span></span>
-        </button>
-      </form>
+        <span class="pastille pastille-neutre pousse">Bientôt</span>
+      </div>
       <a class="rangee" href="/confidentialite">
         <Icone nom="bouclier-coche" taille={20} classe="i-vert" />
         <span class="pousse-droite">Ce que l'application sait de moi</span>
@@ -109,10 +102,8 @@ const initiales = (moi.prenom || moi.email || '?').slice(0, 2).toUpperCase();
       </a>
     </div>
     <p class="note-sous">
-      Avec les notifications sans détail, ton téléphone affiche « Mousso Dambé » et rien de plus.
-      {moi.codeOuverture
-        ? " Le code à l'ouverture n'est pas encore demandé : il arrive avec la prochaine version."
-        : ''}
+      Avec les notifications sans détail, ton téléphone affiche « Mousso Dambé » et rien de plus. Le code à
+      l'ouverture, lui, n'existe pas encore : tant qu'il n'est pas construit, on ne te le propose pas.
     </p>
 
     <h2 class="rangee-titre">Mon cycle</h2>

@@ -47,24 +47,68 @@ interface Alerte {
   texte: string;
 }
 
-const MOTS_URGENCE = [
-  'violée', 'violee', 'viol', 'agressée', 'agressee', 'agression', 'frappée', 'frappee',
-  'battue', 'me tuer', 'suicide', 'mourir', 'me faire du mal', 'forcée', 'forcee',
+/**
+ * La question, mise à plat : sans accents, en minuscules, apostrophes et
+ * ponctuation ramenées à des espaces.
+ *
+ * Pourquoi : « Je me suis fait VIOLER !! », « violee » et « il m'a violée »
+ * doivent se repérer de la même façon, sans qu'on écrive chaque variante à la
+ * main. C'est ce qui manquait avant l'audit du 12 octobre 2026 : la liste
+ * contenait « frappée » mais pas « frappe », donc « mon mari me frappe » n'était
+ * pas repéré, alors que « culotte violette » déclenchait le message d'urgence
+ * parce que « viol » y est contenu.
+ */
+export function aplatir(texte: string): string {
+  return (texte ?? '')
+    .normalize('NFD')
+    .replace(new RegExp('[\u0300-\u036f]', 'g'), '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+/**
+ * Les signaux d'urgence, en racines de mots avec frontières.
+ *
+ * `viol(?!et|on)` déclenche sur viol, viole, violer, violee, violence, violent,
+ * et PAS sur violet, violette, violon, violoncelle.
+ * `mourir` ne déclenche pas sur les tournures courantes (« mourir de honte »).
+ * « forcer » demande un sujet, sinon « je n'ai pas la force » déclencherait.
+ */
+const URGENCE: RegExp[] = [
+  /\bviol(?!et|on)[a-z]*\b/,
+  /\bagress[a-z]*\b/,
+  /\bfrapp[a-z]*\b/,
+  /\bbatt(?:u|ue|us|ues|ait|aient)\b/,
+  // « forcer » demande un sujet ou le participe au féminin : sans ça,
+  // « je n'ai pas la force de me lever » déclencherait une alerte d'urgence.
+  /\b(?:me|m|nous)\s+(?:a\s+|ont\s+)?forcee?\b/,
+  /\bete\s+forcee?\b/,
+  /\bforcee\s+(?:a|de|par)\b/,
+  /\binceste?\b/,
+  /\bpedophil[a-z]*\b/,
+  /\bsuicid[a-z]*\b/,
+  /\bme\s+tuer\b/,
+  /\bmourir\b(?!\s+de\s+(?:honte|rire|faim|froid|chaud|peur))/,
+  /\bme\s+faire\s+du\s+mal\b/,
+  /\bmenac[a-z]*\b/,
+  /\benferm(?:e|ee|er|ait|ent)\b/,
 ];
 
+/** Les signaux « il faut un vrai soignant », cherchés dans la question mise à
+ * plat : pas besoin d'écrire les variantes avec et sans accent. */
 const MOTS_SOIGNANT = [
   'enceinte', 'grossesse', 'avorter', 'avortement', 'test de grossesse',
-  'saigne beaucoup', 'hémorragie', 'hemorragie', 'perds beaucoup de sang',
-  'ça fait un mois', 'depuis un mois', 'depuis deux mois', 'depuis 2 mois',
-  'pas eu mes règles', 'pas eu mes regles', 'plus de règles', 'plus de regles',
-  'fièvre', 'fievre', 'ça sent', 'ca sent', 'mauvaise odeur', 'démange', 'demange',
-  'infection', 'évanouie', 'evanouie', 'je ne peux plus marcher', 'insupportable',
-  'maladie', 'cancer', 'kyste', 'fibrome', 'endométriose', 'endometriose',
+  'saigne beaucoup', 'hemorragie', 'perds beaucoup de sang',
+  'ca fait un mois', 'depuis un mois', 'depuis deux mois', 'depuis 2 mois',
+  'pas eu mes regles', 'plus de regles', 'fievre', 'ca sent', 'mauvaise odeur',
+  'demange', 'infection', 'evanouie', 'je ne peux plus marcher', 'insupportable',
+  'maladie', 'cancer', 'kyste', 'fibrome', 'endometriose',
 ];
 
 export function alerte(question: string): Alerte {
-  const q = question.toLowerCase();
-  if (MOTS_URGENCE.some((m) => q.includes(m))) {
+  const q = aplatir(question);
+  if (URGENCE.some((m) => m.test(q))) {
     return {
       gravite: 'urgence',
       texte:
@@ -85,12 +129,38 @@ export function alerte(question: string): Alerte {
   return { gravite: 'aucune', texte: '' };
 }
 
+/**
+ * Le prénom, rendu inoffensif avant d'entrer dans les consignes du modèle.
+ *
+ * C'est un champ libre, choisi par elle. Collé tel quel dans les consignes,
+ * avec des retours à la ligne, il permettait d'écrire une fausse consigne que
+ * le modèle lisait comme venant du système. Elle ne pouvait tromper que sa
+ * propre conversation, mais un champ libre n'entre jamais brut dans des
+ * consignes. Audit du 12 octobre 2026.
+ */
+export function prenomSur(brut: string | null | undefined): string {
+  return (brut ?? '')
+    .replace(/[\r\n\t]+/g, ' ')
+    // Les caractères invisibles et de contrôle, qui servent à cacher du texte.
+    .split('')
+    .filter((c) => c.charCodeAt(0) >= 32 && c.charCodeAt(0) !== 127)
+    .join('')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+    // Le prénom seul : la base n'en envoie que le premier mot, on ne compte pas
+    // sur elle pour autant.
+    .split(' ')[0]
+    .slice(0, 40);
+}
+
 /** Les consignes du modèle. Écrites en français : il répond dans la langue
  * dans laquelle on lui parle. */
 export function consignes(ctx: ContexteAssistante): string {
   const catalogue = ctx.catalogue
     .map((p) => `- ${p.slug} : « ${p.nom} », ${p.prix} FCFA. ${p.resume}`)
     .join('\n');
+
+  const prenom = prenomSur(ctx.prenom);
 
   const cycle = ctx.jour_du_cycle
     ? `Elle est au jour ${ctx.jour_du_cycle} de son cycle, qui dure environ ${ctx.cycle_moyen} jours, et ${
@@ -104,7 +174,7 @@ QUI TU ES
 Tu parles comme une grande sœur qui sait de quoi elle parle : franche, chaleureuse, jamais gênée, jamais moralisatrice. Tu tutoies. Tu réponds en français simple, celui qu'on parle à Ouagadougou. Pas de tirets longs, pas de mots savants sans les expliquer.
 
 CE QUE TU SAIS D'ELLE
-${ctx.prenom ? `Elle s'appelle ${ctx.prenom}.` : "Tu ne connais pas son prénom."}
+${prenom ? `Elle s'appelle ${prenom}.` : "Tu ne connais pas son prénom."}
 ${cycle}
 
 CE QUE TU NE FAIS JAMAIS
@@ -180,10 +250,23 @@ export function nettoyer(brut: string, slugsConnus: string[]): ReponseNettoyee {
 
   // Un numéro ou un lien inventé par le modèle enverrait une fille vers un
   // inconnu. On ne les corrige pas, on les retire.
+  //
+  // Les adresses écrites sans « http » passaient avant l'audit du 12 octobre
+  // 2026 : « va voir sur wa.me/… ou bit.ly/arnaque » ressortait presque intact.
+  // Les raccourcisseurs sont nommés un par un, parce que leurs terminaisons
+  // (.me, .ly) sont trop courtes pour une règle générale sans faux positifs.
+  // L'ordre compte : les adresses email d'abord, sinon la règle des adresses de
+  // site mange leur fin et il reste « vendeur@ » à l'écran.
   texte = texte
     .replace(/https?:\/\/\S+/gi, '')
+    .replace(/\b[\w.+-]+@[\w-]+\.[a-z]{2,}\b/gi, '[adresse retirée]')
+    .replace(/\b(?:wa\.me|bit\.ly|t\.me|tinyurl\.com|cutt\.ly|rb\.gy|is\.gd|shorturl\.at|lnkd\.in)\S*/gi, '')
+    .replace(
+      /\b(?:[a-z0-9][a-z0-9-]{0,40}\.)+(?:com|net|org|info|io|bf|fr|app|link|page|site|shop|store|xyz|top|biz|online|live|vip|ru|cn)(?:\/\S*)?\b/gi,
+      ''
+    )
     .replace(/\b(?:\+?226[\s.-]?)?[05-7](?:[\s.-]?\d){7}\b/g, '[numéro retiré]')
-    .replace(/\b[\w.+-]+@[\w-]+\.[a-z]{2,}\b/gi, '[adresse retirée]');
+    .replace(/[ \t]{2,}/g, ' ');
 
   // Trois lignes vides de suite viennent d'un modèle qui hésite, pas d'un
   // besoin de respiration.

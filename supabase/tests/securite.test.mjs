@@ -4,7 +4,7 @@
 // intimes de l'application. Ces tests valent la promesse écrite à l'écran
 // « personne de ton entourage ne peut les voir » : s'ils passent au rouge, la
 // promesse est fausse.
-import { nouvelleBase, nouveauCompte, commeApi, echoue, verifier, bilan, titre } from './banc.mjs';
+import { nouvelleBase, nouveauCompte, commeApi, commeServeur, echoue, verifier, bilan, titre } from './banc.mjs';
 
 const db = await nouvelleBase();
 const awa = await nouveauCompte(db, 'awa', 'Awa');
@@ -153,7 +153,7 @@ titre("Effacer ses données n'efface que les siennes");
   verifier('celui de Fatimata est vide', fatiVide.n === 0);
 }
 
-titre('Les quotas tiennent');
+titre('Les quotas tiennent, et ne se contournent pas en changeant d\'adresse');
 {
   const mimi = await nouveauCompte(db, 'mimi', 'Mariam');
   const s = { role: 'authenticated', sub: mimi, ip: '41.78.1.1' };
@@ -163,11 +163,30 @@ titre('Les quotas tiennent');
     const r = await rpc(`select public.passer_commande($1::jsonb, 'Mariam', '76000000', 'Tanghin', '') as x`, [panier], s);
     if (r.x.ok === false && r.x.erreur === 'trop_de_commandes') refusee += 1;
   }
-  verifier('au-delà de 5 commandes par heure et par connexion, on refuse', refusee === 2, `${refusee} refus`);
+  verifier('au-delà de 5 commandes par heure, on refuse', refusee === 2, `${refusee} refus`);
 
-  const s2 = { role: 'authenticated', sub: mimi, ip: '41.78.9.9' };
-  const r2 = await rpc(`select public.passer_commande($1::jsonb, 'Mariam', '76000000', 'Tanghin', '') as x`, [panier], s2);
-  verifier("une autre connexion n'est pas punie", r2.x.ok === true, JSON.stringify(r2.x));
+  // L'attaque prouvée par Cyber le 12 octobre 2026 : les quotas comptaient par
+  // adresse IP, et l'adresse arrive dans un en-tête que la visiteuse écrit
+  // elle-même. En changeant d'adresse à chaque requête, douze commandes sur
+  // douze passaient et le stock des serviettes tombait de 80 à 20. Depuis la
+  // migration 20261012110000, le compteur est posé sur le compte connecté.
+  const stockAvant = (await rpc(`select stock from public.produits where slug = 'serviettes-jour-10'`)).stock;
+  let passees = 0;
+  for (let i = 0; i < 12; i += 1) {
+    const autre = { role: 'authenticated', sub: mimi, ip: `41.78.9.${i}` };
+    const r = await rpc(`select public.passer_commande($1::jsonb, 'Mariam', '76000000', 'Tanghin', '') as x`, [panier], autre);
+    if (r.x.ok === true) passees += 1;
+  }
+  verifier("changer d'adresse ne rouvre pas le droit de commander", passees === 0, `${passees} commandes passées`);
+  const stockApres = (await rpc(`select stock from public.produits where slug = 'serviettes-jour-10'`)).stock;
+  verifier('le stock est intact après les douze tentatives', stockApres === stockAvant, `${stockAvant} puis ${stockApres}`);
+
+  // Et une autre femme, sur la même adresse, n'est pas punie pour autant : au
+  // Burkina une seule adresse est partagée par des milliers d'abonnés.
+  const salma = await nouveauCompte(db, 'salma', 'Salma');
+  const voisine = { role: 'authenticated', sub: salma, ip: '41.78.1.1' };
+  const r2 = await rpc(`select public.passer_commande($1::jsonb, 'Salma', '76000001', 'Tanghin', '') as x`, [panier], voisine);
+  verifier("une voisine sur la même adresse peut commander", r2.x.ok === true, JSON.stringify(r2.x));
 }
 
 titre('Le numéro de commande ne donne aucun droit');
@@ -176,7 +195,62 @@ titre('Le numéro de commande ne donne aucun droit');
   // c'est voulu. Ils n'authentifient jamais.
   const r = await rpc(`select count(*)::int as n from public.commandes where numero like 'MD-%'`, [], sFati);
   verifier('deviner un numéro ne montre rien', r.n === 0);
+  await echoue(
+    'la suite des numéros ne se fait pas avancer de dehors',
+    () => rpc(`select nextval('public.numero_commande_seq')`),
+    'permission'
+  );
 }
 
 bilan('Sécurité');
 await db.close();
+
+// ---------------------------------------------------------------------------
+// Une base dont l'empreinte de clé serveur n'est pas déposée
+// ---------------------------------------------------------------------------
+// L'attaque prouvée par Cyber le 12 octobre 2026 : appel_du_site() renvoyait
+// « vrai » dès que l'empreinte était vide, pour que l'installation soit
+// possible. Un appel direct à l'API, sans aucun en-tête du site, enregistrait
+// alors un questionnaire, passait une commande et faisait travailler
+// l'assistante aux frais d'Arthur.
+const nue = await nouvelleBase({ cleServeur: false });
+const zara = await nouveauCompte(nue, 'zara', 'Zara');
+const direct = { role: 'authenticated', sub: zara, entetes: null };
+const avecEntetes = { role: 'authenticated', sub: zara };
+const rpcNue = async (sql, params = [], session = direct) => (await commeApi(nue, session, sql, params)).rows[0];
+
+titre("Sans empreinte déposée, l'API n'écrit plus rien");
+{
+  const q = await rpcNue(`select public.enregistrer_questionnaire('Pirate', 25, 4, current_date - 2) as x`);
+  verifier('le questionnaire est refusé', q.x.ok === false && q.x.erreur === 'acces_refuse', JSON.stringify(q.x));
+  const c = await rpcNue(`select public.passer_commande($1::jsonb, 'Pirate', '70000000', 'Zogona', '') as x`,
+    [JSON.stringify([{ slug: 'serviettes-nuit-10', quantite: 3 }])]);
+  verifier('la commande est refusée', c.x.ok === false && c.x.erreur === 'acces_refuse', JSON.stringify(c.x));
+  const a = await rpcNue(`select public.assistante_poser('question gratuite') as x`);
+  verifier("la question à l'assistante est refusée", a.x.ok === false && a.x.erreur === 'acces_refuse', JSON.stringify(a.x));
+  const n = await rpcNue(`select public.noter_journee(current_date, 'leger', 1, '{}', '') as x`);
+  verifier('la note du journal est refusée', n.x.ok === false && n.x.erreur === 'acces_refuse');
+
+  // Même avec les en-têtes du site : sans empreinte en base, rien ne prouve
+  // rien, donc on refuse aussi.
+  const e = await rpcNue(`select public.noter_journee(current_date, 'leger', 1, '{}', '') as x`, [], avecEntetes);
+  verifier("les en-têtes du site ne suffisent pas sans empreinte", e.x.ok === false && e.x.erreur === 'acces_refuse');
+
+  // En revanche, l'installation à la main doit rester possible : dans
+  // l'éditeur SQL du tableau de bord, il n'y a aucun en-tête de requête.
+  await commeServeur(nue, `select set_config('request.headers', '', false)`);
+  const installation = (await commeServeur(nue, `select public.appel_du_site() as v`)).rows[0];
+  verifier("sans aucun en-tête, l'installation reste possible", installation.v === true, JSON.stringify(installation));
+
+  // Mais dès qu'il y a des en-têtes, c'est un appel de l'API : refusé.
+  await commeServeur(nue, `select set_config('request.headers', '{"x-md-cle":"une-cle-inventee"}', false)`);
+  const parLApi = (await commeServeur(nue, `select public.appel_du_site() as v`)).rows[0];
+  verifier("un appel de l'API sans empreinte est refusé", parLApi.v === false, JSON.stringify(parLApi));
+  await commeServeur(nue, `select set_config('request.headers', '', false)`);
+
+  const stock = (await commeServeur(nue, `select stock from public.produits where slug = 'serviettes-nuit-10'`)).rows[0];
+  verifier('aucun stock n’a bougé', stock.stock === 60, `stock ${stock.stock}`);
+}
+
+bilan('Clé du serveur non déposée');
+await nue.close();

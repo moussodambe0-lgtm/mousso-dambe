@@ -7,6 +7,13 @@ const awa = await nouveauCompte(db, 'awa', 'Awa');
 const auth = { role: 'authenticated', sub: awa };
 const rpc = async (sql, params = [], session = auth) => (await commeApi(db, session, sql, params)).rows[0];
 
+// Depuis la migration 20261012110000, le quota des commandes compte par compte
+// connecté et non plus par adresse IP (une adresse s'invente, un compte non).
+// Ce fichier passe une dizaine de commandes avec le même compte pour éprouver
+// les prix, le stock et les tailles : on relève le plafond. Le quota lui-même
+// est éprouvé dans securite.test.mjs.
+await db.query(`update public.reglages set valeur = '500' where cle = 'quota_commande_heure'`);
+
 const PANIER = JSON.stringify([
   { slug: 'culotte-flux-abondant', taille: 'M', quantite: 1 },
   { slug: 'serviettes-nuit-10', quantite: 1 },

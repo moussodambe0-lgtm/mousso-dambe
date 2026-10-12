@@ -45,14 +45,33 @@ function entetes(astro?: ContexteAstro): Record<string, string> {
 }
 
 /**
- * L'adresse de la visiteuse. Au Burkina, une même adresse est partagée par
- * beaucoup d'abonnés (le fournisseur traduit les adresses) : ne jamais serrer
- * un quota par adresse sans y penser, on couperait tout un quartier.
+ * L'adresse de la visiteuse.
+ *
+ * Deux choses à savoir, et elles ont toutes les deux coûté une faille.
+ *
+ * 1. `x-forwarded-for` est écrit par la visiteuse elle-même. Prendre son
+ *    premier maillon, c'est prendre une valeur qu'elle a choisie : il suffisait
+ *    d'en changer à chaque requête pour n'être jamais freinée. On demande donc
+ *    d'abord l'adresse à l'hébergeur (`clientAddress`), et on ne regarde
+ *    l'en-tête qu'à défaut, en prenant son DERNIER maillon, celui qu'un
+ *    intermédiaire de confiance a ajouté.
+ * 2. Au Burkina, une même adresse est partagée par des milliers d'abonnés. Un
+ *    quota serré par adresse couperait tout un quartier. Depuis la migration
+ *    20261012110000, les quotas comptent par compte connecté ; cette adresse ne
+ *    sert plus qu'au journal et aux actions ouvertes sans compte.
  */
 export function ipVisiteuse(astro: ContexteAstro): string {
+  try {
+    if (astro.clientAddress) return astro.clientAddress;
+  } catch {
+    // Certains hébergements ne donnent pas l'adresse : on passe à l'en-tête.
+  }
   const entete = astro.request.headers.get('x-forwarded-for');
-  if (entete) return entete.split(',')[0].trim();
-  return astro.clientAddress ?? 'inconnue';
+  if (entete) {
+    const maillons = entete.split(',').map((m) => m.trim()).filter(Boolean);
+    if (maillons.length > 0) return maillons[maillons.length - 1];
+  }
+  return 'inconnue';
 }
 
 export function clientPublic(astro?: ContexteAstro): SupabaseClient {

@@ -12,8 +12,9 @@
 import Base from '../../layouts/Base.astro';
 import Icone from '../../components/Icone.astro';
 import CarteProduit from '../../components/CarteProduit.astro';
-import { clientPublic, baseConfiguree } from '../../lib/supabase';
+import { clientPublic, baseConfiguree, jetonDeSession } from '../../lib/supabase';
 import { visiteuse, lirePanier, comptePanier } from '../../lib/session';
+import { motCherche, filtreRecherche } from '../../lib/recherche';
 
 const RAYONS = [
   { id: '', libelle: 'Tout' },
@@ -24,7 +25,9 @@ const RAYONS = [
 ];
 
 const rayon = Astro.url.searchParams.get('rayon') ?? '';
-const cherche = (Astro.url.searchParams.get('q') ?? '').trim().slice(0, 60);
+// Le mot cherché part dans un filtre que la base lit comme du texte : il est
+// débarrassé de la ponctuation qui y change la structure (audit du 12 octobre).
+const cherche = motCherche(Astro.url.searchParams.get('q'));
 
 let produits: any[] = [];
 if (baseConfiguree()) {
@@ -34,16 +37,20 @@ if (baseConfiguree()) {
     .eq('publie', true)
     .order('ordre');
   if (rayon && RAYONS.some((r) => r.id === rayon)) requete = requete.eq('rayon', rayon);
-  if (cherche) requete = requete.or(`nom.ilike.%${cherche}%,resume.ilike.%${cherche}%`);
+  if (cherche) requete = requete.or(filtreRecherche(cherche));
   const { data } = await requete;
   produits = data ?? [];
 }
 
+// Relevé AVANT de lire la session : si le cookie était périmé, `visiteuse()`
+// demande au navigateur de l'effacer, et une réponse qui pose un cookie ne doit
+// jamais être gardée par un cache partagé.
+const avaitUnCookie = !!jetonDeSession(Astro);
 const moi = await visiteuse(Astro);
 const panier = comptePanier(lirePanier(Astro));
 
 // Catalogue sans rien de personnel : le réseau peut le garder deux minutes.
-if (!moi) {
+if (!moi && !avaitUnCookie) {
   Astro.response.headers.set('Cache-Control', 'public, s-maxage=120, stale-while-revalidate=600');
 } else {
   Astro.response.headers.set('Cache-Control', 'private, no-store');

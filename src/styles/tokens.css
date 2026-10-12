@@ -49,7 +49,13 @@
   --encre: #1b1116;
   --encre-douce: #3a2a31;
   --texte-2: #6b5560;
-  --texte-3: #8c7480;
+  /* Assombri le 12 octobre 2026 : l'ancien #8C7480 donnait 4,02 contre le
+     fond, sous le minimum lisible de 4,5. Au soleil de midi sur un écran
+     d'entrée de gamme, c'était illisible. Maintenant 5,15. */
+  --texte-3: #7a6370;
+  /* Le même rôle, mais sur la barre sombre : là il faut éclaircir, pas
+     assombrir. 7,04 contre l'encre. */
+  --texte-3-sombre: #b09aa5;
 
   /* Le rose agit, et dit « règles » */
   --rose: #d0206a;

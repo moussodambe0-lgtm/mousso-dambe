@@ -420,9 +420,15 @@ serveur.listen(PORT, '127.0.0.1', () => {
   const empreinte = createHash('sha256').update(CLE_SERVEUR).digest('hex').slice(0, 8);
   console.log(`\nBanc local prêt sur http://127.0.0.1:${PORT}`);
   console.log(`Compte de démonstration : awa@essai.bf / motdepasse`);
-  console.log(`\nÀ mettre dans .env :`);
+  console.log(`\nÀ mettre dans le .env DE DÉVELOPPEMENT, et nulle part ailleurs :`);
   console.log(`PUBLIC_SUPABASE_URL=http://127.0.0.1:${PORT}`);
   console.log(`PUBLIC_SUPABASE_ANON_KEY=cle-anon-du-banc`);
   console.log(`MD_CLE_SERVEUR=${CLE_SERVEUR}`);
-  console.log(`(empreinte posée en base : ${empreinte}…)\n`);
+  console.log(`(empreinte posée en base : ${empreinte}…)`);
+  console.log(`
+  /!\\  Ces trois valeurs sont écrites en clair dans le dépôt : elles ne prouvent
+       rien. En production il faut une vraie adresse en https et une clé serveur
+       tirée au hasard. Le site refuse de démarrer en production avec celles-ci
+       (voir src/lib/configuration.ts).
+`);
 });

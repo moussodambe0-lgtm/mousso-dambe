@@ -9,9 +9,10 @@
 import Base from '../../layouts/Base.astro';
 import Icone from '../../components/Icone.astro';
 import Alerte from '../../components/Alerte.astro';
-import { clientPublic, baseConfiguree } from '../../lib/supabase';
+import { clientPublic, baseConfiguree, jetonDeSession } from '../../lib/supabase';
 import { visiteuse, lirePanier, comptePanier } from '../../lib/session';
 import { prix, prixComplet } from '../../lib/format';
+import { prixLivraison } from '../../lib/boutique';
 
 const { slug } = Astro.params;
 
@@ -28,12 +29,14 @@ if (!produit) {
   return new Response(null, { status: 404 });
 }
 
-// Le prix de la livraison vit dans la table des réglages, que le navigateur
-// n'a pas le droit de lire. Il est donc écrit ici en une constante pour
-// l'affichage, et c'est la base qui le relit au moment de la commande : si
-// Arthur le change, la commande sera juste même si cette ligne est oubliée.
-const LIVRAISON = 1000;
+// Lu en base, par la seule valeur des réglages ouverte en lecture. Le reste
+// de la table, dont l'empreinte de la clé du serveur, reste fermé.
+const LIVRAISON = await prixLivraison(clientPublic(Astro));
 
+// Relevé AVANT de lire la session : si le cookie était périmé, `visiteuse()`
+// demande au navigateur de l'effacer, et une réponse qui pose un cookie ne doit
+// jamais être gardée par un cache partagé.
+const avaitUnCookie = !!jetonDeSession(Astro);
 const moi = await visiteuse(Astro);
 const panier = comptePanier(lirePanier(Astro));
 const rupture = produit.stock <= 0;
@@ -47,7 +50,7 @@ const DESSINS: Record<string, string> = {
   kits: 'trousse',
 };
 
-if (!moi) {
+if (!moi && !avaitUnCookie) {
   Astro.response.headers.set('Cache-Control', 'public, s-maxage=120, stale-while-revalidate=600');
 } else {
   Astro.response.headers.set('Cache-Control', 'private, no-store');

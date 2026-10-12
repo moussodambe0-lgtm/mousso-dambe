@@ -21,7 +21,13 @@ const RESERVE = 'mousso-dambe-v1';
 const SOCLE = ['/fonts/figtree.woff2', '/fonts/bricolage.woff2', '/manifest.webmanifest', '/favicon.svg'];
 
 // Les chemins qui ne doivent JAMAIS être gardés.
+//
+// « / » en fait partie depuis le 12 octobre 2026 : connectée, l'accueil affiche
+// son jour de cycle, sa phase et la date de ses prochaines règles. Une copie
+// gardée se rouvrait hors connexion, après la déconnexion, pour qui tient le
+// téléphone. C'était la faille la plus grave de l'audit de Cyber.
 const PRIVE = [
+  '/',
   '/cycle',
   '/journal',
   '/dambe',
@@ -37,6 +43,27 @@ const PRIVE = [
 ];
 
 const estPrive = (url) => PRIVE.some((p) => url.pathname === p || url.pathname.startsWith(`${p}/`));
+
+/*
+ * Cette réponse a-t-elle le droit d'entrer dans la réserve du téléphone ?
+ *
+ * Seule une page qui se déclare explicitement cacheable par le réseau de
+ * diffusion (« s-maxage ») entre. Ne JAMAIS se contenter de chercher le mot
+ * « public » : un hébergeur qui ne trouve aucun en-tête en pose un lui-même, et
+ * celui de Vercel est « public, max-age=0, must-revalidate ». Avec l'ancienne
+ * règle, toute page sans en-tête devenait gardable, l'accueil personnalisé
+ * compris.
+ *
+ * Même règle que gardableParLeTelephone() dans src/lib/cache.ts. Un service
+ * worker est un script, pas un module : il ne peut rien importer. Le test
+ * supabase/tests/cache.test.mjs vérifie que les deux disent la même chose.
+ */
+const gardable = (entete) => {
+  const c = (entete || '').toLowerCase();
+  if (!c) return false;
+  if (c.includes('no-store') || c.includes('private') || c.includes('no-cache')) return false;
+  return c.includes('s-maxage');
+};
 
 async function ouvrirReserve() {
   // caches.open échoue en navigation privée et quand la mémoire est pleine.
@@ -97,11 +124,11 @@ self.addEventListener('fetch', (e) => {
 
       try {
         const reseau = await fetch(requete);
-        if (reserve && reseau.ok && (estFichier || url.pathname === '/' || url.pathname.startsWith('/boutique'))) {
-          // On ne garde une page que si elle se dit publique : une page
-          // marquée « private » ne doit jamais atterrir ici.
-          const controle = reseau.headers.get('Cache-Control') ?? '';
-          if (estFichier || controle.includes('public')) {
+        if (reserve && reseau.ok && (estFichier || url.pathname.startsWith('/boutique'))) {
+          // Une page n'entre dans la réserve que si elle se déclare cacheable
+          // par le réseau de diffusion. Les fichiers (polices, images, styles)
+          // ne parlent de personne et entrent toujours.
+          if (estFichier || gardable(reseau.headers.get('Cache-Control'))) {
             reserve.put(requete, reseau.clone()).catch(() => {});
           }
         }

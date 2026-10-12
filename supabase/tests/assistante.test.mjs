@@ -77,6 +77,39 @@ titre("Ce qui part vers le service d'IA, et rien de plus");
   verifier("l'identifiant du compte NE part PAS", !texte.includes(awa), "l'identifiant est dans le contexte");
 }
 
+titre("Le nom de famille ne part pas, même sans prénom au départ");
+{
+  // L'attaque prouvée par Cyber le 12 octobre 2026 : passer_commande recopiait
+  // le nom donné au livreur dans le prénom du profil quand celui-ci était vide
+  // (compte créé à la main, future connexion par WhatsApp), et le prénom part
+  // vers le service d'IA. « Awa Ouédraogo Sawadogo » arrivait chez Ollama.
+  const sans = await nouveauCompte(db, 'sansprenom');
+  const s = { role: 'authenticated', sub: sans };
+  const p0 = await rpc(`select prenom from public.profils where id = auth.uid()`, [], s);
+  verifier('le profil démarre sans prénom', p0.prenom === '', `prénom « ${p0.prenom} »`);
+
+  await rpc(`select public.enregistrer_questionnaire(null, 28, 5, current_date - 3) as x`, [], s);
+  const cmd = await rpc(
+    `select public.passer_commande($1::jsonb, 'Awa Ouédraogo Sawadogo', '70123456', 'Dassasgho', 'Chez le tailleur') as x`,
+    [JSON.stringify([{ slug: 'serviettes-nuit-10', quantite: 1 }])], s
+  );
+  verifier('la commande passe', cmd.x.ok === true, JSON.stringify(cmd.x));
+
+  const p1 = await rpc(`select prenom from public.profils where id = auth.uid()`, [], s);
+  verifier('seul le premier mot est gardé comme prénom', p1.prenom === 'Awa', `prénom « ${p1.prenom} »`);
+
+  const ctx = JSON.stringify((await rpc(`select public.assistante_contexte() as c`, [], s)).c);
+  verifier('le nom de famille ne part pas vers le service d\'IA', !ctx.includes('Ouédraogo'), ctx.slice(0, 120));
+  verifier('le deuxième nom non plus', !ctx.includes('Sawadogo'));
+  verifier('le prénom part bien, lui', ctx.includes('"prenom":"Awa"'), ctx.slice(0, 120));
+
+  // Et même si un nom complet se retrouvait quand même dans le profil, la base
+  // n'en envoie que le premier mot : deux verrous, pas un.
+  await db.query(`update public.profils set prenom = 'Awa Ouédraogo' where id = $1`, [sans]);
+  const ctx2 = JSON.stringify((await rpc(`select public.assistante_contexte() as c`, [], s)).c);
+  verifier('un nom complet déjà en base est coupé au premier mot', !ctx2.includes('Ouédraogo'), ctx2.slice(0, 120));
+}
+
 titre('Le journal intime ne part pas non plus');
 {
   await rpc(`select public.noter_journee(current_date, 'abondant', 3, array['ventre'], 'Mon secret à moi') as x`);
@@ -97,13 +130,28 @@ titre('Le catalogue envoyé ne contient que des produits en stock');
 
 titre("Le quota par minute protège la formule d'Arthur");
 {
-  const s = { role: 'authenticated', sub: awa, ip: '41.78.3.3' };
+  // Un compte neuf : le quota compte par compte depuis la migration
+  // 20261012110000, et Awa a déjà posé plusieurs questions plus haut.
+  const nina = await nouveauCompte(db, 'nina', 'Nina');
+  const s = { role: 'authenticated', sub: nina, ip: '41.78.3.3' };
   let refus = 0;
   for (let i = 0; i < 9; i += 1) {
     const r = await rpc(`select public.assistante_poser('Question numéro ${i}') as x`, [], s);
     if (r.x.ok === false && r.x.erreur === 'trop_vite') refus += 1;
   }
   verifier('au-delà de 6 questions par minute, on refuse', refus === 3, `${refus} refus`);
+
+  // L'attaque prouvée par Cyber le 12 octobre 2026 : en changeant d'adresse à
+  // chaque question, vingt questions sur vingt passaient alors que le plafond
+  // est de six par minute.
+  const zoe = await nouveauCompte(db, 'zoe', 'Zoé');
+  let passees = 0;
+  for (let i = 0; i < 20; i += 1) {
+    const autre = { role: 'authenticated', sub: zoe, ip: `41.90.0.${i}` };
+    const r = await rpc(`select public.assistante_poser('Question ${i}') as x`, [], autre);
+    if (r.x.ok === true) passees += 1;
+  }
+  verifier("changer d'adresse ne rouvre pas le quota", passees === 6, `${passees} questions passées`);
 }
 
 titre('Le quota par jour aussi');

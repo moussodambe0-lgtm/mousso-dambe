@@ -15,12 +15,14 @@ import Alerte from '../components/Alerte.astro';
 import { clientPublic, baseConfiguree } from '../lib/supabase';
 import { visiteuse, lirePanier, ecrirePanier, comptePanier } from '../lib/session';
 import { prix, prixComplet } from '../lib/format';
+import { prixLivraison } from '../lib/boutique';
 
 if (!baseConfiguree()) return Astro.redirect('/', 302);
 
-// Le prix de la livraison est relu en base au moment de la commande ; ici il
-// n'est qu'affiché, et la base aura le dernier mot.
-const LIVRAISON = 1000;
+// Le prix de la livraison vient de la base, pas d'une constante écrite ici :
+// un écran qui annonce un total et une base qui en calcule un autre, c'est un
+// colis refusé à la livraison. L'appel part du serveur, pas du téléphone.
+const LIVRAISON = await prixLivraison(clientPublic(Astro));
 
 if (Astro.request.method === 'POST') {
   const f = await Astro.request.formData();

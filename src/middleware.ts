@@ -4,14 +4,37 @@
  * La politique de sécurité du contenu est générée par Astro avec l'empreinte
  * de chaque script (voir astro.config.mjs). Ici on ajoute ce qu'Astro ne pose
  * pas, et on garde la règle la plus importante de cette application : aucune
- * page personnelle ne doit jamais être mise en cache par un intermédiaire.
+ * page personnelle ne doit jamais être mise en cache par un intermédiaire, ni
+ * par le téléphone.
+ *
+ * La liste des chemins publics vit dans src/lib/cache.ts, pour être testable.
+ * L'accueil « / » n'en fait pas partie : connectée, il affiche son cycle.
  */
 import { defineMiddleware } from 'astro:middleware';
+import { cheminPublic } from './lib/cache';
+import { defautDeConfiguration } from './lib/configuration';
+import { PUBLIC_SUPABASE_URL } from 'astro:env/client';
+import { MD_CLE_SERVEUR } from 'astro:env/server';
 
-/** Les chemins qui ne contiennent QUE du catalogue, donc rien de personnel. */
-const PUBLICS = ['/boutique', '/favicon.svg', '/manifest.webmanifest', '/fonts', '/icone'];
+// Vérifié une seule fois au démarrage du serveur : si la mise en ligne est mal
+// configurée, aucune page ne doit s'ouvrir. Mieux vaut un site qui dit « pas
+// encore prêt » qu'un site qui travaille sans protection.
+const DEFAUT = defautDeConfiguration({
+  urlSupabase: PUBLIC_SUPABASE_URL,
+  cleServeur: MD_CLE_SERVEUR,
+  production: import.meta.env.PROD,
+});
 
 export const onRequest = defineMiddleware(async (contexte, suite) => {
+  if (DEFAUT) {
+    return new Response(
+      `<!doctype html><html lang="fr"><head><meta charset="utf-8">
+<title>Mousso Dambé</title></head><body><h1>L'application n'est pas prête</h1>
+<p>${DEFAUT}</p></body></html>`,
+      { status: 503, headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' } }
+    );
+  }
+
   const reponse = await suite();
   const chemin = contexte.url.pathname;
 
@@ -32,8 +55,7 @@ export const onRequest = defineMiddleware(async (contexte, suite) => {
     reponse.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   }
 
-  const estPublic = PUBLICS.some((p) => chemin === p || chemin.startsWith(`${p}/`)) || chemin === '/';
-  if (!estPublic && !reponse.headers.has('Cache-Control')) {
+  if (!cheminPublic(chemin) && !reponse.headers.has('Cache-Control')) {
     // Tout le reste parle d'une personne : rien ne se garde, nulle part.
     reponse.headers.set('Cache-Control', 'private, no-store');
   }

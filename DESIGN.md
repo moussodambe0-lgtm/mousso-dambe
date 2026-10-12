@@ -25,7 +25,8 @@ blanc, tenu par du noir.
 | `--bordure` | `#F6D9E4` | Toutes les bordures |
 | `--encre` | `#1B1116` | Texte principal, barre de navigation, boutons sombres (le « noir ») |
 | `--texte-2` | `#6B5560` | Texte de second plan |
-| `--texte-3` | `#8C7480` | Libellés discrets (jamais sous 14 px) |
+| `--texte-3` | `#7A6370` | Libellés discrets. Mesuré à 5,15 contre le fond : le `#8C7480` du premier jet tombait à 4,02, sous le seuil lisible |
+| `--texte-3-sombre` | `#B09AA5` | Le même rôle sur la barre noire, où il faut éclaircir et non assombrir |
 | `--rose` | `#D0206A` | **Action principale et règles** : boutons, jours de règles, état actif |
 | `--rose-fonce` | `#9C1450` | Appui, texte sur rose clair |
 | `--rose-clair` | `#FFDCE9` | Fonds d'accent, règles prévues |

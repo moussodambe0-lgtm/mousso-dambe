@@ -16,12 +16,15 @@ import Alerte from '../components/Alerte.astro';
 import { clientSession, clientPublic, baseConfiguree } from '../lib/supabase';
 import { visiteuse, lirePanier, ecrirePanier, comptePanier } from '../lib/session';
 import { prix, messageErreur } from '../lib/format';
+import { prixLivraison } from '../lib/boutique';
 
 if (!baseConfiguree()) return Astro.redirect('/', 302);
 const moi = await visiteuse(Astro);
 if (!moi) return Astro.redirect('/connexion', 302);
 
-const LIVRAISON = 1000;
+// Lu en base : c'est le même chiffre que celui que `passer_commande`
+// appliquera, donc le total affiché est celui qu'elle paiera au livreur.
+const LIVRAISON = await prixLivraison(clientPublic(Astro));
 const lignes = lirePanier(Astro);
 if (lignes.length === 0) return Astro.redirect('/panier', 302);
 
