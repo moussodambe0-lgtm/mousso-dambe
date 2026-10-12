@@ -57,6 +57,13 @@
      assombrir. 7,04 contre l'encre. */
   --texte-3-sombre: #b09aa5;
 
+  /* Le rose du LOGO d'Arthur, relevé dans son PDF du 12 octobre 2026.
+     Il ne sert QUE pour la marque, et jamais pour du texte : sur blanc il
+     donne 4,43 contre 1, sous le minimum lisible de 4,5. Le rose de
+     l'interface juste en dessous est plus sombre, et il passe à 5,13.
+     Un logo se respecte, un texte se lit : ce sont deux métiers. */
+  --rose-logo: #ea194e;
+
   /* Le rose agit, et dit « règles » */
   --rose: #d0206a;
   --rose-fonce: #9c1450;

@@ -88,6 +88,33 @@ est sous la bannière, et qu'aucun nom ni aucune spécialité ne lui est
 attribué. Provenance et licence complètes :
 `atelier-motion/images/medecin/LICENCE.md`.
 
+### Le logo
+
+Ton logo (le PDF du 12 octobre 2026) est la source, gardée dans
+`atelier-motion/logo/logo-source.pdf`. Trois formes en sont tirées
+automatiquement par `node outils/logo-depuis-pdf.mjs` :
+
+| Fichier | Quoi | Où |
+|---|---|---|
+| `logo-fleur.svg` (4 Ko) | la fleur seule | barres, ronds, favicon |
+| `logo-avec-nom.svg` (10 Ko) | fleur + « MOUSSO DAMBÉ » | écran d'ouverture, connexion, page introuvable |
+| `logo-entier.svg` (29 Ko) | avec la phrase « Révolutionnez votre cycle avec style ! » | pas utilisé dans l'application, gardé pour tes supports |
+| `icone-192.png`, `icone-512.png` | les icônes du téléphone | `public/` |
+
+**Si tu changes ton logo**, remplace le PDF et relance la commande : tout se
+refait, y compris les icônes.
+
+Deux choses à savoir :
+- **Le rose de ton logo (`#EA194E`) n'est pas celui de l'interface
+  (`#D0206A`).** Ce n'est pas une erreur : sur fond blanc, ton rose donne 4,43
+  contre 1, sous le minimum lisible de 4,5. Celui de l'interface est plus
+  sombre et passe à 5,13. Le logo garde SA couleur partout où il apparaît ;
+  l'interface garde la sienne pour ce qui doit se lire.
+- **Le profil de la femme est noir.** Sur l'écran d'ouverture, qui est sombre,
+  le logo est donc posé sur une pastille blanche : sans elle, il ne resterait
+  qu'une fleur sans visage. Si tu as une version du logo pour fond sombre
+  (profil blanc), envoie-la et je l'utiliserai à la place.
+
 ### La mascotte
 
 `src/assets/mascotte/mascotte-salut.svg`, `-ecoute`, `-bravo`, `-visage`,

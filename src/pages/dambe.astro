@@ -15,7 +15,7 @@
  */
 import Base from '../layouts/Base.astro';
 import Icone from '../components/Icone.astro';
-import Symbole from '../components/Symbole.astro';
+import Mascotte from '../components/Mascotte.astro';
 import Anim from '../components/Anim.astro';
 import Alerte from '../components/Alerte.astro';
 import { clientSession, baseConfiguree } from '../lib/supabase';
@@ -122,8 +122,11 @@ const branchee = ollamaConfigure();
       <a class="rond" href="/" aria-label="Retour à l'accueil">
         <Icone nom="retour" taille={20} epaisseur={2} />
       </a>
+      {/* Le visage d'IA Dambé, pas le logo de l'application : c'est elle qui
+          parle sur cet écran. Et le logo, dont le profil est noir, se perdrait
+          sur ce fond sombre. */}
       <span class="portrait">
-        <Symbole taille={24} anneau="var(--rose)" goutte="var(--rose-clair)" />
+        <Mascotte etat="visage" taille={38} titre={null} />
       </span>
       <div>
         <h1>IA Dambé</h1>
@@ -146,7 +149,7 @@ const branchee = ollamaConfigure();
     {
       messages.length === 0 ? (
         <div class="accueil-dambe apparait">
-          <Symbole taille={52} anime titre="Dambé" />
+          <Mascotte etat="salut" taille={120} titre="IA Dambé" />
           <h2>Pose ta question</h2>
           <p class="doux">
             Les douleurs, le retard, l'hygiène, les protections, ce qui est normal et ce qui ne l'est pas. Ce que tu
@@ -257,8 +260,9 @@ const branchee = ollamaConfigure();
     width: 42px;
     height: 42px;
     flex: none;
+    overflow: hidden;
     border-radius: 13px;
-    background: var(--encre);
+    background: var(--rose-clair);
   }
 
   h1 {

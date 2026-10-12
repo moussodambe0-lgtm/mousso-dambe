@@ -147,10 +147,14 @@ const CONFETTIS = [0, 1, 2, 3, 4, 5, 6, 7];
 
     {/* --- Le bas : le nom, et le bouton --- */}
     <div class="pied">
-      <div class="marque">
-        <Symbole taille={30} titre="" />
-        <span>Mousso Dambé</span>
-      </div>
+      {/* Le logo porte déjà le nom : l'écrire à côté le dirait deux fois.
+          Il est posé sur une surface claire parce que le profil de la femme
+          est NOIR : sur ce fond sombre, il disparaîtrait, et il ne resterait
+          qu'une fleur. On ne touche pas aux couleurs d'un logo, on lui donne
+          le fond pour lequel il a été dessiné. */}
+      <span class="marque">
+        <Symbole taille={150} forme="nom" titre="Mousso Dambé" />
+      </span>
 
       <form class="forme" method="post" action="/commencer">
         <button class="commencer" type="submit">Commencer</button>
@@ -449,13 +453,10 @@ const CONFETTIS = [0, 1, 2, 3, 4, 5, 6, 7];
   }
 
   .marque {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-family: var(--titre);
-    font-size: 15px;
-    font-weight: 700;
-    opacity: 0.9;
+    display: block;
+    padding: 12px 20px 10px;
+    border-radius: 20px;
+    background: #fff;
   }
 
   .forme {
