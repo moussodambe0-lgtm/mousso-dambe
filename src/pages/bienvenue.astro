@@ -36,14 +36,36 @@ let reponses = {
   cycle: '28',
 };
 
+/**
+ * La dernière réponse non vide portant ce nom.
+ *
+ * Chaque champ existe deux fois dans le formulaire : une fois caché, qui
+ * transporte la réponse des étapes précédentes, et une fois visible pour la
+ * question en cours. Le champ caché vient en premier dans la page, donc
+ * `formData.get()` renvoyait toujours LUI, et la réponse qu'elle venait de
+ * donner était jetée. Sur l'écran de la date, cela bloquait le questionnaire :
+ * quelle que soit la date choisie, l'écran redemandait la même chose.
+ *
+ * Le visible vient toujours après le caché dans la page, donc la dernière
+ * valeur non vide est bien la réponse du moment.
+ * Défaut trouvé par Arthur le 12 octobre 2026, en se servant de l'application.
+ */
+function derniereReponse(f: FormData, nom: string, defaut: string): string {
+  const valeurs = f
+    .getAll(nom)
+    .map((v) => String(v).trim())
+    .filter((v) => v !== '');
+  return valeurs.length > 0 ? valeurs[valeurs.length - 1] : defaut;
+}
+
 if (Astro.request.method === 'POST') {
   const f = await Astro.request.formData();
   reponses = {
-    prenom: String(f.get('prenom') ?? moi.prenom).trim(),
-    dernieres: String(f.get('dernieres') ?? '').trim(),
-    sait: String(f.get('sait') ?? 'oui'),
-    duree: String(f.get('duree') ?? '5'),
-    cycle: String(f.get('cycle') ?? '28'),
+    prenom: derniereReponse(f, 'prenom', moi.prenom),
+    dernieres: derniereReponse(f, 'dernieres', ''),
+    sait: derniereReponse(f, 'sait', 'oui'),
+    duree: derniereReponse(f, 'duree', '5'),
+    cycle: derniereReponse(f, 'cycle', '28'),
   };
   const venantDe = Number(f.get('etape') ?? '1');
 
@@ -120,12 +142,16 @@ const TITRES: Record<number, string> = {
     </div>
 
     <form method="POST" class="apparait">
+      {/* Les réponses déjà données voyagent cachées d'une étape à l'autre.
+          Celle que l'écran en cours demande n'est PAS reportée ici : sinon le
+          champ caché et le champ visible portent le même nom, et la vieille
+          valeur masque la nouvelle. C'est ce qui bloquait l'écran de la date. */}
       <input type="hidden" name="etape" value={etape} />
-      <input type="hidden" name="prenom" value={reponses.prenom} />
-      <input type="hidden" name="dernieres" value={reponses.dernieres} />
-      <input type="hidden" name="sait" value={reponses.sait} />
-      <input type="hidden" name="duree" value={reponses.duree} />
-      <input type="hidden" name="cycle" value={reponses.cycle} />
+      {etape !== 1 && <input type="hidden" name="prenom" value={reponses.prenom} />}
+      {etape !== 2 && <input type="hidden" name="dernieres" value={reponses.dernieres} />}
+      {etape !== 2 && <input type="hidden" name="sait" value={reponses.sait} />}
+      {etape !== 3 && <input type="hidden" name="duree" value={reponses.duree} />}
+      {etape !== 4 && <input type="hidden" name="cycle" value={reponses.cycle} />}
 
       <h1>{TITRES[etape]}</h1>
 
