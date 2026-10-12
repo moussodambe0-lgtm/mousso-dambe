@@ -560,7 +560,13 @@ body:has(.accueil) .nav-basse {
   display: block;
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  /* `cover` et non `contain` : les trois poses n'ont pas les mêmes
+     proportions (sur l'une, elle tend son stéthoscope, donc elle est plus
+     large que haute). Avec `contain`, cette pose-là serait réduite à la
+     largeur de la case et sa tête deviendrait deux fois plus petite que sur
+     les autres. En calant sur la hauteur, les trois têtes font la même
+     taille, et c'est ce qui se voit quand la bannière défile. */
+  object-fit: cover;
   object-position: bottom center;
 }
 

@@ -40,6 +40,29 @@ const ECRANS = [
   { nom: '03-connexion', url: '/connexion', connectee: false },
   { nom: '04-accueil', url: '/', connectee: true },
   { nom: '04b-accueil-ecran', url: '/', connectee: true, ecranSeul: true },
+  {
+    nom: '04c-banniere-2',
+    url: '/',
+    connectee: true,
+    ecranSeul: true,
+    // On rend la main au doigt AVANT de faire glisser : sinon le défilement
+    // automatique reprend la bande et nous ramène à sa propre carte, et on
+    // capture la mauvaise.
+    prepare: `const r = document.getElementById('vedettes');
+      r.dispatchEvent(new Event('pointerdown'));
+      r.scrollTo({ left: r.children[1].offsetLeft - r.offsetLeft });
+      await new Promise((x) => setTimeout(x, 600));`,
+  },
+  {
+    nom: '04d-banniere-3',
+    url: '/',
+    connectee: true,
+    ecranSeul: true,
+    prepare: `const r = document.getElementById('vedettes');
+      r.dispatchEvent(new Event('pointerdown'));
+      r.scrollTo({ left: r.children[2].offsetLeft - r.offsetLeft });
+      await new Promise((x) => setTimeout(x, 600));`,
+  },
   { nom: '05-questionnaire-1', url: '/bienvenue?etape=1', connectee: true },
   { nom: '05b-questionnaire-2', url: '/bienvenue?etape=2', connectee: true },
   { nom: '05c-questionnaire-3', url: '/bienvenue?etape=3', connectee: true },
@@ -209,6 +232,17 @@ try {
       })()`,
       awaitPromise: true,
     });
+
+    // Une préparation propre à l'écran : faire glisser un carrousel, ouvrir un
+    // panneau. Sans ça, on ne capture jamais que la première carte d'une
+    // bande qui défile, et on ne voit pas ce qu'elle montre ensuite.
+    if (ecran.prepare) {
+      await envoyer('Runtime.evaluate', {
+        expression: `(async () => { ${ecran.prepare} })()`,
+        awaitPromise: true,
+      });
+      await attendre(900);
+    }
 
     // `ecranSeul` ne prend que ce qu'on voit, sans dérouler la page : c'est le
     // seul moyen de juger ce qui est posé en bas de l'écran (la barre basse,
