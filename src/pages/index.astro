@@ -14,7 +14,6 @@
  * carrousel tout seul, et il n'est pas nécessaire pour lire la page.
  */
 import Base from '../layouts/Base.astro';
-import Symbole from '../components/Symbole.astro';
 import Icone from '../components/Icone.astro';
 import Avatar from '../components/Avatar.astro';
 import ObjetsCarte from '../components/ObjetsCarte.astro';
@@ -44,6 +43,13 @@ const moi = installee ? await visiteuse(Astro) : null;
 
 if (moi && !moi.questionnaireFini) {
   return Astro.redirect('/bienvenue', 302);
+}
+
+// Celle qui arrive sans session voit d'abord l'écran d'ouverture (section 1
+// du cahier d'Arthur). Il ne s'affiche donc qu'une fois : dès qu'elle a
+// touché « Commencer », elle a une session et ne repasse plus par là.
+if (installee && !moi) {
+  return Astro.redirect('/ouverture', 302);
 }
 
 const hui = aujourdhui();
@@ -227,88 +233,6 @@ const dateDuJour = `${dateDe(hui).getDate()} ${MOIS_COURTS[dateDe(hui).getMonth(
     )
   }
 
-  {
-    installee && !moi && (
-      <main class="accueil-visiteuse">
-        <div class="page">
-          <div class="haut apparait">
-            <Symbole taille={54} anime titre="Mousso Dambé" />
-            <h1>Mousso Dambé</h1>
-            <p class="promesse">
-              Tes règles, sans gêne et sans mauvaise surprise. Suis ton cycle, trouve tes protections, pose tes
-              questions.
-            </p>
-          </div>
-
-          <ul class="trois apparait" data-ordre="2">
-            <li>
-              <span class="rond-icone"><Icone nom="cycle" taille={20} /></span>
-              <div>
-                <strong>Sache quand elles arrivent</strong>
-                <span>Tu réponds à quelques questions, l'application calcule le reste.</span>
-              </div>
-            </li>
-            <li>
-              <span class="rond-icone"><Icone nom="camion" taille={20} /></span>
-              <div>
-                <strong>Serviettes et culottes livrées</strong>
-                <span>Colis neutre, livré à Ouaga, tu paies à la remise.</span>
-              </div>
-            </li>
-            <li>
-              <span class="rond-icone"><Icone nom="dambe" taille={20} /></span>
-              <div>
-                <strong>IA Dambé répond à tout</strong>
-                <span>Les questions qu'on n'ose pas poser, sans jugement.</span>
-              </div>
-            </li>
-          </ul>
-
-          <div class="apparait" data-ordre="3">
-            {/* Plus d'inscription : « Commencer » crée une identité anonyme
-                côté serveur et mène droit au questionnaire. C'est un
-                formulaire et non un lien, pour qu'une adresse ouverte par
-                hasard ne crée pas un compte toute seule. */}
-            <form method="post" action="/commencer">
-              <button class="btn btn-rose btn-plein" type="submit">Commencer</button>
-            </form>
-            <p class="sans-compte">
-              Pas de compte à créer, pas de mot de passe. On te demande juste ton prénom.
-            </p>
-            <div class="centre">
-              <a class="btn btn-texte" href="/connexion">J'ai déjà un compte</a>
-            </div>
-          </div>
-
-          {produits.length > 0 && (
-            <section class="apparait" data-ordre="4">
-              <div class="section-titre">
-                <h2>La boutique</h2>
-                <a href="/boutique">Tout voir</a>
-              </div>
-              <div class="grille-produits">
-                {produits.slice(0, 2).map((p) => (
-                  <CarteProduit
-                    slug={p.slug}
-                    nom={p.nom}
-                    prixCfa={p.prix_cfa}
-                    rayon={p.rayon}
-                    image={p.image}
-                    etiquette={p.etiquette}
-                    stock={p.stock}
-                  />
-                ))}
-              </div>
-            </section>
-          )}
-
-          <p class="discret apparait" data-ordre="5">
-            Ce que tu notes reste à toi. Personne de ton entourage ne peut le voir, et rien n'est vendu à personne.
-          </p>
-        </div>
-      </main>
-    )
-  }
 
   {
     moi && (
@@ -534,92 +458,6 @@ const dateDuJour = `${dateDe(hui).getDate()} ${MOIS_COURTS[dateDe(hui).getMonth(
 </script>
 
 <style>
-  /* --- Accueil de la visiteuse --- */
-  .accueil-visiteuse {
-    padding: var(--e6) 0 var(--e6);
-  }
-
-  .haut {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--e3);
-    text-align: center;
-    padding-bottom: var(--e5);
-  }
-
-  .haut h1 {
-    font-size: 34px;
-    font-weight: 800;
-  }
-
-  .promesse {
-    max-width: 330px;
-    font-size: 15.5px;
-    color: var(--texte-2);
-  }
-
-  .trois {
-    list-style: none;
-    margin: var(--e5) 0;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: var(--e4);
-  }
-
-  .trois li {
-    display: flex;
-    gap: var(--e3);
-    align-items: flex-start;
-  }
-
-  .trois strong {
-    display: block;
-    font-size: 15px;
-  }
-
-  .trois span {
-    font-size: 13.5px;
-    color: var(--texte-2);
-    line-height: 1.45;
-  }
-
-  .rond-icone {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 40px;
-    height: 40px;
-    flex: none;
-    border-radius: 13px;
-    background: var(--surface-douce);
-    color: var(--rose);
-  }
-
-  .sans-compte {
-    margin-top: var(--e2);
-    font-size: 12.5px;
-    color: var(--texte-3);
-    text-align: center;
-    line-height: 1.45;
-  }
-
-  .centre {
-    display: flex;
-    justify-content: center;
-    margin-top: var(--e2);
-    text-align: center;
-  }
-
-  .discret {
-    margin-top: var(--e5);
-    font-size: 12.5px;
-    color: var(--texte-3);
-    text-align: center;
-    line-height: 1.5;
-  }
-
   /* --- Sous la bande des jours --- */
   .suite-accueil {
     padding-top: var(--e5);

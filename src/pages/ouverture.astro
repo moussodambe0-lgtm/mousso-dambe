@@ -1,0 +1,737 @@
+---
+/**
+ * L'ÉCRAN D'OUVERTURE.
+ *
+ * Section 1 du cahier d'Arthur du 12 octobre 2026 : trois scènes d'environ
+ * cinq secondes, qui défilent toutes seules, avec un titre par scène, des
+ * barres d'avancement en haut, et un grand bouton « Commencer » en bas.
+ *
+ * Ce qui est fait ici, et pourquoi :
+ *
+ *   - Les trois scènes sont DANS la page, l'une sous l'autre, et c'est le CSS
+ *     qui les fait apparaître à tour de rôle. Une seule animation de quinze
+ *     secondes, en boucle, et zéro octet de JavaScript. Sur une 3G de
+ *     Ouagadougou, un carrousel qui attend un script est un écran noir.
+ *
+ *   - La vidéo est PRÉVUE mais pas obligatoire. Dès qu'un fichier existe dans
+ *     `public/ouverture/scene1.mp4` (2, 3), il se joue à la place du dessin ;
+ *     tant qu'il n'existe pas, le dessin fait tout le travail, et personne ne
+ *     voit un rectangle vide. Arthur n'a qu'à déposer trois fichiers.
+ *
+ *   - Les barres du haut se remplissent chacune pendant sa scène. Elles ne
+ *     sont pas pilotées par un minuteur : elles jouent la même animation de
+ *     quinze secondes, décalée. Elles ne peuvent donc jamais se désynchroniser
+ *     de ce qui est à l'écran.
+ *
+ *   - Il ne s'affiche qu'une fois. L'accueil envoie ici les visiteuses qui
+ *     n'ont pas encore de session, et `/commencer` pose la leur : une fois
+ *     entrée, elle ne repasse plus par là.
+ */
+import Base from '../layouts/Base.astro';
+import Icone from '../components/Icone.astro';
+import Mascotte from '../components/Mascotte.astro';
+import Symbole from '../components/Symbole.astro';
+import { baseConfiguree } from '../lib/supabase';
+import { visiteuse } from '../lib/session';
+
+// Celle qui a déjà une session n'a rien à faire ici.
+if (baseConfiguree() && (await visiteuse(Astro))) {
+  return Astro.redirect('/', 302);
+}
+
+const SCENES = [
+  {
+    id: 1,
+    titre: 'Ton corps, ton rythme',
+    sous: 'Comprends ce qui se passe, mois après mois, sans gêne et sans jugement.',
+  },
+  {
+    id: 2,
+    titre: 'Ne sois plus jamais surprise',
+    sous: 'L’application compte les jours pour toi, et te prévient avant.',
+  },
+  {
+    id: 3,
+    titre: 'Tes protections livrées chez toi',
+    sous: 'Colis neutre, livré à Ouagadougou. Tu paies à la remise.',
+  },
+];
+
+// Les pétales de la première scène, et les confettis de la troisième : posés
+// ici plutôt qu'écrits douze fois dans la page.
+const PETALES = [0, 1, 2, 3, 4, 5];
+const CONFETTIS = [0, 1, 2, 3, 4, 5, 6, 7];
+---
+
+<Base
+  titre="Mousso Dambé"
+  description="Suis tes règles, trouve tes protections, pose tes questions. Mousso Dambé, pour les femmes du Burkina."
+  pleinEcran
+>
+  <main class="ouverture">
+    {/* --- Les barres d'avancement, façon stories --- */}
+    <div class="barres" aria-hidden="true">
+      {SCENES.map((s) => (
+        <span class="barre">
+          <i class={`barre-pleine barre-${s.id}`}></i>
+        </span>
+      ))}
+    </div>
+
+    {/* --- Les trois scènes --- */}
+    <div class="scenes">
+      {
+        SCENES.map((s) => (
+          <section class={`scene scene-${s.id}`} aria-label={s.titre}>
+            {/* La vraie vidéo si elle existe, le dessin sinon. Le navigateur
+                ne télécharge la vidéo que si le fichier est là ; sinon il
+                passe au contenu de repli sans rien dire. */}
+            <video class="film" autoplay muted loop playsinline preload="none" poster="">
+              <source src={`/ouverture/scene${s.id}.webm`} type="video/webm" />
+              <source src={`/ouverture/scene${s.id}.mp4`} type="video/mp4" />
+            </video>
+
+            <div class="dessin" aria-hidden="true">
+              {s.id === 1 && (
+                <>
+                  <span class="anneau-tourne"></span>
+                  {PETALES.map((p) => (
+                    <span class={`petale petale-${p}`}></span>
+                  ))}
+                  <span class="femme">
+                    <Mascotte etat="ecoute" taille={200} titre={null} />
+                  </span>
+                </>
+              )}
+
+              {s.id === 2 && (
+                <span class="calendrier">
+                  <span class="cal-haut"></span>
+                  <span class="ouv-cases">
+                    {Array.from({ length: 21 }).map((_, i) => (
+                      <i class={`ouv-case ouv-case-${i % 7}`}></i>
+                    ))}
+                  </span>
+                  <span class="cal-goutte">
+                    <Icone nom="goutte" taille={30} />
+                  </span>
+                  <span class="cal-cloche">
+                    <Icone nom="cloche" taille={20} />
+                  </span>
+                </span>
+              )}
+
+              {s.id === 3 && (
+                <>
+                  {CONFETTIS.map((c) => (
+                    <span class={`confetti confetti-${c}`}></span>
+                  ))}
+                  <span class="colis">
+                    <Icone nom="colis" taille={72} epaisseur={1.4} />
+                  </span>
+                  <span class="colis-main">
+                    <Mascotte etat="bravo" taille={120} titre={null} />
+                  </span>
+                </>
+              )}
+            </div>
+
+            <div class="mots">
+              <h2>{s.titre}</h2>
+              <p>{s.sous}</p>
+            </div>
+          </section>
+        ))
+      }
+    </div>
+
+    {/* --- Le bas : le nom, et le bouton --- */}
+    <div class="pied">
+      <div class="marque">
+        <Symbole taille={30} titre="" />
+        <span>Mousso Dambé</span>
+      </div>
+
+      <form class="forme" method="post" action="/commencer">
+        <button class="commencer" type="submit">Commencer</button>
+      </form>
+
+      <a class="deja" href="/connexion">J’ai déjà un compte</a>
+    </div>
+  </main>
+</Base>
+
+<style>
+  .ouverture {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-height: 100dvh;
+    max-width: 480px;
+    margin: 0 auto;
+    overflow: hidden;
+    background: var(--encre);
+    color: #fff;
+  }
+
+  /* --- Les barres du haut --- */
+  .barres {
+    position: absolute;
+    top: calc(12px + env(safe-area-inset-top, 0px));
+    left: 16px;
+    right: 16px;
+    z-index: 4;
+    display: flex;
+    gap: 5px;
+  }
+
+  .barre {
+    flex: 1;
+    height: 3px;
+    border-radius: var(--r-ronde);
+    background: rgba(255, 255, 255, 0.28);
+    overflow: hidden;
+  }
+
+  .barre-pleine {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: var(--r-ronde);
+    background: #fff;
+    transform-origin: left;
+    animation: barre-remplit 15s linear infinite;
+  }
+
+  /* Chaque barre joue la MÊME animation de quinze secondes, décalée de cinq.
+     Elles ne peuvent donc pas se désynchroniser des scènes, qui jouent la
+     leur sur la même durée. */
+  .barre-1 { animation-delay: 0s; }
+  .barre-2 { animation-delay: -10s; }
+  .barre-3 { animation-delay: -5s; }
+
+  /* --- Les scènes --- */
+  .scenes {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+  }
+
+  .scene {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 28px;
+    padding: 64px 24px 24px;
+    opacity: 0;
+    animation: scene-passe 15s ease-in-out infinite;
+  }
+
+  .scene-1 { animation-delay: 0s; background: #2a0f1c; }
+  .scene-2 { animation-delay: -10s; background: #1d1430; }
+  .scene-3 { animation-delay: -5s; background: #2b1510; }
+
+  .film {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    /* Tant qu'aucun fichier n'est déposé, la balise ne montre rien : elle est
+       transparente et laisse voir le dessin dessous. Dès qu'une vidéo existe,
+       le navigateur la peint par-dessus. */
+    background: transparent;
+    border: none;
+  }
+
+  .dessin {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 100%;
+    max-width: 300px;
+    aspect-ratio: 1;
+  }
+
+  .mots {
+    position: relative;
+    z-index: 3;
+    max-width: 330px;
+    text-align: center;
+    animation: mots-montent 15s ease-in-out infinite;
+  }
+
+  .scene-1 .mots { animation-delay: 0s; }
+  .scene-2 .mots { animation-delay: -10s; }
+  .scene-3 .mots { animation-delay: -5s; }
+
+  .mots h2 {
+    font-family: var(--titre);
+    font-size: 27px;
+    font-weight: 800;
+    line-height: 1.15;
+  }
+
+  .mots p {
+    margin-top: 8px;
+    font-size: 14.5px;
+    line-height: 1.5;
+    opacity: 0.85;
+  }
+
+  /* --- Scène 1 : le cercle du cycle et les pétales --- */
+  .anneau-tourne {
+    position: absolute;
+    inset: 8%;
+    border: 2px dashed rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    animation: tourne-lent 24s linear infinite;
+  }
+
+  .petale {
+    position: absolute;
+    width: 14px;
+    height: 20px;
+    border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+    background: var(--rose-clair);
+    opacity: 0.75;
+    animation: flotte-haut 7s ease-in-out infinite;
+  }
+
+  .petale-0 { top: 6%; left: 18%; animation-delay: 0s; }
+  .petale-1 { top: 22%; left: 78%; animation-delay: 0.8s; }
+  .petale-2 { top: 54%; left: 6%; animation-delay: 1.6s; }
+  .petale-3 { top: 72%; left: 84%; animation-delay: 2.4s; }
+  .petale-4 { top: 88%; left: 34%; animation-delay: 3.2s; }
+  .petale-5 { top: 38%; left: 90%; animation-delay: 4s; }
+
+  .femme {
+    position: relative;
+    z-index: 2;
+  }
+
+  /* --- Scène 2 : le calendrier qui se remplit --- */
+  .calendrier {
+    position: relative;
+    display: block;
+    width: 84%;
+    padding: 0 0 14px;
+    border-radius: 20px;
+    background: #fff;
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+  }
+
+  .cal-haut {
+    display: block;
+    height: 36px;
+    border-radius: 20px 20px 0 0;
+    background: var(--encre);
+  }
+
+  .ouv-cases {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 5px;
+    padding: 12px;
+  }
+
+  .ouv-case {
+    aspect-ratio: 1;
+    border-radius: 6px;
+    background: #f2e6ec;
+    animation: case-remplit 15s ease-in-out infinite;
+  }
+
+  /* Les cases se remplissent par colonnes, de gauche à droite. */
+  .ouv-case-0 { animation-delay: -9.6s; }
+  .ouv-case-1 { animation-delay: -9.4s; }
+  .ouv-case-2 { animation-delay: -9.2s; }
+  .ouv-case-3 { animation-delay: -9s; }
+  .ouv-case-4 { animation-delay: -8.8s; }
+  .ouv-case-5 { animation-delay: -8.6s; }
+  .ouv-case-6 { animation-delay: -8.4s; }
+
+  .cal-goutte {
+    position: absolute;
+    top: 46%;
+    left: 50%;
+    display: grid;
+    place-items: center;
+    width: 46px;
+    height: 46px;
+    margin: -23px 0 0 -23px;
+    border-radius: 50%;
+    background: var(--grenat);
+    color: #fff;
+    animation: goutte-saute 15s ease-in-out infinite;
+    animation-delay: -10s;
+  }
+
+  .cal-cloche {
+    position: absolute;
+    top: -14px;
+    right: -14px;
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--rose);
+    color: #fff;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+    animation: cloche-arrive 15s ease-in-out infinite;
+    animation-delay: -10s;
+  }
+
+  /* --- Scène 3 : le colis et les confettis --- */
+  .colis {
+    position: relative;
+    z-index: 2;
+    display: grid;
+    place-items: center;
+    width: 130px;
+    height: 130px;
+    border-radius: 28px;
+    background: #fff;
+    color: var(--rose);
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+    animation: colis-arrive 15s ease-in-out infinite;
+    animation-delay: -5s;
+  }
+
+  .colis-main {
+    position: absolute;
+    right: 2%;
+    bottom: 0;
+    z-index: 3;
+    animation: colis-arrive 15s ease-in-out infinite;
+    animation-delay: -4.6s;
+  }
+
+  .confetti {
+    position: absolute;
+    width: 9px;
+    height: 9px;
+    border-radius: 2px;
+    background: var(--rose-clair);
+    opacity: 0;
+    animation: confetti-tombe 15s ease-in infinite;
+    animation-delay: -4.4s;
+  }
+
+  .confetti-0 { left: 12%; background: var(--rose); }
+  .confetti-1 { left: 24%; animation-delay: -4.3s; }
+  .confetti-2 { left: 36%; background: #ffd79a; animation-delay: -4.2s; }
+  .confetti-3 { left: 48%; animation-delay: -4.1s; }
+  .confetti-4 { left: 60%; background: var(--rose); animation-delay: -4s; }
+  .confetti-5 { left: 72%; animation-delay: -3.9s; }
+  .confetti-6 { left: 84%; background: #ffd79a; animation-delay: -3.8s; }
+  .confetti-7 { left: 92%; animation-delay: -3.7s; }
+
+  /* --- Le bas --- */
+  .pied {
+    position: relative;
+    z-index: 5;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    /* Le formulaire doit prendre toute la largeur, sinon le bouton se réduit
+       à la taille de son texte et ne ressemble plus à l'appel qu'il est. */
+    text-align: center;
+    padding: 20px 24px calc(26px + env(safe-area-inset-bottom, 0px));
+    /* Le dégradé sombre demandé dans le cahier : le texte reste lisible même
+       sur une vidéo claire. Il FAIT l'ombre, il n'est pas décoratif. */
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.72), rgba(0, 0, 0, 0));
+  }
+
+  .marque {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--titre);
+    font-size: 15px;
+    font-weight: 700;
+    opacity: 0.9;
+  }
+
+  .forme {
+    align-self: stretch;
+  }
+
+  .commencer {
+    position: relative;
+    width: 100%;
+    min-height: 54px;
+    border: none;
+    border-radius: var(--r-ronde);
+    background: var(--rose);
+    color: #fff;
+    font-family: var(--texte);
+    font-size: 16.5px;
+    font-weight: 700;
+    overflow: hidden;
+    animation: bouton-bat 3.2s ease-in-out infinite;
+  }
+
+  /* La brillance qui traverse le bouton : un reflet, pas un dégradé posé sur
+     un fond. */
+  .commencer::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 70px;
+    background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.42), transparent);
+    animation: brille 3.6s ease-in-out infinite;
+  }
+
+  .commencer:active {
+    transform: scale(0.98);
+  }
+
+  .deja {
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 13.5px;
+    font-weight: 600;
+  }
+
+  /* --- Les animations --- */
+  /* Une scène dure 5 s sur 15 : visible de 0 à 33 %, avec un fondu et un
+     léger zoom aux deux bords. */
+  @keyframes scene-passe {
+    0% {
+      opacity: 0;
+      transform: scale(1.06);
+    }
+    4%,
+    29% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    33%,
+    100% {
+      opacity: 0;
+      transform: scale(1.02);
+    }
+  }
+
+  @keyframes mots-montent {
+    0% {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+    8%,
+    29% {
+      opacity: 1;
+      transform: none;
+    }
+    33%,
+    100% {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+  }
+
+  @keyframes barre-remplit {
+    0% {
+      transform: scaleX(0);
+    }
+    33.33%,
+    100% {
+      transform: scaleX(1);
+    }
+  }
+
+  @keyframes tourne-lent {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @keyframes flotte-haut {
+    0%,
+    100% {
+      transform: translateY(0) rotate(0);
+    }
+    50% {
+      transform: translateY(-14px) rotate(16deg);
+    }
+  }
+
+  @keyframes case-remplit {
+    0%,
+    2% {
+      background: #f2e6ec;
+    }
+    6%,
+    33% {
+      background: #ffd3e0;
+    }
+    34%,
+    100% {
+      background: #f2e6ec;
+    }
+  }
+
+  @keyframes goutte-saute {
+    0%,
+    6% {
+      opacity: 0;
+      transform: translateY(-26px) scale(0.6);
+    }
+    10% {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+    13% {
+      transform: translateY(-10px) scale(1);
+    }
+    16%,
+    30% {
+      transform: translateY(0) scale(1);
+    }
+    33%,
+    100% {
+      opacity: 0;
+    }
+  }
+
+  @keyframes cloche-arrive {
+    0%,
+    14% {
+      opacity: 0;
+      transform: scale(0.4) rotate(-20deg);
+    }
+    18% {
+      opacity: 1;
+      transform: scale(1) rotate(8deg);
+    }
+    21%,
+    30% {
+      transform: scale(1) rotate(0);
+    }
+    33%,
+    100% {
+      opacity: 0;
+    }
+  }
+
+  @keyframes colis-arrive {
+    0%,
+    4% {
+      opacity: 0;
+      transform: translateY(40px) scale(0.8);
+    }
+    10%,
+    29% {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+    33%,
+    100% {
+      opacity: 0;
+    }
+  }
+
+  @keyframes confetti-tombe {
+    0%,
+    8% {
+      opacity: 0;
+      transform: translateY(-40px) rotate(0);
+    }
+    12% {
+      opacity: 1;
+    }
+    30% {
+      opacity: 1;
+      transform: translateY(190px) rotate(320deg);
+    }
+    33%,
+    100% {
+      opacity: 0;
+      transform: translateY(210px) rotate(360deg);
+    }
+  }
+
+  @keyframes bouton-bat {
+    0%,
+    100% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.025);
+    }
+  }
+
+  @keyframes brille {
+    0% {
+      transform: translateX(-90px) skewX(-18deg);
+    }
+    55%,
+    100% {
+      transform: translateX(460px) skewX(-18deg);
+    }
+  }
+
+  /* Elle a demandé moins de mouvement : on montre la PREMIÈRE scène, posée,
+     et plus rien ne bouge. Un carrousel qu'on ne peut pas arrêter est
+     exactement ce que ce réglage existe pour éviter. */
+  @media (prefers-reduced-motion: reduce) {
+    .scene,
+    .mots,
+    .barre-pleine,
+    .anneau-tourne,
+    .petale,
+    .ouv-case,
+    .cal-goutte,
+    .cal-cloche,
+    .colis,
+    .colis-main,
+    .confetti,
+    .commencer,
+    .commencer::after {
+      animation: none;
+    }
+
+    .scene-1 {
+      opacity: 1;
+    }
+
+    .scene-2,
+    .scene-3 {
+      opacity: 0;
+    }
+
+    .mots {
+      opacity: 1;
+    }
+
+    .barre-1 {
+      transform: scaleX(1);
+    }
+
+    .barre-2,
+    .barre-3 {
+      transform: scaleX(0);
+    }
+
+    .cal-goutte,
+    .cal-cloche,
+    .colis,
+    .colis-main {
+      opacity: 1;
+    }
+
+    .confetti {
+      opacity: 0;
+    }
+
+    .commencer::after {
+      display: none;
+    }
+  }
+</style>

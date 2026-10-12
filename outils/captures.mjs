@@ -36,8 +36,7 @@ if (!CHROME) {
 }
 
 const ECRANS = [
-  { nom: '01-accueil-visiteuse', url: '/', connectee: false },
-  { nom: '02-inscription', url: '/inscription', connectee: false },
+  { nom: '01-ouverture', url: '/ouverture', connectee: false },
   { nom: '03-connexion', url: '/connexion', connectee: false },
   { nom: '04-accueil', url: '/', connectee: true },
   { nom: '05-questionnaire-1', url: '/bienvenue?etape=1', connectee: true },
