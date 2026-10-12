@@ -63,6 +63,7 @@ const ECRANS = [
   { nom: '19-introuvable', url: '/cette-page-nexiste-pas', connectee: true },
   { nom: '20-discussions', url: '/discussions', connectee: true },
   { nom: '21-fil-boutique', url: '/discussions/boutique', connectee: true },
+  { nom: '21b-fil-medecin', url: '/discussions/medecin', connectee: true },
   { nom: '22-fil-boutique-produit', url: '/discussions/boutique?produit=culotte-flux-abondant', connectee: true },
   { nom: '23-admin-messages', url: '/admin', connectee: true },
   { nom: '24-admin-commandes', url: '/admin?vue=commandes', connectee: true },

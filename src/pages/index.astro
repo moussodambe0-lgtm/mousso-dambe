@@ -17,12 +17,14 @@ import Base from '../layouts/Base.astro';
 import Icone from '../components/Icone.astro';
 import Avatar from '../components/Avatar.astro';
 import ObjetsCarte from '../components/ObjetsCarte.astro';
+import Mascotte from '../components/Mascotte.astro';
 import DefsCycle from '../components/DefsCycle.astro';
 import GoutteJour from '../components/GoutteJour.astro';
 import BebeJour from '../components/BebeJour.astro';
 import CarteProduit from '../components/CarteProduit.astro';
 import Alerte from '../components/Alerte.astro';
 import '../styles/accueil.css';
+import { existsSync as fsExiste } from 'node:fs';
 import { clientPublic, clientSession, baseConfiguree } from '../lib/supabase';
 import { visiteuse, lirePanier, comptePanier } from '../lib/session';
 import { PHASES } from '../lib/cycle';
@@ -214,6 +216,45 @@ const CONSEILS: Record<string, { icone: string; titre: string; texte: string }[]
 
 const conseilsPhase = nomPhase ? CONSEILS[nomPhase] : [];
 
+// --- La bannière du médecin -------------------------------------------------
+// Trois messages, une seule personne. Aucun ne promet un délai de réponse,
+// aucun ne dit « docteur X » : Arthur n'a pas encore son médecin, et écrire un
+// nom ou un « réponse en 24 h » qui n'existe pas, sur une application de
+// santé, c'est exactement ce qu'il ne faut pas faire.
+const BANNIERES = [
+  {
+    titre: 'Parle à un médecin',
+    sous: "Une douleur, un retard, une question que tu n'oses poser à personne. Écris, c'est lu.",
+    bouton: 'Écrire au médecin',
+    ton: 'banniere-rose',
+  },
+  {
+    titre: 'Pas sûre que ce soit normal ?',
+    sous: 'Demande avant de t’inquiéter toute seule, ou avant de faire la route jusqu’au centre de santé.',
+    bouton: 'Poser ma question',
+    ton: 'banniere-encre',
+  },
+  {
+    titre: 'Ce que tu écris reste entre vous',
+    sous: 'Le médecin voit ta question et ton prénom. Jamais ton calendrier, jamais ton journal.',
+    bouton: 'Commencer',
+    ton: 'banniere-lilas',
+  },
+];
+
+// La photo du médecin, si elle a été déposée. On regarde le fichier au lieu
+// de l'écrire en dur : sans ça, une image manquante laisse une icône cassée
+// en plein milieu de l'accueil, et c'est l'application qui a l'air abîmée.
+const PHOTO_MEDECIN = '/accueil/medecin-detoure-600.webp';
+const PHOTO_MEDECIN_GRANDE = '/accueil/medecin-detoure-1200.webp';
+const dossierPublic = new URL('../../public', import.meta.url);
+const existe = (chemin: string) => fsExiste(new URL(`.${chemin}`, `${dossierPublic}/`));
+const photoMedecin = existe(PHOTO_MEDECIN) ? PHOTO_MEDECIN : null;
+const photoMedecinJeu =
+  photoMedecin && existe(PHOTO_MEDECIN_GRANDE)
+    ? `${PHOTO_MEDECIN} 600w, ${PHOTO_MEDECIN_GRANDE} 1200w`
+    : undefined;
+
 const MOIS_COURTS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
 const dateDuJour = `${dateDe(hui).getDate()} ${MOIS_COURTS[dateDe(hui).getMonth()]}`;
 ---
@@ -257,8 +298,11 @@ const dateDuJour = `${dateDe(hui).getDate()} ${MOIS_COURTS[dateDe(hui).getMonth(
           </a>
         </header>
 
-        {/* --- Les cartes vedettes --- */}
-        <section class="acc-vedettes" id="vedettes" aria-label="À retenir aujourd'hui">
+        {/* --- La carte du cycle : elle ne défile pas.
+             C'est l'information pour laquelle elle a ouvert l'application.
+             Une information qui part toute seule au bout de quatre secondes
+             n'est plus une information, c'est une publicité. --- */}
+        <section class="acc-vedettes acc-vedette-seule" aria-label="À retenir aujourd'hui">
           {
             aDesDonnees ? (
               <article class:list={['acc-carte', carteClasse]}>
@@ -294,37 +338,70 @@ const dateDuJour = `${dateDe(hui).getDate()} ${MOIS_COURTS[dateDe(hui).getMonth(
             )
           }
 
-          <article class="acc-carte carte-boutique">
-            <ObjetsCarte nom="boutique" />
-            <div class="acc-carte-texte">
-              <h2 class="acc-carte-titre">Livrée{'\n'}chez toi</h2>
-              <p class="acc-carte-sous">Colis neutre, paiement à la livraison</p>
-            </div>
-            <div class="acc-carte-pied">
-              <a class="acc-bouton-pilule" href="/boutique">
-                Commander
-                <Icone nom="avant" taille={16} epaisseur={2.4} />
-              </a>
-            </div>
-          </article>
+        </section>
 
-          <article class="acc-carte carte-conseil">
-            <ObjetsCarte nom="conseil" />
-            <div class="acc-carte-texte">
-              <h2 class="acc-carte-titre">Conseil{'\n'}du jour</h2>
-              <p class="acc-carte-sous">
-                {phase ? phase.conseil : "Bois assez d'eau dans la journée, surtout quand il fait chaud."}
-              </p>
-            </div>
-            <div class="acc-carte-pied">
-              <a class="acc-bouton-pilule" href="/dambe">Demander à IA Dambé</a>
-            </div>
-          </article>
+        {/* --- LA BANNIÈRE DU MÉDECIN.
+             Demande d'Arthur du 12 octobre 2026 au soir : les images qui
+             défilent doivent montrer qu'on peut contacter directement un
+             médecin pour avoir un conseil. Un seul médecin, donc la MÊME
+             personne sur les trois messages.
+
+             La photo est illustrative, et elle est traitée comme telle :
+             aucun nom, aucune spécialité, aucun hôpital ne lui est attribué.
+             Tant qu'Arthur n'a pas son médecin, l'écran dit ce qui est vrai
+             (on peut écrire, et quelqu'un lira) et rien de plus. --- */}
+        <section class="acc-bannieres" id="vedettes" aria-label="Parler à un médecin">
+          {
+            BANNIERES.map((b) => (
+              <article class:list={['banniere', b.ton]}>
+                <div class="banniere-mots">
+                  <h2>{b.titre}</h2>
+                  <p>{b.sous}</p>
+                  <a class="banniere-bouton" href="/discussions/medecin">
+                    {b.bouton}
+                    <Icone nom="avant" taille={15} epaisseur={2.6} />
+                  </a>
+                </div>
+
+                <div class="banniere-visage">
+                  {
+                    photoMedecin ? (
+                      <img
+                        src={photoMedecin}
+                        srcset={photoMedecinJeu}
+                        sizes="180px"
+                        alt=""
+                        width="180"
+                        height="200"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    ) : (
+                      // Tant que la photo n'est pas déposée, on ne laisse pas
+                      // un trou : la mascotte tient la place, et l'écran reste
+                      // entier.
+                      <Mascotte etat="ecoute" taille={160} titre={null} />
+                    )
+                  }
+                </div>
+              </article>
+            ))
+          }
         </section>
 
         <div class="acc-points" id="points" aria-hidden="true">
           <i class="actif"></i><i></i><i></i>
         </div>
+
+        {
+          photoMedecin && (
+            // La licence Pexels interdit de laisser croire que la personne
+            // photographiée recommande le produit. Cette ligne est donc
+            // obligatoire, pas décorative : elle dit que c'est une photo
+            // d'illustration, et non le médecin qui répondra.
+            <p class="acc-mention-photo">Photo d'illustration</p>
+          )
+        }
 
         {/* --- La bande des jours --- */}
         <section class="acc-semaine" aria-label="Les jours à venir">

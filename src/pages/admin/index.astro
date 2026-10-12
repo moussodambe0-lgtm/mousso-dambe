@@ -51,16 +51,28 @@ const vue = Astro.url.searchParams.get('vue') === 'commandes' ? 'commandes' : 'm
 const cherche = (Astro.url.searchParams.get('q') ?? '').slice(0, 60);
 const filtreEtat = Astro.url.searchParams.get('etat') ?? '';
 
+// Deux boîtes dans une seule : la boutique, et le médecin. Elles ne se
+// répondent pas de la même façon, donc elles ne se lisent pas mélangées.
+const demande = Astro.url.searchParams.get('sujet') ?? '';
+const sujetFiltre = demande === 'boutique' || demande === 'medecin' ? demande : '';
+
 let fils: any[] = [];
 let nonLus = 0;
+let nonLusBoutique = 0;
+let nonLusMedecin = 0;
 let commandesNouvelles = 0;
 let commandes: any[] = [];
 let compte: Record<string, number> = {};
 
 if (autorisee) {
-  const { data: boite } = await client.rpc('boite_de_reception', { p_recherche: cherche || null });
+  const { data: boite } = await client.rpc('boite_de_reception', {
+    p_recherche: cherche || null,
+    p_sujet: sujetFiltre || null,
+  });
   fils = boite?.fils ?? [];
   nonLus = boite?.non_lus ?? 0;
+  nonLusBoutique = boite?.non_lus_boutique ?? 0;
+  nonLusMedecin = boite?.non_lus_medecin ?? 0;
   commandesNouvelles = boite?.commandes_nouvelles ?? 0;
 
   if (vue === 'commandes') {
@@ -136,6 +148,30 @@ const ETATS = [
                 )}
               </form>
 
+              {/* Les deux boîtes : on répond autrement à une question de
+                  taille qu'à une question de douleur, donc on ne les lit pas
+                  mélangées. */}
+              <div class="filtres">
+                <a class:list={['filtre', !sujetFiltre && 'filtre-actif']} href={`/admin${cherche ? `?q=${encodeURIComponent(cherche)}` : ''}`}>
+                  Tout
+                  {nonLus > 0 ? ` ${nonLus}` : ''}
+                </a>
+                <a
+                  class:list={['filtre', sujetFiltre === 'medecin' && 'filtre-actif']}
+                  href={`/admin?sujet=medecin${cherche ? `&q=${encodeURIComponent(cherche)}` : ''}`}
+                >
+                  Médecin
+                  {nonLusMedecin > 0 ? ` ${nonLusMedecin}` : ''}
+                </a>
+                <a
+                  class:list={['filtre', sujetFiltre === 'boutique' && 'filtre-actif']}
+                  href={`/admin?sujet=boutique${cherche ? `&q=${encodeURIComponent(cherche)}` : ''}`}
+                >
+                  Boutique
+                  {nonLusBoutique > 0 ? ` ${nonLusBoutique}` : ''}
+                </a>
+              </div>
+
               {fils.length === 0 && (
                 <p class="rien">
                   {cherche ? 'Personne ne correspond à cette recherche.' : "Aucun message pour l'instant."}
@@ -145,11 +181,12 @@ const ETATS = [
               <ul class="lignes">
                 {fils.map((f) => (
                   <li>
-                    <a class="ligne" href={`/admin/${f.fil}`}>
+                    <a class:list={['ligne', f.sujet === 'medecin' && 'ligne-medecin']} href={`/admin/${f.fil}`}>
                       <Avatar graine={f.avatar_graine} prenom={f.prenom} identifiant={f.fil} taille={44} />
                       <span class="ligne-corps">
                         <span class="ligne-haut">
                           <b>{f.prenom}</b>
+                          {f.sujet === 'medecin' && <span class="etiquette-sujet">Médecin</span>}
                           <span class="ligne-heure">{quandCourt(f.quand)}</span>
                         </span>
                         <span class="ligne-bas">
@@ -435,7 +472,27 @@ const ETATS = [
   }
 
   .ligne-haut b {
+    flex: 1;
+    min-width: 0;
     font-size: 15px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Une conversation medicale se reconnait avant d'etre lue. */
+  .ligne-medecin {
+    border-left: 3px solid var(--rose);
+  }
+
+  .etiquette-sujet {
+    flex: none;
+    padding: 2px 8px;
+    border-radius: var(--r-ronde);
+    background: var(--rose-clair);
+    color: var(--rose-fonce);
+    font-size: 10.5px;
+    font-weight: 700;
   }
 
   .ligne-heure {

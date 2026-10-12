@@ -265,5 +265,96 @@ for (let i = 0; i < 6; i += 1) {
 }
 verifier('le plafond arrête le flot', refus >= 2, `refus=${refus}`);
 
+// ---------------------------------------------------------------------------
+titre('Le fil du médecin');
+
+// Le plafond vient d'être abaissé à 3 : on le relève, sinon ce qui suit
+// mesurerait le quota au lieu de mesurer le médecin.
+await commeServeur(db, `update public.reglages set valeur = '200' where cle = 'quota_message_heure'`);
+
+r = await commeApi(db, elle(awa), `select public.ecrire_a('medecin', $1) as j`, [
+  "J'ai des douleurs très fortes depuis trois mois, est-ce que c'est normal ?",
+]);
+verifier('Awa écrit au médecin', r.rows[0].j.ok === true, JSON.stringify(r.rows[0].j));
+verifier('le fil porte le bon sujet', r.rows[0].j.sujet === 'medecin');
+const filMedecin = r.rows[0].j.fil;
+verifier('ce n_est pas le fil de la boutique', filMedecin !== filAwa);
+
+r = await commeServeur(db, `select count(*)::int as n from public.fils where profil_id = $1`, [awa]);
+verifier('elle a maintenant deux fils, pas plus', r.rows[0].n === 2, `n=${r.rows[0].n}`);
+
+r = await commeApi(db, elle(awa), `select public.ecrire_a('medecin', $1) as j`, ['Et la douleur revient chaque mois.']);
+verifier('le deuxième message reste dans le même fil', r.rows[0].j.fil === filMedecin);
+
+// Un sujet inventé ne crée pas une troisième file invisible à l'écran.
+r = await commeApi(db, elle(awa), `select public.ecrire_a('pharmacien', $1) as j`, ['Bonjour ?']);
+verifier('un sujet inventé retombe sur la boutique', r.rows[0].j.sujet === 'boutique');
+r = await commeServeur(db, `select count(*)::int as n from public.fils where profil_id = $1`, [awa]);
+verifier('et ne crée aucun fil de plus', r.rows[0].n === 2, `n=${r.rows[0].n}`);
+
+// Une carte produit n'a rien à faire dans une conversation médicale.
+await commeApi(db, elle(awa), `select public.ecrire_a('medecin', $1, $2) as j`, ['Et celle-ci irait ?', 'serviettes-nuit']);
+r = await commeServeur(
+  db,
+  `select count(*)::int as n from public.messages m join public.fils f on f.id = m.fil_id
+    where f.sujet = 'medecin' and m.produit_slug is not null`
+);
+verifier('aucun produit ne s_attache à un message au médecin', r.rows[0].n === 0);
+
+// Les deux fils se lisent séparément, et chacun ne rend que le sien.
+r = await commeApi(db, elle(awa), `select public.mon_fil_de('medecin') as j`);
+verifier('mon_fil_de rend le fil du médecin', r.rows[0].j.fil === filMedecin);
+const texteMedecin = JSON.stringify(r.rows[0].j);
+verifier('et rien de la boutique', !texteMedecin.includes('Tanghin'));
+
+r = await commeApi(db, elle(awa), `select public.mon_fil() as j`);
+verifier('mon_fil sans argument rend toujours la boutique', r.rows[0].j.fil === filAwa);
+
+r = await commeApi(db, elle(awa), `select public.mes_discussions() as j`);
+verifier('la liste montre les deux fils', r.rows[0].j.boutique !== null && r.rows[0].j.medecin !== null);
+
+// Bintou ne doit rien voir du fil médical d'Awa.
+r = await commeApi(db, elle(bintou), `select count(*)::int as n from public.messages where fil_id = $1`, [filMedecin]);
+verifier('une autre femme ne lit pas sa conversation médicale', r.rows[0].n === 0);
+r = await commeApi(db, elle(bintou), `select public.marquer_lu($1) as j`, [filMedecin]);
+verifier('ni ne peut la marquer lue', r.rows[0].j.erreur === 'fil_inconnu');
+
+// L'administration voit les deux, et sait les séparer.
+r = await commeApi(db, elle(patronne), `select public.boite_de_reception() as j`);
+verifier('la patronne voit les fils des deux sujets', r.rows[0].j.fils.length === 3, `${r.rows[0].j.fils.length}`);
+verifier('les compteurs sont séparés', r.rows[0].j.non_lus_medecin >= 1 && r.rows[0].j.non_lus_boutique >= 1);
+
+r = await commeApi(db, elle(patronne), `select public.boite_de_reception(null, 0, 'medecin') as j`);
+verifier('le filtre médecin ne rend que le médecin', r.rows[0].j.fils.length === 1);
+verifier('et il porte le bon sujet', r.rows[0].j.fils[0].sujet === 'medecin');
+
+r = await commeApi(db, elle(patronne), `select public.fil_complet($1) as j`, [filMedecin]);
+verifier('la conversation médicale s_ouvre côté administration', r.rows[0].j.ok === true);
+verifier('elle dit à qui la femme parle', r.rows[0].j.tete.sujet === 'medecin');
+verifier('le nombre de commandes n_apparaît pas dans une conversation médicale', r.rows[0].j.tete.commandes === null);
+
+r = await commeApi(db, elle(patronne), `select public.repondre_a($1, $2) as j`, [
+  filMedecin,
+  'Des douleurs qui durent trois mois méritent un examen. Va au centre de santé cette semaine.',
+]);
+verifier('le médecin répond', r.rows[0].j.ok === true);
+
+r = await commeApi(db, elle(awa), `select public.mes_discussions() as j`);
+verifier('Awa a un message non lu du médecin', r.rows[0].j.medecin.non_lus === 1);
+
+// Rien de ce fil n'est une donnée de cycle : il ne touche ni le journal ni les
+// cycles, et surtout il ne part pas vers l'assistante.
+r = await commeServeur(db, `select count(*)::int as n from public.journal where profil_id = $1`, [awa]);
+const journalAvant = r.rows[0].n;
+await commeApi(db, elle(awa), `select public.ecrire_a('medecin', $1) as j`, ['Je saigne beaucoup ce mois-ci.']);
+r = await commeServeur(db, `select count(*)::int as n from public.journal where profil_id = $1`, [awa]);
+verifier('écrire au médecin n_écrit rien dans son journal', r.rows[0].n === journalAvant);
+
+r = await commeApi(db, elle(awa), `select public.assistante_contexte() as j`);
+verifier(
+  'et rien de ce fil ne part vers l_assistante',
+  !JSON.stringify(r.rows[0].j).includes('saigne beaucoup')
+);
+
 bilan('Messagerie et administration');
 await db.close();

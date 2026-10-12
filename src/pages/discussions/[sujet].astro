@@ -1,20 +1,36 @@
 ---
 /**
- * LA CONVERSATION AVEC LA BOUTIQUE.
+ * UNE CONVERSATION : LA BOUTIQUE, OU LE MÉDECIN.
  *
- * Sections 7 et 8 du cahier d'Arthur. Un formulaire qui se poste, comme pour
- * IA Dambé : la page revient avec le message déjà en place. C'est moins joli
- * qu'une messagerie qui se remplit toute seule, et c'est le seul moyen que ça
- * marche quand la connexion tombe entre deux messages.
+ * Sections 7 et 8 du cahier d'Arthur, plus sa demande du 12 octobre 2026 au
+ * soir : « on peut contacter directement un médecin sur la plateforme pour
+ * prendre conseil ». Un seul médecin, comme il n'y a qu'un seul vendeur.
  *
- * Deux façons d'arriver ici :
+ * Un formulaire qui se poste, comme pour IA Dambé : la page revient avec le
+ * message déjà en place. C'est moins joli qu'une messagerie qui se remplit
+ * toute seule, et c'est le seul moyen que ça marche quand la connexion tombe
+ * entre deux messages.
+ *
+ * Trois façons d'arriver ici :
  *   - par l'onglet Discussions, pour écrire ;
  *   - depuis une fiche produit, avec `?produit=slug`, et alors la carte du
- *     produit est attachée en haut et le message est pré-rempli (modifiable).
+ *     produit est attachée en haut et le message est pré-rempli (modifiable) ;
+ *   - depuis la bannière du médecin, sur l'accueil.
  *
- * Le rafraîchissement régulier demandé dans le cahier est fait par un
- * en-tête `Refresh` et une seule ligne de script : la page se recharge toutes
- * les vingt secondes tant qu'elle est ouverte et visible.
+ * CE QUI CHANGE DANS LE FIL DU MÉDECIN, et pourquoi :
+ *
+ *   - les mots qui disent une urgence déclenchent tout de suite l'orientation
+ *     vers un centre de santé, sans attendre une réponse humaine. Un médecin
+ *     répond quand il peut ; une urgence, non. C'est le même repérage que
+ *     celui d'IA Dambé, et il est écrit par nous ;
+ *   - aucune carte produit ne s'y attache : on ne vend pas dans une
+ *     conversation de santé ;
+ *   - l'écran ne promet aucun délai de réponse, et n'écrit le nom d'aucun
+ *     médecin tant qu'Arthur n'a pas le sien.
+ *
+ * Le rafraîchissement régulier demandé dans le cahier est fait par une seule
+ * ligne de script : la page se recharge toutes les vingt secondes tant
+ * qu'elle est ouverte, visible, et qu'elle n'est pas en train d'écrire.
  */
 import Base from '../../layouts/Base.astro';
 import Icone from '../../components/Icone.astro';
@@ -22,15 +38,25 @@ import Alerte from '../../components/Alerte.astro';
 import { clientSession, baseConfiguree } from '../../lib/supabase';
 import { visiteuse, lirePanier, comptePanier } from '../../lib/session';
 import { prixComplet, heureCourte, dateLongue, messageErreur } from '../../lib/format';
+import { alerte } from '../../lib/assistante';
 
 if (!baseConfiguree()) return Astro.redirect('/', 302);
 const moi = await visiteuse(Astro);
 if (!moi) return Astro.redirect('/connexion', 302);
 
+// Deux conversations, pas une de plus. Une adresse inventée mène à la
+// boutique plutôt qu'à une page introuvable.
+const sujet: 'boutique' | 'medecin' = Astro.params.sujet === 'medecin' ? 'medecin' : 'boutique';
+if (Astro.params.sujet !== sujet) return Astro.redirect(`/discussions/${sujet}`, 302);
+const estMedecin = sujet === 'medecin';
+
 const client = clientSession(Astro)!;
 const panier = comptePanier(lirePanier(Astro));
 
 let erreur = '';
+// Ce que l'application dit elle-même, sans attendre personne, quand les mots
+// disent une urgence.
+let orientation = '';
 
 if (Astro.request.method === 'POST') {
   const f = await Astro.request.formData();
@@ -46,20 +72,33 @@ if (Astro.request.method === 'POST') {
   if (texte.length < 1) {
     erreur = 'Écris ton message.';
   } else {
-    const { data, error } = await client.rpc('ecrire_a_la_boutique', {
+    const { data, error } = await client.rpc('ecrire_a', {
+      p_sujet: sujet,
       p_texte: texte,
-      p_produit_slug: slug,
+      p_produit_slug: estMedecin ? null : slug,
     });
     if (error || !data?.ok) {
       erreur = messageErreur(data?.erreur);
     } else {
-      return Astro.redirect('/discussions/boutique', 303);
+      // Le message est parti, et le médecin le lira. Mais si les mots disent
+      // une urgence, elle ne doit pas attendre : on le lui dit tout de suite,
+      // et ça ne dépend d'aucun service extérieur.
+      const grave = estMedecin && alerte(texte).gravite !== 'aucune';
+      return Astro.redirect(`/discussions/${sujet}${grave ? '?urgent=1' : ''}`, 303);
     }
   }
 }
 
-// Le produit attaché, s'il y en a un, et seulement s'il est en vente.
-const slugDemande = Astro.url.searchParams.get('produit') ?? '';
+if (estMedecin && Astro.url.searchParams.get('urgent') === '1') {
+  orientation =
+    'Ton message est parti, et il sera lu. Mais ce que tu décris ne devrait pas attendre une réponse : ' +
+    'va au centre de santé le plus proche, même sans rendez-vous. Si tu es en danger maintenant, va vers ' +
+    "quelqu'un en qui tu as confiance.";
+}
+
+// Le produit attaché, s'il y en a un, et seulement s'il est en vente. Jamais
+// dans le fil du médecin : on ne vend pas dans une conversation de santé.
+const slugDemande = estMedecin ? '' : (Astro.url.searchParams.get('produit') ?? '');
 let produit: { slug: string; nom: string; prix_cfa: number; image: string | null } | null = null;
 if (slugDemande) {
   const { data } = await client
@@ -71,7 +110,7 @@ if (slugDemande) {
   produit = data ?? null;
 }
 
-const { data: fil } = await client.rpc('mon_fil');
+const { data: fil } = await client.rpc('mon_fil_de', { p_sujet: sujet });
 const messages = (fil?.messages ?? []) as {
   id: string;
   de: 'elle' | 'boutique';
@@ -94,31 +133,61 @@ const lignes = messages.map((m) => {
 });
 
 const brouillon = produit ? 'Bonjour, je suis intéressée par ce produit.' : '';
+
+// Ce que l'écran dit, selon à qui elle parle. Pour le médecin, aucune
+// promesse de délai et aucun nom : Arthur n'a pas encore son médecin, et
+// inventer l'un ou l'autre sur une application de santé serait mentir.
+const QUI = {
+  boutique: {
+    titre: 'Boutique Mousso Dambé',
+    sous: 'On répond nous-mêmes, pas un robot',
+    icone: 'boutique',
+    videTitre: 'Écris-nous',
+    videTexte:
+      'Une taille, un délai, un quartier de livraison, un prix. On te répond en français ou en mooré, du lundi au samedi.',
+    champ: 'Ton message...',
+  },
+  medecin: {
+    titre: 'Le médecin',
+    sous: 'Un conseil, pas un diagnostic',
+    icone: 'coeur',
+    videTitre: 'Pose ta question',
+    videTexte:
+      "Des douleurs, un retard, des pertes, une question que tu n'oses poser à personne. Écris-la ici : elle ne sort pas de cette conversation, et elle ne part jamais vers IA Dambé.",
+    champ: 'Ta question...',
+  },
+} as const;
+const dit = QUI[sujet];
 ---
 
-<Base titre="Boutique Mousso Dambé" nav="discussions" panier={panier}>
+<Base titre={dit.titre} nav="discussions" panier={panier}>
   <main class="conversation">
     <header class="barre">
       <a class="retour" href="/discussions" aria-label="Retour aux discussions">
         <Icone nom="retour" taille={22} />
       </a>
-      <span class="visage"><Icone nom="boutique" taille={20} /></span>
+      <span class:list={['visage', estMedecin && 'visage-medecin']}><Icone nom={dit.icone} taille={20} /></span>
       <span class="qui">
-        <b>Boutique Mousso Dambé</b>
-        <span>On répond nous-mêmes, pas un robot</span>
+        <b>{dit.titre}</b>
+        <span>{dit.sous}</span>
       </span>
     </header>
+
+    {
+      orientation && (
+        <div class="dans-la-page">
+          <Alerte type="attention" texte={orientation} />
+        </div>
+      )
+    }
 
     <div class="fil-messages">
       {
         lignes.length === 0 && (
           <div class="vide">
-            <span class="vide-rond"><Icone nom="bulles" taille={26} /></span>
-            <h2>Écris-nous</h2>
-            <p>
-              Une taille, un délai, un quartier de livraison, un prix. On te répond en français ou en mooré, du lundi
-              au samedi.
-            </p>
+            <span class="vide-rond"><Icone nom={estMedecin ? 'coeur' : 'bulles'} taille={26} /></span>
+            <h2>{dit.videTitre}</h2>
+            <p>{dit.videTexte}</p>
           </div>
         )
       }
@@ -180,7 +249,7 @@ const brouillon = produit ? 'Bonjour, je suis intéressée par ce produit.' : ''
               <b>{produit.nom}</b>
               <span class="carte-prix">{prixComplet(produit.prix_cfa)}</span>
             </span>
-            <a class="enlever" href="/discussions/boutique" aria-label="Enlever le produit">
+            <a class="enlever" href={`/discussions/${sujet}`} aria-label="Enlever le produit">
               <Icone nom="croix" taille={16} />
             </a>
             <input type="hidden" name="produit" value={produit.slug} />
@@ -205,7 +274,7 @@ const brouillon = produit ? 'Bonjour, je suis intéressée par ce produit.' : ''
           rows="1"
           maxlength="2000"
           required
-          placeholder="Ton message..."
+          placeholder={dit.champ}
           autocomplete="off">{brouillon}</textarea>
         <button class="envoyer" type="submit" aria-label="Envoyer">
           <Icone nom="envoyer" taille={20} />
@@ -255,6 +324,12 @@ const brouillon = produit ? 'Bonjour, je suis intéressée par ce produit.' : ''
     border-radius: 50%;
     background: var(--encre);
     color: var(--rose-clair);
+  }
+
+  /* Le médecin n'est pas la boutique : on le voit avant de lire. */
+  .visage-medecin {
+    background: var(--rose);
+    color: #fff;
   }
 
   .qui b {

@@ -26,18 +26,22 @@ if (!moi) return Astro.redirect('/connexion', 302);
 const client = clientSession(Astro)!;
 const panier = comptePanier(lirePanier(Astro));
 
-const { data } = await client.rpc('mes_discussions');
-const ia = (data?.ia ?? null) as { apercu: string; quand: string; combien: number } | null;
-const boutique = (data?.boutique ?? null) as {
+interface Causerie {
   fil: string;
   apercu: string;
   apercu_de: 'elle' | 'boutique';
   quand: string;
   non_lus: number;
-} | null;
+}
+
+const { data } = await client.rpc('mes_discussions');
+const ia = (data?.ia ?? null) as { apercu: string; quand: string; combien: number } | null;
+const boutique = (data?.boutique ?? null) as Causerie | null;
+const medecin = (data?.medecin ?? null) as Causerie | null;
+const nonLus = Number(data?.non_lus ?? 0);
 ---
 
-<Base titre="Discussions" nav="discussions" panier={panier} messages={boutique?.non_lus ?? 0}>
+<Base titre="Discussions" nav="discussions" panier={panier} messages={nonLus}>
   <main class="page">
     <header class="tete">
       <h1>Discussions</h1>
@@ -72,8 +76,40 @@ const boutique = (data?.boutique ?? null) as {
         </a>
       </li>
 
-      {/* --- La boutique --- */}
+      {/* --- Le médecin --- */}
       <li class="apparait" data-ordre="2">
+        <a class="causerie" href="/discussions/medecin">
+          <span class="causerie-visage causerie-visage-medecin">
+            <Icone nom="coeur" taille={24} />
+          </span>
+          <span class="causerie-corps">
+            <span class="causerie-haut">
+              <span class="causerie-nom">Le médecin</span>
+              {medecin?.quand && <span class="causerie-heure">{quandCourt(medecin.quand)}</span>}
+            </span>
+            <span class="causerie-bas">
+              <span class:list={['causerie-apercu', medecin && medecin.non_lus > 0 && 'causerie-apercu-gras']}>
+                {
+                  medecin?.apercu
+                    ? `${medecin.apercu_de === 'elle' ? 'Toi : ' : ''}${medecin.apercu}`
+                    : 'Une douleur, un retard, une question que tu n’oses poser. Un conseil, pas un diagnostic.'
+                }
+              </span>
+              {
+                medecin && medecin.non_lus > 0 && (
+                  <span class="causerie-nombre">
+                    {medecin.non_lus}
+                    <span class="lecture-seule">messages non lus</span>
+                  </span>
+                )
+              }
+            </span>
+          </span>
+        </a>
+      </li>
+
+      {/* --- La boutique --- */}
+      <li class="apparait" data-ordre="3">
         <a class="causerie" href="/discussions/boutique">
           <span class="causerie-visage causerie-visage-boutique">
             <Icone nom="boutique" taille={24} />
@@ -105,9 +141,9 @@ const boutique = (data?.boutique ?? null) as {
       </li>
     </ul>
 
-    <p class="note apparait" data-ordre="3">
-      La boutique voit ton prénom, ton téléphone et ce que tu lui écris. Elle ne voit jamais ton calendrier, ton
-      journal, ni ce que tu demandes à IA Dambé.
+    <p class="note apparait" data-ordre="4">
+      La boutique et le médecin voient ton prénom, ton téléphone et ce que tu leur écris. Ils ne voient jamais ton
+      calendrier, ton journal, ni ce que tu demandes à IA Dambé. Et les deux conversations ne se mélangent pas.
     </p>
 
     <div class="espace"></div>
@@ -175,6 +211,11 @@ const boutique = (data?.boutique ?? null) as {
   .causerie-visage-boutique {
     background: var(--encre);
     color: var(--rose-clair);
+  }
+
+  .causerie-visage-medecin {
+    background: var(--rose);
+    color: #fff;
   }
 
   .causerie-corps {

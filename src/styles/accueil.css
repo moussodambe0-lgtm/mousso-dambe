@@ -441,3 +441,147 @@
     animation: none;
   }
 }
+
+/* --- La carte du cycle, seule et fixe -------------------------------------
+ * Elle ne défile plus : c'est l'information pour laquelle elle a ouvert
+ * l'application, et une information qui s'en va toute seule au bout de
+ * quatre secondes n'est plus une information.
+ */
+.acc-vedette-seule {
+  overflow: visible;
+  scroll-snap-type: none;
+}
+
+/* --- La bannière du médecin -----------------------------------------------
+ * Demande d'Arthur du 12 octobre 2026 : montrer qu'on peut contacter
+ * directement un médecin. Trois messages, la même personne sur les trois.
+ */
+.acc-bannieres {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  padding: 14px 20px 4px;
+  scroll-padding: 0 20px;
+}
+
+.acc-bannieres::-webkit-scrollbar {
+  display: none;
+}
+
+.banniere {
+  position: relative;
+  display: flex;
+  flex: 0 0 100%;
+  align-items: flex-end;
+  gap: 8px;
+  min-height: 158px;
+  padding: 18px 0 16px 18px;
+  border-radius: 26px;
+  scroll-snap-align: center;
+  overflow: hidden;
+  color: #fff;
+  animation: acc-carte-entre 0.6s 0.15s var(--ressort) both;
+}
+
+.banniere-rose { background: var(--rose); }
+.banniere-encre { background: var(--acc-ink); }
+.banniere-lilas { background: var(--lilas-fort); }
+
+.banniere-mots {
+  position: relative;
+  z-index: 2;
+  flex: 1;
+  min-width: 0;
+  padding-bottom: 2px;
+}
+
+.banniere-mots h2 {
+  font-family: var(--titre);
+  font-size: 21px;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.3px;
+}
+
+.banniere-mots p {
+  margin-top: 6px;
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.35;
+  opacity: 0.88;
+}
+
+.banniere-bouton {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 36px;
+  margin-top: 12px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--encre);
+  font-size: 13.5px;
+  font-weight: 700;
+}
+
+.banniere-bouton:active {
+  transform: scale(0.96);
+}
+
+/* La personne occupe la droite et déborde un peu du bas, comme sur la
+   maquette qu'Arthur a envoyée : elle n'est pas posée dans un cadre, elle
+   sort de la carte. */
+.banniere-visage {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  width: 140px;
+  flex: none;
+  margin-bottom: -16px;
+  align-self: flex-end;
+}
+
+.banniere-visage img {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  object-position: bottom;
+}
+
+/* La mascotte tient la place tant que la photo n'est pas déposée. */
+/* `:global()` n'existe que dans un bloc <style> d'Astro, pas dans une feuille
+   ordinaire : ici le sélecteur s'écrit tel quel. */
+.banniere-visage > .mascotte {
+  margin-bottom: -6px;
+  opacity: 0.95;
+}
+
+@media (max-width: 360px) {
+  .banniere-visage {
+    width: 112px;
+  }
+
+  .banniere-mots h2 {
+    font-size: 19px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .banniere {
+    animation: none;
+  }
+}
+
+/* La mention obligatoire sous la bannière : discrète, mais lisible. */
+.acc-mention-photo {
+  margin-top: 4px;
+  font-size: 10.5px;
+  color: var(--acc-muted);
+  text-align: center;
+}
