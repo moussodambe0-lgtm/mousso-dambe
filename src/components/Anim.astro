@@ -30,18 +30,31 @@ interface Props {
     | 'q-bienvenue'
     | 'q-cycle'
     | 'q-vie-privee'
+    | 'q1-prenom'
+    | 'q2-date'
+    | 'q3-duree-regles'
+    | 'q4-duree-cycle'
+    | 'q5-regularite'
+    | 'q6-ressentis'
+    | 'q7-objectif'
+    | 'q8-protection'
     | 'etat-panier-vide'
     | 'etat-commande-ok'
     | 'etat-reflechit'
     | 'etat-hors-ligne';
   classe?: string;
+  /** Un dessin de remplacement, tant que le vrai n'est pas livré. Sans lui,
+   * un fichier manquant laisse un trou en haut de l'écran, et c'est l'écran
+   * qui a l'air cassé, pas le dossier qui a l'air incomplet. */
+  repli?: string;
   /** Un dessin qui porte du sens reçoit un nom accessible ; sinon il est
    * décoratif et les lecteurs d'écran le sautent. */
   titre?: string;
 }
 
-const { nom, classe = '', titre } = Astro.props;
-const svg = fichiers[`../animations/${nom}.svg`] ?? '';
+const { nom, classe = '', titre, repli } = Astro.props;
+const svg =
+  fichiers[`../animations/${nom}.svg`] ?? (repli ? (fichiers[`../animations/${repli}.svg`] ?? '') : '');
 ---
 
 {

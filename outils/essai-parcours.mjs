@@ -79,7 +79,13 @@ function champsCaches(html) {
   return champs;
 }
 
-const etapeAffichee = (html) => Number(/Question (\d) sur 6/.exec(html)?.[1] ?? 0);
+// L'avancement s'écrit « 3 / 8 » dans la barre du haut depuis la refonte du
+// 12 octobre 2026 (section 3 du cahier d'Arthur : huit questions).
+// La barre du haut porte « 3 / 8 » depuis la refonte du 12 octobre 2026
+// (section 3 du cahier d'Arthur : huit questions). On lit la classe de la
+// jauge plutôt que le texte : Astro pose ses propres attributs sur les
+// balises, et un `<span>` nu ne se trouve plus dans la page rendue.
+const etapeAffichee = (html) => Number(/class="jauge part-(\d)"/.exec(html)?.[1] ?? 0);
 const ilYAJours = (n) => {
   const d = new Date();
   d.setDate(d.getDate() - n);
@@ -124,18 +130,39 @@ const DATE_REGLES = ilYAJours(JOURS_AVANT);
   r = await envoyer('/bienvenue', { ...champsCaches(r.html), cycle: '31' });
   verifier("le cycle fait passer à l'écran 5", etapeAffichee(r.html) === 5, `écran ${etapeAffichee(r.html)}`);
 
-  // Écran 5 : la vie privée.
-  r = await envoyer('/bienvenue', champsCaches(r.html));
-  verifier("on arrive au récapitulatif", etapeAffichee(r.html) === 6, `écran ${etapeAffichee(r.html)}`);
+  // La barre du haut doit déjà montrer ce qu'elle a répondu : sans ça, deux
+  // écrans qui demandent tous les deux un nombre de jours se ressemblent
+  // assez pour qu'on croie que rien ne s'est passé.
+  verifier('ce qu’elle a déjà dit est rappelé', r.html.includes('Fatoumata') && r.html.includes('règles 6 j'));
+  verifier('et le cycle qu’elle a donné aussi', r.html.includes('cycle 31 j'));
 
-  // Le récapitulatif doit montrer ce qu'elle a répondu, pas les valeurs par défaut.
-  verifier('le récapitulatif montre son prénom', r.html.includes('Fatoumata'));
-  verifier('le récapitulatif montre 6 jours de règles', r.html.includes('6 jours'));
-  verifier('le récapitulatif montre un cycle de 31 jours', r.html.includes('31 jours'));
+  // Écran 5 : la régularité.
+  r = await envoyer('/bienvenue', { ...champsCaches(r.html), regularite: 'parfois' });
+  verifier("la régularité fait passer à l'écran 6", etapeAffichee(r.html) === 6, `écran ${etapeAffichee(r.html)}`);
 
-  // Écran 6 : on enregistre.
-  const fin = await envoyer('/bienvenue', champsCaches(r.html));
-  verifier("l'enregistrement renvoie à l'accueil", fin.statut === 303 && (fin.vers ?? '').includes('bienvenue=1'), `${fin.statut} ${fin.vers}`);
+  // Écran 6 : les ressentis, plusieurs réponses d'un coup.
+  r = await envoyer('/bienvenue', [
+    ...Object.entries(champsCaches(r.html)),
+    ['ressentis', 'ventre'],
+    ['ressentis', 'fatigue'],
+  ]);
+  verifier("les ressentis font passer à l'écran 7", etapeAffichee(r.html) === 7, `écran ${etapeAffichee(r.html)}`);
+  verifier('les deux ressentis sont retenus', (r.html.match(/name="ressentis"/g) ?? []).length >= 2);
+
+  // Écran 7 : ce qu'elle cherche.
+  r = await envoyer('/bienvenue', { ...champsCaches(r.html), objectif: 'eviter' });
+  verifier("l'objectif fait passer à l'écran 8", etapeAffichee(r.html) === 8, `écran ${etapeAffichee(r.html)}`);
+
+  // Écran 8 : la protection, qui enregistre tout.
+  const fin = await envoyer('/bienvenue', { ...champsCaches(r.html), protection: 'lavables' });
+  verifier(
+    "l'enregistrement mène à l'écran de fin",
+    fin.statut === 303 && (fin.vers ?? '').includes('fini=1'),
+    `${fin.statut} ${fin.vers}`
+  );
+
+  const ecranFin = await ouvrir('/bienvenue?fini=1&prenom=Fatoumata');
+  verifier('l’écran de fin la remercie par son prénom', ecranFin.html.includes('Merci Fatoumata'));
 }
 
 console.log('\nCe qui est vraiment enregistré');
@@ -155,10 +182,13 @@ console.log('\nCe qui est vraiment enregistré');
 
   const accueil = await ouvrir('/');
   verifier('le cycle est calculé depuis la date donnée', accueil.html.includes('Jour'), "l'accueil ne montre pas de cycle");
+  // Depuis la refonte du haut de l'accueil (12 octobre 2026), le jour du cycle
+  // est écrit en toutes lettres dans la carte vedette : « Jour 4 de tes
+  // règles » pendant les règles, « Jour 4 de ton cycle » le reste du temps.
   const jour = JOURS_AVANT + 1;
   verifier(
     `on est au jour ${jour} du cycle`,
-    new RegExp(`>\\s*${jour}\\s*<`).test(accueil.html),
+    new RegExp(`Jour ${jour}\\s+de (tes règles|ton cycle)`).test(accueil.html),
     'le jour affiché ne découle pas de la date donnée au questionnaire'
   );
 }

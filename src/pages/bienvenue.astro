@@ -1,19 +1,30 @@
 ---
 /**
- * Le questionnaire de départ.
+ * LE QUESTIONNAIRE D'ACCUEIL, HUIT QUESTIONS.
  *
- * Six écrans, une question par écran. Pourquoi pas un seul formulaire : ces
- * questions sont intimes, et un mur de champs sur ce sujet fait fermer
- * l'application. Une question à la fois, grosse, avec la raison de la poser.
+ * Section 3 du cahier d'Arthur du 12 octobre 2026. Une question par écran,
+ * en plein écran, chacune avec sa grande illustration. Jamais un écran blanc
+ * avec juste une question : ces questions sont intimes, et un formulaire nu
+ * sur ce sujet fait fermer l'application.
  *
- * Il marche SANS JavaScript : chaque étape est un POST qui renvoie à la
- * suivante, et les réponses déjà données voyagent dans des champs cachés. Rien
- * n'est écrit en base avant le dernier écran, pour qu'une fille qui abandonne
- * en route n'ait rien laissé.
+ * Il marche SANS JavaScript : chaque étape est un POST qui renvoie la
+ * suivante, et les réponses déjà données voyagent dans des champs cachés.
+ * Rien n'est écrit en base avant le dernier écran, pour qu'une fille qui
+ * abandonne en route n'ait rien laissé derrière elle.
+ *
+ * Trois choses apprises en se servant de l'application, et gardées ici :
+ *   - la valeur visible doit l'emporter sur la valeur cachée du même nom,
+ *     sinon la réponse qu'on vient de donner est jetée (c'est ce qui
+ *     bloquait l'écran de la date) ;
+ *   - une saisie libre existe partout où on demande un nombre, parce que
+ *     « 27 jours » n'était dans aucune liste ;
+ *   - « Je ne sais pas » est une vraie réponse, avec une valeur par défaut
+ *     raisonnable derrière, pas une impasse.
  */
 import Base from '../layouts/Base.astro';
 import Icone from '../components/Icone.astro';
 import Anim from '../components/Anim.astro';
+import Mascotte from '../components/Mascotte.astro';
 import Alerte from '../components/Alerte.astro';
 import { clientSession, baseConfiguree } from '../lib/supabase';
 import { visiteuse } from '../lib/session';
@@ -23,17 +34,23 @@ if (!baseConfiguree()) return Astro.redirect('/', 302);
 const moi = await visiteuse(Astro);
 if (!moi) return Astro.redirect('/connexion', 302);
 
-const TOTAL = 6;
+const TOTAL = 8;
 let etape = Number(Astro.url.searchParams.get('etape') ?? '1');
 let erreur = '';
 
-// Les réponses en cours de route.
+// L'écran de fin, après l'enregistrement.
+const fini = Astro.url.searchParams.get('fini') === '1';
+
 let reponses = {
   prenom: moi.prenom,
   dernieres: '',
   sait: 'oui',
   duree: '5',
   cycle: '28',
+  regularite: '',
+  ressentis: [] as string[],
+  objectif: '',
+  protection: '',
 };
 
 /**
@@ -45,9 +62,6 @@ let reponses = {
  * `formData.get()` renvoyait toujours LUI, et la réponse qu'elle venait de
  * donner était jetée. Sur l'écran de la date, cela bloquait le questionnaire :
  * quelle que soit la date choisie, l'écran redemandait la même chose.
- *
- * Le visible vient toujours après le caché dans la page, donc la dernière
- * valeur non vide est bien la réponse du moment.
  * Défaut trouvé par Arthur le 12 octobre 2026, en se servant de l'application.
  */
 function derniereReponse(f: FormData, nom: string, defaut: string): string {
@@ -66,16 +80,31 @@ if (Astro.request.method === 'POST') {
     sait: derniereReponse(f, 'sait', 'oui'),
     duree: derniereReponse(f, 'duree', '5'),
     cycle: derniereReponse(f, 'cycle', '28'),
+    regularite: derniereReponse(f, 'regularite', ''),
+    // Un choix multiple : on garde TOUTES les valeurs, pas la dernière.
+    ressentis: f
+      .getAll('ressentis')
+      .map((v) => String(v))
+      .filter(Boolean),
+    objectif: derniereReponse(f, 'objectif', ''),
+    protection: derniereReponse(f, 'protection', ''),
   };
   const venantDe = Number(f.get('etape') ?? '1');
 
-  if (venantDe === 2 && reponses.sait === 'oui') {
+  if (venantDe === 1) {
+    if (reponses.prenom.trim().length < 1) {
+      erreur = 'Dis-moi comment on t’appelle, même un surnom.';
+      etape = 1;
+    } else {
+      etape = 2;
+    }
+  } else if (venantDe === 2 && reponses.sait === 'oui') {
     const d = reponses.dernieres;
     if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) {
       erreur = "Choisis la date du premier jour de tes dernières règles, ou dis que tu ne t'en souviens pas.";
       etape = 2;
     } else if (d > aujourdhui()) {
-      erreur = "Cette date est dans le futur.";
+      erreur = 'Cette date est dans le futur.';
       etape = 2;
     } else if (dateDe(d) < new Date(Date.now() - 120 * 86400000)) {
       erreur = 'Cette date est trop ancienne pour servir de point de départ.';
@@ -84,8 +113,6 @@ if (Astro.request.method === 'POST') {
       etape = 3;
     }
   } else if (venantDe === 3) {
-    // Une durée de règles tapée à la main : on la borne ici, sinon la base la
-    // refusera au dernier écran, après cinq questions pour rien.
     const n = Number(reponses.duree);
     if (!Number.isInteger(n) || n < 1 || n > 10) {
       erreur = 'Donne un nombre de jours entre 1 et 10, ou dis que tu ne sais pas.';
@@ -109,12 +136,16 @@ if (Astro.request.method === 'POST') {
       p_cycle: Number(reponses.cycle),
       p_duree: Number(reponses.duree),
       p_dernieres_regles: reponses.sait === 'oui' && reponses.dernieres ? reponses.dernieres : null,
+      p_regularite: reponses.regularite || 'inconnue',
+      p_ressentis: reponses.ressentis,
+      p_objectif: reponses.objectif || 'suivre',
+      p_protection: reponses.protection || 'jetables',
     });
     if (error || !data?.ok) {
       erreur = messageErreur(data?.erreur ?? null);
       etape = TOTAL;
     } else {
-      return Astro.redirect('/?bienvenue=1', 303);
+      return Astro.redirect(`/bienvenue?fini=1&prenom=${encodeURIComponent(reponses.prenom)}`, 303);
     }
   } else {
     etape = Math.min(venantDe + 1, TOTAL);
@@ -123,7 +154,7 @@ if (Astro.request.method === 'POST') {
 
 etape = Math.min(Math.max(etape, 1), TOTAL);
 
-// Les sept derniers jours proposés en un geste : taper une date au clavier sur
+// Les dix derniers jours proposés en un geste : taper une date au clavier sur
 // un téléphone d'entrée de gamme est pénible, et la bonne réponse est presque
 // toujours récente.
 const joursRecents = Array.from({ length: 10 }, (_, i) => {
@@ -134,122 +165,216 @@ const joursRecents = Array.from({ length: 10 }, (_, i) => {
 
 // Ce qu'elle a déjà répondu, rappelé sous la barre d'avancement. Sans ça, deux
 // écrans qui posent tous les deux une question en jours se ressemblent assez
-// pour qu'on croie que rien ne s'est passé. Arthur, le 12 octobre : « ça fait
-// comme si ça charge mais rien ».
+// pour qu'on croie que rien ne s'est passé.
 const dejaDit: string[] = [];
 if (etape >= 2 && reponses.prenom) dejaDit.push(reponses.prenom);
 if (etape >= 3) {
-  dejaDit.push(
-    reponses.sait === 'oui' && reponses.dernieres ? dateCourte(reponses.dernieres) : 'date inconnue'
-  );
+  dejaDit.push(reponses.sait === 'oui' && reponses.dernieres ? dateCourte(reponses.dernieres) : 'date inconnue');
 }
 if (etape >= 4) dejaDit.push(`règles ${reponses.duree} j`);
 if (etape >= 5) dejaDit.push(`cycle ${reponses.cycle} j`);
 
 const TITRES: Record<number, string> = {
-  1: 'Comment tu veux qu’on t’appelle ?',
+  1: 'Comment tu t’appelles ?',
   2: 'Quand ont commencé tes dernières règles ?',
   3: 'Combien de jours durent tes règles, d’habitude ?',
   4: 'Combien de jours entre deux règles ?',
-  5: 'Ce que l’application fait de tes réponses',
-  6: 'C’est prêt',
+  5: 'Tes règles sont-elles régulières ?',
+  6: 'Qu’est-ce que tu ressens souvent pendant tes règles ?',
+  7: 'Qu’est-ce que tu veux avec Mousso Dambé ?',
+  8: 'Quelle protection tu utilises ?',
 };
+
+const AIDES: Record<number, string> = {
+  1: 'Ton prénom suffit, ou un surnom. Il ne sert qu’à te parler, et à personne d’autre.',
+  2: 'Le premier jour de saignement, pas le dernier. C’est la seule date dont j’ai besoin pour calculer la suite.',
+  3: 'Du premier jour de saignement au dernier. Si ça change d’un mois à l’autre, donne une moyenne.',
+  4: 'Du premier jour de tes règles au premier jour des suivantes. Chez beaucoup de femmes c’est entre 25 et 32 jours.',
+  5: 'Il n’y a pas de bonne réponse. Si tes cycles bougent, l’application te le dira autrement, c’est tout.',
+  6: 'Tu peux en choisir plusieurs, ou aucun. Ça sert à te donner les bons conseils, et ça ne sort jamais d’ici.',
+  7: 'Ça décide de ce que l’application te montre en premier. Tu pourras le changer.',
+  8: 'Pour te proposer ce qui te va dans la boutique. Rien d’autre.',
+};
+
+const REGULARITES = [
+  { id: 'oui', libelle: 'Oui, c’est régulier', sous: 'À deux ou trois jours près', icone: 'coche' },
+  { id: 'parfois', libelle: 'Pas toujours', sous: 'Ça bouge d’un mois à l’autre', icone: 'tissu' },
+  { id: 'non', libelle: 'Non, jamais pareil', sous: 'Impossible de prévoir', icone: 'horloge' },
+  { id: 'inconnue', libelle: 'Je ne sais pas', sous: 'Je n’ai jamais compté', icone: 'info' },
+];
+
+const RESSENTIS = [
+  { id: 'ventre', libelle: 'Douleurs au ventre', icone: 'coeur' },
+  { id: 'fatigue', libelle: 'Fatigue', icone: 'lune' },
+  { id: 'tete', libelle: 'Maux de tête', icone: 'soleil' },
+  { id: 'humeur', libelle: 'Humeur changeante', icone: 'tissu' },
+  { id: 'abondant', libelle: 'Règles abondantes', icone: 'goutte' },
+  { id: 'rien', libelle: 'Rien de particulier', icone: 'coche' },
+];
+
+const OBJECTIFS = [
+  { id: 'suivre', libelle: 'Suivre mes règles', sous: 'Savoir quand elles arrivent', icone: 'cycle' },
+  { id: 'eviter', libelle: 'Éviter une grossesse', sous: 'Connaître mes jours à risque', icone: 'bouclier' },
+  { id: 'bebe', libelle: 'Avoir un bébé', sous: 'Repérer mes jours fertiles', icone: 'coeur' },
+  { id: 'comprendre', libelle: 'Mieux comprendre mon corps', sous: 'Savoir ce qui se passe, et pourquoi', icone: 'pousse' },
+];
+
+const PROTECTIONS = [
+  { id: 'jetables', libelle: 'Serviettes jetables', icone: 'paquet' },
+  { id: 'lavables', libelle: 'Serviettes lavables', icone: 'tissu' },
+  { id: 'tampons', libelle: 'Tampons', icone: 'goutte' },
+  { id: 'coupe', libelle: 'Coupe menstruelle', icone: 'colis' },
+  { id: 'tissu', libelle: 'Du tissu', icone: 'culotte' },
+  { id: 'autre', libelle: 'Autre chose', icone: 'info' },
+];
+
+const DUREES_REGLES = [3, 4, 5, 6, 7];
+const DUREES_CYCLE = [26, 28, 30, 32];
+
+const prenomFini = Astro.url.searchParams.get('prenom') ?? moi.prenom;
 ---
 
-<Base titre="Bienvenue" pleinEcran>
-  <main class="page">
-    <div class="haut">
-      <a class="rond" href={etape === 1 ? '/' : `/bienvenue?etape=${etape - 1}`} aria-label="Question précédente">
-        <Icone nom="retour" taille={20} epaisseur={2} />
-      </a>
-      <div class="progression">
-        <div class="ligne-haute">
-          <span>Question {etape} sur {TOTAL}</span>
-          <span>{etape < 3 ? '1 minute' : etape < 5 ? '30 secondes' : 'presque fini'}</span>
-        </div>
-        <div class="rail">
-          <div class="jauge" data-part={etape}></div>
-        </div>
-      </div>
-    </div>
-
-    <form method="POST" class="apparait">
-      {/* Les réponses déjà données voyagent cachées d'une étape à l'autre.
-          Celle que l'écran en cours demande n'est PAS reportée ici : sinon le
-          champ caché et le champ visible portent le même nom, et la vieille
-          valeur masque la nouvelle. C'est ce qui bloquait l'écran de la date. */}
-      <input type="hidden" name="etape" value={etape} />
-      {etape !== 1 && <input type="hidden" name="prenom" value={reponses.prenom} />}
-      {etape !== 2 && <input type="hidden" name="dernieres" value={reponses.dernieres} />}
-      {etape !== 2 && <input type="hidden" name="sait" value={reponses.sait} />}
-      {etape !== 3 && <input type="hidden" name="duree" value={reponses.duree} />}
-      {etape !== 4 && <input type="hidden" name="cycle" value={reponses.cycle} />}
-
-      {
-        dejaDit.length > 0 && (
-          <div class="deja" aria-label="Ce que tu as déjà répondu">
-            {dejaDit.map((bout) => (
-              <span class="bout">
-                <Icone nom="coche" taille={12} epaisseur={2.5} />
-                {bout}
+{
+  fini ? (
+    <Base titre="C'est prêt" pleinEcran>
+      <main class="fin">
+        <Mascotte etat="bravo" taille={200} titre={null} />
+        <h1>Merci {prenomFini} !</h1>
+        <p>Je prépare ton calendrier…</p>
+        <a class="btn btn-rose" href="/">Entrer</a>
+      </main>
+    </Base>
+  ) : (
+    <Base titre="Bienvenue" pleinEcran>
+      <main class="questionnaire">
+        <header class="haut">
+          <a class="rond" href={etape === 1 ? '/' : `/bienvenue?etape=${etape - 1}`} aria-label="Question précédente">
+            <Icone nom="retour" taille={20} epaisseur={2} />
+          </a>
+          <div class="progression">
+            <div class="ligne-haute">
+              <span>
+                {etape} / {TOTAL}
               </span>
-            ))}
+              <span>{etape < 4 ? '1 minute' : etape < 7 ? '30 secondes' : 'presque fini'}</span>
+            </div>
+            <div class="rail">
+              <div class:list={['jauge', `part-${etape}`]} />
+            </div>
           </div>
-        )
-      }
+        </header>
 
-      <h1>{TITRES[etape]}</h1>
+        {/* --- La moitié haute : l'illustration --- */}
+        <div class="tableau">
+          {etape === 1 && <Anim nom="q1-prenom" repli="q-bienvenue" classe="dessin" />}
+          {etape === 2 && <Anim nom="q2-date" repli="phase-regles" classe="dessin" />}
+          {etape === 3 && <Anim nom="q3-duree-regles" repli="phase-regles" classe="dessin" />}
+          {etape === 4 && <Anim nom="q4-duree-cycle" repli="q-cycle" classe="dessin" />}
+          {etape === 5 && <Anim nom="q5-regularite" repli="phase-lune" classe="dessin" />}
+          {etape === 6 && <Anim nom="q6-ressentis" repli="phase-elan" classe="dessin" />}
+          {etape === 7 && <Anim nom="q7-objectif" repli="q-cycle" classe="dessin" />}
+          {etape === 8 && <Anim nom="q8-protection" repli="etat-panier-vide" classe="dessin" />}
+        </div>
 
-      {erreur && <div class="marge"><Alerte type="erreur" texte={erreur} /></div>}
+        {/* --- La moitié basse : la question --- */}
+        <form class="bas" method="POST">
+          {/* Les réponses déjà données voyagent cachées d'une étape à l'autre.
+              Celle que l'écran en cours demande n'est PAS reportée ici : sinon
+              le champ caché et le champ visible portent le même nom, et la
+              vieille valeur masque la nouvelle. */}
+          <input type="hidden" name="etape" value={etape} />
+          {etape !== 1 && <input type="hidden" name="prenom" value={reponses.prenom} />}
+          {etape !== 2 && <input type="hidden" name="dernieres" value={reponses.dernieres} />}
+          {etape !== 2 && <input type="hidden" name="sait" value={reponses.sait} />}
+          {etape !== 3 && <input type="hidden" name="duree" value={reponses.duree} />}
+          {etape !== 4 && <input type="hidden" name="cycle" value={reponses.cycle} />}
+          {etape !== 5 && <input type="hidden" name="regularite" value={reponses.regularite} />}
+          {etape !== 6 && reponses.ressentis.map((r) => <input type="hidden" name="ressentis" value={r} />)}
+          {etape !== 7 && <input type="hidden" name="objectif" value={reponses.objectif} />}
+          {etape !== 8 && <input type="hidden" name="protection" value={reponses.protection} />}
 
-      {
-        etape === 1 && (
-          <div class="corps">
-            <Anim nom="q-bienvenue" classe="dessin-q" />
-            <p class="doux">Ton prénom suffit. Il ne sort pas de ton téléphone, sauf vers Dambé quand tu lui parles.</p>
-            <label class="libelle" for="p">Ton prénom</label>
-            <input class="champ" id="p" name="prenom" type="text" required maxlength="40" value={reponses.prenom} autocomplete="given-name" />
-          </div>
-        )
-      }
-
-      {
-        etape === 2 && (
-          <div class="corps">
-            <Anim nom="phase-regles" classe="dessin-petit" />
-            <p class="doux">
-              Le premier jour de saignement, pas le dernier. C'est la seule date dont j'ai besoin pour calculer la
-              suite.
-            </p>
-            <div class="jours">
-              {joursRecents.map((j) => (
-                <button class="puce" type="submit" name="dernieres" value={j.iso} aria-pressed={reponses.dernieres === j.iso}>
-                  {j.libelle}
-                </button>
+          {dejaDit.length > 0 && (
+            <div class="deja" aria-label="Ce que tu as déjà répondu">
+              {dejaDit.map((bout) => (
+                <span class="bout">
+                  <Icone nom="coche" taille={12} epaisseur={2.5} />
+                  {bout}
+                </span>
               ))}
             </div>
-            <label class="libelle marge" for="d">Ou une autre date</label>
-            <input class="champ" id="d" name="dernieres" type="date" max={aujourdhui()} value={reponses.dernieres} />
-            <button class="btn btn-contour btn-plein marge" type="submit" name="sait" value="non">
-              Je ne m'en souviens pas
-            </button>
-          </div>
-        )
-      }
+          )}
 
-      {
-        etape === 3 && (
-          <div class="corps">
-            <p class="doux">Du premier jour de saignement au dernier. Si ça change d'un mois à l'autre, donne une moyenne.</p>
-            {/* Des gouttes plutôt qu'une grille de pastilles : l'écran suivant
-                pose aussi une question en jours, et deux grilles identiques à
-                la suite donnent l'impression que rien ne s'est passé. */}
-            {/* La saisie libre vient AVANT les propositions : quand elle
-                touche une proposition, c'est la valeur la plus récente dans
-                la page qui compte, et une saisie restée vide ne doit pas
-                l'emporter sur le bouton qu'elle vient de toucher. */}
-            <div class="autre-nombre">
-              <label class="libelle-petit" for="duree-libre">Un autre nombre</label>
+          <h1>{TITRES[etape]}</h1>
+          <p class="aide">{AIDES[etape]}</p>
+
+          {erreur && (
+            <div class="marge">
+              <Alerte type="erreur" texte={erreur} />
+            </div>
+          )}
+
+          {/* --- 1. Le prénom --- */}
+          {etape === 1 && (
+            <div class="corps">
+              <label class="lecture-seule" for="p">
+                Ton prénom
+              </label>
+              <input
+                class="champ"
+                id="p"
+                name="prenom"
+                type="text"
+                required
+                maxlength="40"
+                value={reponses.prenom}
+                autocomplete="given-name"
+                placeholder="Awa"
+              />
+              <button class="btn btn-rose btn-plein marge" type="submit">
+                Continuer
+              </button>
+            </div>
+          )}
+
+          {/* --- 2. La date --- */}
+          {etape === 2 && (
+            <div class="corps">
+              <div class="jours">
+                {joursRecents.map((j) => (
+                  <button
+                    class="puce"
+                    type="submit"
+                    name="dernieres"
+                    value={j.iso}
+                    aria-pressed={reponses.dernieres === j.iso}
+                  >
+                    {j.libelle}
+                  </button>
+                ))}
+              </div>
+              <label class="libelle marge" for="d">
+                Ou une autre date
+              </label>
+              <input class="champ" id="d" name="dernieres" type="date" max={aujourdhui()} value={reponses.dernieres} />
+              <button class="btn btn-rose btn-plein marge" type="submit">
+                Continuer
+              </button>
+              <button class="btn btn-texte btn-plein" type="submit" name="sait" value="non">
+                Je ne m'en souviens pas
+              </button>
+            </div>
+          )}
+
+          {/* --- 3. La durée des règles --- */}
+          {etape === 3 && (
+            <div class="corps">
+              {/* La saisie libre vient AVANT les propositions : quand elle
+                  touche une proposition, c'est la valeur la plus récente dans
+                  la page qui compte, et une saisie restée vide ne doit pas
+                  l'emporter sur le bouton qu'elle vient de toucher. */}
+              <label class="libelle-petit" for="duree-libre">
+                Un autre nombre de jours
+              </label>
               <div class="ligne-saisie">
                 <input
                   class="champ champ-nombre"
@@ -259,55 +384,39 @@ const TITRES: Record<number, string> = {
                   inputmode="numeric"
                   min="1"
                   max="10"
-                  placeholder="ex. 9"
+                  placeholder="5"
                 />
-                <button class="btn btn-contour" type="submit">Valider</button>
-              </div>
-            </div>
-
-            <div class="gouttes">
-              {[2, 3, 4, 5, 6, 7, 8].map((n) => (
-                <button class="goutte-choix" type="submit" name="duree" value={String(n)} aria-pressed={reponses.duree === String(n)}>
-                  {/* Une goutte par jour, toutes les gouttes : un dessin qui
-                      compte doit compter juste, sinon 5, 6 et 7 jours se
-                      ressemblent et il ne sert plus à rien. */}
-                  <span class="gouttes-dessin" aria-hidden="true">
-                    {Array.from({ length: n }, () => (
-                      <Icone nom="goutte" taille={11} />
-                    ))}
-                  </span>
-                  <span class="nb-jours chiffre">{n}</span>
-                  <span class="mot">jours</span>
+                <button class="btn btn-contour" type="submit">
+                  Valider
                 </button>
-              ))}
+              </div>
+
+              <div class="gouttes">
+                {DUREES_REGLES.map((n) => (
+                  <button class="goutte-choix" type="submit" name="duree" value={String(n)}>
+                    <span class="goutte-pile" aria-hidden="true">
+                      {Array.from({ length: Math.min(n, 4) }).map(() => (
+                        <Icone nom="goutte" taille={12} />
+                      ))}
+                    </span>
+                    <span class="goutte-n">{n}</span>
+                    <span class="goutte-mot">jours</span>
+                  </button>
+                ))}
+              </div>
+
+              <button class="btn btn-texte btn-plein" type="submit" name="duree" value="5">
+                Je ne sais pas (on partira sur 5 jours)
+              </button>
             </div>
+          )}
 
-            {/* Celle qui ne sait pas doit pouvoir avancer. On part de 5 jours,
-                la durée la plus fréquente, et la moyenne réelle prendra le
-                dessus dès qu'elle aura noté des règles. */}
-            <button class="btn btn-contour btn-plein marge" type="submit" name="duree" value="5">
-              Je ne sais pas
-            </button>
-            <p class="aide-sous">
-              Je pars de 5 jours, et je corrige toute seule dès que tu auras noté tes premières règles dans
-              l'application.
-            </p>
-          </div>
-        )
-      }
-
-      {
-        etape === 4 && (
-          <div class="corps">
-            {/* L'anneau des 28 jours : il dit de quoi on parle, et il rend cet
-                écran impossible à confondre avec le précédent. */}
-            <Anim nom="q-cycle" classe="dessin-q" />
-            <p class="doux">
-              Du premier jour de règles au premier jour des règles suivantes. Si tu ne sais pas, laisse 28 jours : je
-              corrigerai toute seule dès que tu auras noté un cycle.
-            </p>
-            <div class="autre-nombre">
-              <label class="libelle-petit" for="cycle-libre">Un autre nombre</label>
+          {/* --- 4. La durée du cycle --- */}
+          {etape === 4 && (
+            <div class="corps">
+              <label class="libelle-petit" for="cycle-libre">
+                Un autre nombre de jours
+              </label>
               <div class="ligne-saisie">
                 <input
                   class="champ champ-nombre"
@@ -317,114 +426,139 @@ const TITRES: Record<number, string> = {
                   inputmode="numeric"
                   min="20"
                   max="45"
-                  placeholder="ex. 27"
+                  placeholder="28"
                 />
-                <button class="btn btn-contour" type="submit">Valider</button>
-              </div>
-            </div>
-
-            <div class="choix-grille">
-              {[21, 24, 26, 28, 30, 32, 35].map((n) => (
-                <button class="puce grande" type="submit" name="cycle" value={String(n)} aria-pressed={reponses.cycle === String(n)}>
-                  {n} jours
+                <button class="btn btn-contour" type="submit">
+                  Valider
                 </button>
-              ))}
+              </div>
+
+              <div class="cartes-courtes">
+                {DUREES_CYCLE.map((n) => (
+                  <button class="carte-courte" type="submit" name="cycle" value={String(n)}>
+                    <span class="carte-courte-n">{n}</span>
+                    <span class="carte-courte-mot">jours</span>
+                  </button>
+                ))}
+              </div>
+
+              <button class="btn btn-texte btn-plein" type="submit" name="cycle" value="28">
+                Je ne sais pas (on partira sur 28 jours)
+              </button>
             </div>
-            <button class="btn btn-contour btn-plein marge" type="submit" name="cycle" value="28">
-              Je ne sais pas
-            </button>
-            <p class="aide-sous">
-              Je pars de 28 jours, et je recalcule sur tes vrais cycles dès que tu en auras noté deux. C'est la mesure
-              qui commande, pas ce que tu réponds ici.
-            </p>
-          </div>
-        )
-      }
+          )}
 
-      {
-        etape === 5 && (
-          <div class="corps">
-            <Anim nom="q-vie-privee" classe="dessin-q" />
-            <ul class="liste">
-              <li>
-                <span class="puce-icone verte"><Icone nom="bouclier-coche" taille={19} /></span>
-                <div>
-                  <strong>Ton journal n'est lisible que par toi</strong>
-                  <span>Aucune administratrice ne peut l'ouvrir, et il n'existe aucun export.</span>
-                </div>
-              </li>
-              <li>
-                <span class="puce-icone"><Icone nom="oeil-barre" taille={19} /></span>
-                <div>
-                  <strong>Les notifications ne disent rien</strong>
-                  <span>Ton téléphone affiche « Mousso Dambé » et rien de plus. C'est allumé d'office.</span>
-                </div>
-              </li>
-              <li>
-                <span class="puce-icone"><Icone nom="dambe" taille={19} /></span>
-                <div>
-                  <strong>Dambé ne reçoit que l'essentiel</strong>
-                  <span>Ton prénom et ton jour de cycle, jamais ton numéro, ton quartier ni ton journal.</span>
-                </div>
-              </li>
-              <li>
-                <span class="puce-icone"><Icone nom="poubelle" taille={19} /></span>
-                <div>
-                  <strong>Tu peux tout effacer</strong>
-                  <span>Un bouton dans ton compte, et il ne reste rien.</span>
-                </div>
-              </li>
-            </ul>
-          </div>
-        )
-      }
-
-      {
-        etape === 6 && (
-          <div class="corps">
-            <div class="recap carte bloc">
-              <div class="ligne">
-                <span>Ton prénom</span>
-                <strong>{reponses.prenom || '—'}</strong>
-              </div>
-              <div class="ligne">
-                <span>Dernières règles</span>
-                <strong>
-                  {reponses.sait === 'oui' && reponses.dernieres ? dateLongue(reponses.dernieres) : 'tu ne sais pas'}
-                </strong>
-              </div>
-              <div class="ligne">
-                <span>Durée des règles</span>
-                <strong>{reponses.duree} jours</strong>
-              </div>
-              <div class="ligne">
-                <span>Durée du cycle</span>
-                <strong>{reponses.cycle} jours</strong>
+          {/* --- 5. La régularité --- */}
+          {etape === 5 && (
+            <div class="corps">
+              <div class="cartes">
+                {REGULARITES.map((r) => (
+                  <button class="carte-choix" type="submit" name="regularite" value={r.id}>
+                    <span class="carte-icone">
+                      <Icone nom={r.icone} taille={20} />
+                    </span>
+                    <span class="carte-texte">
+                      <b>{r.libelle}</b>
+                      <span>{r.sous}</span>
+                    </span>
+                    <Icone nom="avant" taille={17} classe="carte-fleche" />
+                  </button>
+                ))}
               </div>
             </div>
-            <p class="doux marge">
-              Tu pourras tout changer dans ton compte. Rien n'est figé, et plus tu noteras, plus les dates seront
-              justes.
-            </p>
-          </div>
-        )
-      }
+          )}
 
-      <div class="bas">
-        {etape === 1 && <button class="btn btn-rose btn-plein" type="submit">Continuer</button>}
-        {etape === 5 && <button class="btn btn-rose btn-plein" type="submit">J'ai compris</button>}
-        {etape === 6 && <button class="btn btn-rose btn-plein" type="submit">Voir mon cycle</button>}
-      </div>
-    </form>
-  </main>
-</Base>
+          {/* --- 6. Les ressentis, plusieurs réponses --- */}
+          {etape === 6 && (
+            <div class="corps">
+              <div class="cartes-deux">
+                {RESSENTIS.map((r) => (
+                  <label class="carte-coche">
+                    <input type="checkbox" name="ressentis" value={r.id} checked={reponses.ressentis.includes(r.id)} />
+                    <span class="carte-icone">
+                      <Icone nom={r.icone} taille={19} />
+                    </span>
+                    <span class="carte-coche-mot">{r.libelle}</span>
+                    <span class="carte-marque" aria-hidden="true">
+                      <Icone nom="coche" taille={13} epaisseur={2.8} />
+                    </span>
+                  </label>
+                ))}
+              </div>
+              <button class="btn btn-rose btn-plein marge" type="submit">
+                Continuer
+              </button>
+            </div>
+          )}
+
+          {/* --- 7. Ce qu'elle cherche --- */}
+          {etape === 7 && (
+            <div class="corps">
+              <div class="cartes">
+                {OBJECTIFS.map((o) => (
+                  <button class="carte-choix" type="submit" name="objectif" value={o.id}>
+                    <span class="carte-icone">
+                      <Icone nom={o.icone} taille={20} />
+                    </span>
+                    <span class="carte-texte">
+                      <b>{o.libelle}</b>
+                      <span>{o.sous}</span>
+                    </span>
+                    <Icone nom="avant" taille={17} classe="carte-fleche" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* --- 8. La protection --- */}
+          {etape === 8 && (
+            <div class="corps">
+              <div class="cartes-deux">
+                {PROTECTIONS.map((p) => (
+                  <button class="carte-carree" type="submit" name="protection" value={p.id}>
+                    <span class="carte-icone">
+                      <Icone nom={p.icone} taille={22} />
+                    </span>
+                    <span class="carte-carree-mot">{p.libelle}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </form>
+      </main>
+    </Base>
+  )
+}
 
 <style>
+  .questionnaire {
+    display: flex;
+    flex-direction: column;
+    min-height: 100dvh;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+
+  /* --- La barre d'avancement --- */
   .haut {
     display: flex;
     align-items: center;
     gap: var(--e3);
-    padding: var(--e5) 0 var(--e5);
+    padding: var(--e4) var(--e4) var(--e2);
+  }
+
+  .rond {
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    flex: none;
+    border: 1px solid var(--bordure);
+    border-radius: 50%;
+    background: var(--surface);
+    color: var(--encre);
   }
 
   .progression {
@@ -434,14 +568,13 @@ const TITRES: Record<number, string> = {
   .ligne-haute {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 6px;
+    margin-bottom: 5px;
     font-size: 12px;
-    font-weight: 600;
-    color: var(--texte-2);
+    color: var(--texte-3);
   }
 
   .rail {
-    height: 6px;
+    height: 5px;
     border-radius: var(--r-ronde);
     background: var(--surface-douce);
     overflow: hidden;
@@ -451,75 +584,121 @@ const TITRES: Record<number, string> = {
     height: 100%;
     border-radius: var(--r-ronde);
     background: var(--rose);
-    transition: width var(--normal) var(--sortie);
   }
 
-  .jauge[data-part='1'] { width: 16.6%; }
-  .jauge[data-part='2'] { width: 33.3%; }
-  .jauge[data-part='3'] { width: 50%; }
-  .jauge[data-part='4'] { width: 66.6%; }
-  .jauge[data-part='5'] { width: 83.3%; }
-  .jauge[data-part='6'] { width: 100%; }
+  .part-1 { width: 12.5%; }
+  .part-2 { width: 25%; }
+  .part-3 { width: 37.5%; }
+  .part-4 { width: 50%; }
+  .part-5 { width: 62.5%; }
+  .part-6 { width: 75%; }
+  .part-7 { width: 87.5%; }
+  .part-8 { width: 100%; }
 
-  h1 {
-    font-size: 27px;
+  /* --- La moitié haute : l'illustration --- */
+  .tableau {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 150px;
+    max-height: 34dvh;
+    padding: var(--e3) var(--e4);
+    overflow: hidden;
+    /* Le glissement horizontal d'une question à l'autre, demandé dans le
+       cahier. Il se joue à l'arrivée de la page, donc sans script. */
+    animation: glisse-dessin 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .tableau :global(.dessin) {
+    width: 100%;
+    max-width: 310px;
+  }
+
+  .tableau :global(.dessin svg) {
+    width: 100%;
+    height: auto;
+    max-height: 30dvh;
+  }
+
+  /* --- La moitié basse --- */
+  .bas {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: var(--e4) var(--e4) var(--e6);
+    border-radius: var(--r-feuille) var(--r-feuille) 0 0;
+    background: var(--surface);
+    animation: glisse-bas 0.5s 0.06s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .bas h1 {
+    font-size: 23px;
     font-weight: 800;
-    line-height: 1.15;
+    line-height: 1.2;
+  }
+
+  .aide {
+    margin-top: 6px;
+    font-size: 13.5px;
+    color: var(--texte-2);
+    line-height: 1.45;
   }
 
   .corps {
     margin-top: var(--e4);
   }
 
-  .dessin-q {
-    width: 200px;
-    margin: 0 auto var(--e4);
-  }
-
-  .dessin-petit {
-    width: 110px;
-    margin: 0 auto var(--e4);
-  }
-
-  /* Ce qu'elle a déjà répondu : la preuve, à chaque écran, que ça avance. */
   .deja {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
+    gap: 5px;
     margin-bottom: var(--e3);
   }
 
   .bout {
     display: inline-flex;
     align-items: center;
-    gap: 5px;
-    padding: 4px 10px;
+    gap: 4px;
+    padding: 3px 9px;
     border-radius: var(--r-ronde);
-    background: var(--vert-clair);
-    color: var(--vert);
-    font-size: 12px;
+    background: var(--surface-douce);
+    color: var(--texte-2);
+    font-size: 11.5px;
     font-weight: 600;
   }
 
-  /* L'écran de la durée des règles : des gouttes, pas une grille de pastilles,
-     pour qu'il ne se confonde pas avec celui du cycle qui vient après. */
-  /* La saisie libre : il manquait 27 jours, et il manquait surtout un endroit
-     pour écrire son propre chiffre. Relevé par Arthur le 12 octobre 2026. */
-  .autre-nombre {
-    margin-bottom: var(--e4);
+  .marge {
+    margin-top: var(--e3);
   }
 
+  .libelle,
   .libelle-petit {
     display: block;
-    margin-bottom: 6px;
+    margin-bottom: 5px;
     font-size: 13px;
     font-weight: 600;
     color: var(--texte-2);
   }
 
+  .libelle-petit {
+    font-size: 12px;
+  }
+
+  .champ {
+    width: 100%;
+    min-height: 50px;
+    padding: 0 var(--e3);
+    border: 1px solid var(--bordure);
+    border-radius: var(--r-champ);
+    background: var(--surface);
+    font-family: var(--texte);
+    font-size: 16px;
+  }
+
   .ligne-saisie {
     display: flex;
     gap: var(--e2);
+    margin-bottom: var(--e4);
   }
 
   .champ-nombre {
@@ -527,149 +706,306 @@ const TITRES: Record<number, string> = {
     min-width: 0;
   }
 
-  .aide-sous {
-    margin-top: var(--e2);
-    font-size: 12.5px;
-    color: var(--texte-3);
-    line-height: 1.5;
+  /* --- Les dates proposées --- */
+  .jours {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
   }
 
+  .puce {
+    padding: 10px 13px;
+    border: 1px solid var(--bordure);
+    border-radius: var(--r-ronde);
+    background: var(--surface);
+    font-family: var(--texte);
+    font-size: 13.5px;
+    font-weight: 500;
+  }
+
+  .puce[aria-pressed='true'] {
+    border-color: var(--rose);
+    background: var(--rose-clair);
+    font-weight: 700;
+  }
+
+  /* --- Les gouttes de la durée des règles --- */
   .gouttes {
     display: flex;
-    flex-direction: column;
-    gap: var(--e2);
+    gap: 6px;
+    margin-bottom: var(--e3);
   }
 
   .goutte-choix {
     display: flex;
+    flex: 1;
+    flex-direction: column;
     align-items: center;
-    gap: var(--e3);
-    width: 100%;
-    min-height: 56px;
-    padding: 0 var(--e4);
+    gap: 2px;
+    padding: var(--e2) 2px;
     border: 1px solid var(--bordure);
-    border-radius: var(--r-champ);
+    border-radius: 16px;
     background: var(--surface);
-    cursor: pointer;
-    transition: background-color var(--vite) ease, border-color var(--vite) ease;
-  }
-
-  .goutte-choix:hover {
-    background: var(--surface-douce);
-  }
-
-  .goutte-choix[aria-pressed='true'] {
-    background: var(--rose-clair);
-    border-color: var(--rose);
-  }
-
-  .gouttes-dessin {
-    display: flex;
-    gap: 1px;
-    width: 100px;
-    flex: none;
-    color: var(--rose);
-  }
-
-  .nb-jours {
-    font-size: 19px;
+    font-family: var(--texte);
     color: var(--encre);
   }
 
-  .mot {
-    font-size: 14px;
-    color: var(--texte-2);
+  .goutte-choix:active {
+    transform: scale(0.95);
   }
 
-  .doux {
-    font-size: 14.5px;
-    color: var(--texte-2);
-    line-height: 1.5;
-    margin-bottom: var(--e4);
-  }
-
-  .jours {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--e2);
-  }
-
-  .choix-grille {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: var(--e2);
-  }
-
-  .grande {
-    min-height: 52px;
-  }
-
-  .marge {
-    margin-top: var(--e4);
-  }
-
-  .liste {
-    list-style: none;
-    margin: 0;
-    padding: 0;
+  .goutte-pile {
     display: flex;
     flex-direction: column;
-    gap: var(--e4);
+    align-items: center;
+    height: 36px;
+    color: var(--rose);
+    overflow: hidden;
   }
 
-  .liste li {
+  .goutte-n {
+    font-family: var(--titre);
+    font-size: 19px;
+    font-weight: 800;
+  }
+
+  .goutte-mot {
+    font-size: 10.5px;
+    color: var(--texte-3);
+  }
+
+  /* --- Les durées de cycle --- */
+  .cartes-courtes {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    margin-bottom: var(--e3);
+  }
+
+  .carte-courte {
     display: flex;
-    gap: var(--e3);
-    align-items: flex-start;
+    flex-direction: column;
+    align-items: center;
+    padding: var(--e3) 2px;
+    border: 1px solid var(--bordure);
+    border-radius: 16px;
+    background: var(--surface);
+    font-family: var(--texte);
+    color: var(--encre);
   }
 
-  .liste strong {
-    display: block;
-    font-size: 14.5px;
+  .carte-courte:active {
+    transform: scale(0.95);
   }
 
-  .liste span {
-    font-size: 13px;
-    color: var(--texte-2);
-    line-height: 1.45;
+  .carte-courte-n {
+    font-family: var(--titre);
+    font-size: 21px;
+    font-weight: 800;
   }
 
-  .puce-icone {
+  .carte-courte-mot {
+    font-size: 11px;
+    color: var(--texte-3);
+  }
+
+  /* --- Les grosses cartes cliquables --- */
+  .cartes {
+    display: flex;
+    flex-direction: column;
+    gap: var(--e2);
+  }
+
+  .cartes-deux {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--e2);
+  }
+
+  .carte-choix {
     display: flex;
     align-items: center;
-    justify-content: center;
-    width: 38px;
-    height: 38px;
+    gap: var(--e3);
+    width: 100%;
+    min-height: 68px;
+    padding: var(--e3);
+    border: 1px solid var(--bordure);
+    border-radius: 18px;
+    background: var(--surface);
+    font-family: var(--texte);
+    color: var(--encre);
+    text-align: left;
+    transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.18s;
+  }
+
+  .carte-choix:active {
+    transform: scale(0.98);
+    border-color: var(--rose);
+  }
+
+  .carte-icone {
+    display: grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
     flex: none;
-    border-radius: 12px;
+    border-radius: 13px;
     background: var(--surface-douce);
     color: var(--rose);
   }
 
-  .puce-icone.verte {
-    background: var(--vert-clair);
-    color: var(--vert);
+  .carte-texte {
+    flex: 1;
+    min-width: 0;
   }
 
-  .ligne {
+  .carte-texte b {
+    display: block;
+    font-size: 15px;
+    line-height: 1.25;
+  }
+
+  .carte-texte span {
+    font-size: 12.5px;
+    color: var(--texte-2);
+    line-height: 1.3;
+  }
+
+  .carte-choix :global(.carte-fleche) {
+    flex: none;
+    color: var(--texte-3);
+  }
+
+  /* --- Les cases à cocher, pour le choix multiple --- */
+  .carte-coche {
+    position: relative;
     display: flex;
-    justify-content: space-between;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--e2);
+    min-height: 100px;
+    padding: var(--e3);
+    border: 1px solid var(--bordure);
+    border-radius: 18px;
+    background: var(--surface);
+    font-size: 13.5px;
+    line-height: 1.3;
+    cursor: pointer;
+  }
+
+  .carte-coche input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+  }
+
+  .carte-coche:has(input:checked) {
+    border-color: var(--rose);
+    background: var(--poudre);
+  }
+
+  .carte-coche:has(input:focus-visible) {
+    outline: 2px solid var(--rose);
+    outline-offset: 2px;
+  }
+
+  .carte-coche-mot {
+    font-weight: 600;
+  }
+
+  .carte-marque {
+    position: absolute;
+    top: 11px;
+    right: 11px;
+    display: grid;
+    place-items: center;
+    width: 21px;
+    height: 21px;
+    border: 1.5px solid var(--bordure);
+    border-radius: 50%;
+    background: var(--surface);
+    color: transparent;
+  }
+
+  .carte-coche:has(input:checked) .carte-marque {
+    border-color: var(--rose);
+    background: var(--rose);
+    color: #fff;
+  }
+
+  /* --- Les cartes carrées de la protection --- */
+  .carte-carree {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--e2);
+    min-height: 100px;
+    padding: var(--e3);
+    border: 1px solid var(--bordure);
+    border-radius: 18px;
+    background: var(--surface);
+    font-family: var(--texte);
+    color: var(--encre);
+    text-align: left;
+  }
+
+  .carte-carree:active {
+    transform: scale(0.97);
+    border-color: var(--rose);
+  }
+
+  .carte-carree-mot {
+    font-size: 13.5px;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+
+  /* --- L'écran de fin --- */
+  .fin {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
     gap: var(--e3);
-    padding: 9px 0;
-    border-bottom: 1px solid var(--bordure);
-    font-size: 14px;
+    min-height: 100dvh;
+    padding: var(--e4);
+    text-align: center;
   }
 
-  .ligne:last-child {
-    border-bottom: none;
+  .fin h1 {
+    font-size: 27px;
+    font-weight: 800;
   }
 
-  .ligne span {
+  .fin p {
     color: var(--texte-2);
   }
 
-  .bas {
-    margin-top: var(--e5);
-    padding-bottom: var(--e6);
+  .fin .btn {
+    margin-top: var(--e3);
+    min-width: 220px;
+  }
+
+  /* --- Les glissements --- */
+  @keyframes glisse-dessin {
+    from {
+      opacity: 0;
+      transform: translateX(26px);
+    }
+  }
+
+  @keyframes glisse-bas {
+    from {
+      opacity: 0;
+      transform: translateX(34px);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .tableau,
+    .bas {
+      animation: none;
+    }
   }
 </style>
