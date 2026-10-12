@@ -90,6 +90,9 @@
   --creme: #fff8f2;
   --vert-doux: #2f8f5b;
   --vert-doux-fond: #e4f5ea;
+  /* Le même vert, assez tenu pour se voir comme un trait d'anneau sur le fond
+     rosé : le fond pâle y disparaissait et l'anneau semblait troué. */
+  --vert-doux-trait: #a8dcbf;
   --lilas: #7b55d6;
   --lilas-fond: #ece5fb;
   --lilas-fort: #5a2fb8;

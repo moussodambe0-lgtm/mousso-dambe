@@ -15,15 +15,15 @@
  *   3. Les règles réellement déclarées priment sur la projection : un mois
  *      passé montre ce qui a été vécu, pas ce qu'un modulo aurait prédit.
  */
-import Base from '../layouts/Base.astro';
-import Icone from '../components/Icone.astro';
-import DefsCycle from '../components/DefsCycle.astro';
-import GoutteJour from '../components/GoutteJour.astro';
-import BebeJour from '../components/BebeJour.astro';
-import Alerte from '../components/Alerte.astro';
-import '../styles/calendrier.css';
-import { clientSession, baseConfiguree } from '../lib/supabase';
-import { visiteuse, lirePanier, comptePanier } from '../lib/session';
+import Base from '../../layouts/Base.astro';
+import Icone from '../../components/Icone.astro';
+import DefsCycle from '../../components/DefsCycle.astro';
+import GoutteJour from '../../components/GoutteJour.astro';
+import BebeJour from '../../components/BebeJour.astro';
+import Alerte from '../../components/Alerte.astro';
+import '../../styles/calendrier.css';
+import { clientSession, baseConfiguree } from '../../lib/supabase';
+import { visiteuse, lirePanier, comptePanier } from '../../lib/session';
 import {
   infoDuJour,
   prochainesRegles,
@@ -34,8 +34,8 @@ import {
   AVERTISSEMENT_CONTRACEPTION,
   type ReglagesCycle,
   type TypeJour,
-} from '../lib/cycle-calcul';
-import { aujourdhui, dateLongue, dateCourte, moisEtAnnee, dateDe, enIso, messageErreur, enJours } from '../lib/format';
+} from '../../lib/cycle-calcul';
+import { aujourdhui, dateLongue, dateCourte, moisEtAnnee, dateDe, enIso, messageErreur, enJours } from '../../lib/format';
 
 if (!baseConfiguree()) return Astro.redirect('/', 302);
 const moi = await visiteuse(Astro);
@@ -53,11 +53,11 @@ if (Astro.request.method === 'POST') {
   if (geste === 'declarer') {
     const { data, error } = await client.rpc('declarer_regles', { p_debut: jour });
     if (error || !data?.ok) erreur = messageErreur(data?.erreur);
-    else return Astro.redirect('/cycle?ok=declare', 303);
+    else return Astro.redirect('/cycle/calendrier?ok=declare', 303);
   } else if (geste === 'retirer') {
     const { data, error } = await client.rpc('retirer_regles', { p_debut: jour });
     if (error || !data?.ok) erreur = messageErreur(data?.erreur);
-    else return Astro.redirect('/cycle?ok=retire', 303);
+    else return Astro.redirect('/cycle/calendrier?ok=retire', 303);
   }
 }
 
@@ -235,7 +235,7 @@ function libelle(c: Case): string {
 }
 ---
 
-<Base titre="Mon calendrier" nav="cycle" panier={panier}>
+<Base titre="Mon calendrier" nav="cycle" panier={panier} prenom={moi.prenom}>
   <DefsCycle />
 
   <main class="ecran-calendrier">
@@ -280,11 +280,11 @@ function libelle(c: Case): string {
         </div>
 
         <nav class="cal-mois" aria-label="Changer de mois">
-          <a class="cal-fleche" href={`/cycle?mois=${moisAvant}`} aria-label="Mois précédent">
+          <a class="cal-fleche" href={`/cycle/calendrier?mois=${moisAvant}`} aria-label="Mois précédent">
             <Icone nom="retour" taille={20} epaisseur={2.6} />
           </a>
           <div class="cal-mois-titre">{moisEtAnnee(premier)}</div>
-          <a class="cal-fleche" href={`/cycle?mois=${moisApres}`} aria-label="Mois suivant">
+          <a class="cal-fleche" href={`/cycle/calendrier?mois=${moisApres}`} aria-label="Mois suivant">
             <Icone nom="avant" taille={20} epaisseur={2.6} />
           </a>
         </nav>
@@ -306,7 +306,7 @@ function libelle(c: Case): string {
                     c.aujourdhui && 'aujourdhui',
                     c.passe && 'passe',
                   ]}
-                  href={`/cycle?mois=${clefMois(premier)}&jour=${c.iso}`}
+                  href={`/cycle/calendrier?mois=${clefMois(premier)}&jour=${c.iso}`}
                   aria-label={libelle(c)}
                 >
                   {
@@ -371,7 +371,7 @@ function libelle(c: Case): string {
     {
       fiche && (
         <>
-          <a class="cal-voile" href={`/cycle?mois=${clefMois(premier)}`} aria-label="Fermer"></a>
+          <a class="cal-voile" href={`/cycle/calendrier?mois=${clefMois(premier)}`} aria-label="Fermer"></a>
           <section class="cal-fiche" role="dialog" aria-modal="true" aria-label={dateLongue(fiche.iso)}>
             <div class="cal-poignee"></div>
             <div class="cal-fiche-haut">
@@ -470,5 +470,5 @@ function libelle(c: Case): string {
 </style>
 
 <script>
-  import '../scripts/calendrier';
+  import '../../scripts/calendrier';
 </script>

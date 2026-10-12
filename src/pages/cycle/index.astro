@@ -1,0 +1,886 @@
+---
+/**
+ * LE TABLEAU DE BORD DU CYCLE.
+ *
+ * Section 4 du cahier d'Arthur. Son reproche était net : « jour 1 sur 28,
+ * c'est trop basique, je veux vraiment une amélioration ». Ce que cet écran
+ * ajoute à un chiffre :
+ *
+ *   - l'anneau segmenté montre TOUT le cycle, pas seulement où on en est ;
+ *   - les cartes disent les dates exactes, pas des « bientôt » ;
+ *   - la jauge de risque répond à la question qu'on se pose vraiment ;
+ *   - la saisie du jour est là, pas deux écrans plus loin ;
+ *   - et quand les données montrent quelque chose d'inhabituel, l'écran le
+ *     dit doucement, sans faire peur et sans diagnostiquer.
+ *
+ * Tout est calculé sur le serveur par `src/lib/cycle-calcul.ts`, le seul
+ * endroit où vivent ces règles, et qui porte 69 vérifications.
+ *
+ * L'avertissement de la section 5 est repris ici : les jours verts ne sont
+ * pas une contraception. Il est obligatoire, il ne part pas.
+ */
+import Base from '../../layouts/Base.astro';
+import Icone from '../../components/Icone.astro';
+import AnneauSegmente from '../../components/AnneauSegmente.astro';
+import GoutteJour from '../../components/GoutteJour.astro';
+import BebeJour from '../../components/BebeJour.astro';
+import DefsCycle from '../../components/DefsCycle.astro';
+import Alerte from '../../components/Alerte.astro';
+import { clientSession, baseConfiguree } from '../../lib/supabase';
+import { visiteuse, lirePanier, comptePanier } from '../../lib/session';
+import { PHASES, FLUX, SIGNES } from '../../lib/cycle';
+import {
+  infoDuJour,
+  prochainesRegles,
+  prochaineOvulation,
+  fenetreFertile,
+  jourOvulation,
+  moyenneCycles,
+  ecartEnJours,
+  plusDeJours,
+  alertesSante,
+  AVERTISSEMENT_CONTRACEPTION,
+  type ReglagesCycle,
+  type TypeJour,
+} from '../../lib/cycle-calcul';
+import { aujourdhui, dateLongue, dateCourte, dateDe, messageErreur } from '../../lib/format';
+
+if (!baseConfiguree()) return Astro.redirect('/', 302);
+const moi = await visiteuse(Astro);
+if (!moi) return Astro.redirect('/connexion', 302);
+if (!moi.questionnaireFini) return Astro.redirect('/bienvenue', 302);
+
+const client = clientSession(Astro)!;
+const panier = comptePanier(lirePanier(Astro));
+const hui = aujourdhui();
+
+let erreur = '';
+let message = '';
+
+if (Astro.request.method === 'POST') {
+  const f = await Astro.request.formData();
+  const geste = String(f.get('geste') ?? '');
+
+  if (geste === 'commencent') {
+    const { data, error } = await client.rpc('declarer_regles', { p_debut: hui });
+    if (error || !data?.ok) erreur = messageErreur(data?.erreur);
+    else return Astro.redirect('/cycle?ok=commencent', 303);
+  } else if (geste === 'finies') {
+    // « Mes règles sont terminées » : on note la journée d'hier comme la
+    // dernière, en marquant aujourd'hui sans flux. C'est le geste le plus
+    // proche de ce qu'elle veut dire, et il n'invente aucune date.
+    const { data, error } = await client.rpc('noter_journee', {
+      p_jour: hui,
+      p_flux: 'rien',
+      p_douleur: 0,
+      p_signes: [],
+      p_note: '',
+    });
+    if (error || !data?.ok) erreur = messageErreur(data?.erreur);
+    else return Astro.redirect('/cycle?ok=finies', 303);
+  }
+}
+
+if (Astro.url.searchParams.get('ok') === 'commencent') message = 'Tes règles sont notées. Les prévisions sont à jour.';
+if (Astro.url.searchParams.get('ok') === 'finies') message = "C'est noté, bonne fin de journée.";
+
+// --- Ce que la base sait de son cycle ---------------------------------------
+const { data: cyclesBase } = await client
+  .from('cycles')
+  .select('debut, fin')
+  .order('debut', { ascending: false })
+  .limit(14);
+
+const debuts = (cyclesBase ?? []).map((c: { debut: string }) => c.debut);
+const aDesDonnees = debuts.length > 0;
+
+const { data: notesBase } = await client
+  .from('journal')
+  .select('jour, flux, douleur')
+  .gte('jour', plusDeJours(hui, -90))
+  .order('jour', { ascending: false });
+const notes = (notesBase ?? []) as { jour: string; flux: string; douleur: number }[];
+
+const confirmes = new Set<string>();
+for (const c of (cyclesBase ?? []) as { debut: string; fin: string | null }[]) {
+  const fin = c.fin ?? c.debut;
+  for (let d = c.debut; d <= fin; d = plusDeJours(d, 1)) confirmes.add(d);
+}
+for (const n of notes) if (n.flux !== 'rien') confirmes.add(n.jour);
+
+const dureeCycle = (aDesDonnees ? moyenneCycles(debuts) : null) ?? moi.cycleMoyen;
+const reglages: ReglagesCycle = { debuts, dureeRegles: moi.dureeRegles, dureeCycle };
+
+const info = aDesDonnees ? infoDuJour(hui, reglages, confirmes, hui) : null;
+const prochaines = aDesDonnees ? prochainesRegles(reglages, hui) : null;
+const ovulation = aDesDonnees ? prochaineOvulation(reglages, hui) : null;
+
+// La fenêtre fertile du cycle en cours, en dates.
+let fertileDu: string | null = null;
+let fertileAu: string | null = null;
+if (aDesDonnees && info) {
+  const debutDuCycle = plusDeJours(hui, -(info.jourDuCycle - 1));
+  const f = fenetreFertile(dureeCycle);
+  fertileDu = plusDeJours(debutDuCycle, f.debut - 1);
+  fertileAu = plusDeJours(debutDuCycle, f.fin - 1);
+}
+
+const joursAvant = prochaines ? ecartEnJours(prochaines, hui) : 0;
+const enRetard = joursAvant < 0;
+const retard = enRetard ? -joursAvant : 0;
+
+// --- Ce que l'écran annonce au centre de l'anneau ---------------------------
+let grandChiffre = String(Math.abs(joursAvant));
+let grandMot = 'jours';
+let phraseCentre = 'avant tes prochaines règles';
+if (info?.type === 'regles') {
+  grandChiffre = String(info.jourDuCycle);
+  grandMot = info.jourDuCycle === 1 ? 'er jour' : 'e jour';
+  phraseCentre = 'de tes règles';
+} else if (info?.type === 'ovulation') {
+  grandChiffre = '';
+  grandMot = 'Ovulation';
+  phraseCentre = "aujourd'hui";
+} else if (enRetard) {
+  grandChiffre = String(retard);
+  grandMot = retard === 1 ? 'jour' : 'jours';
+  phraseCentre = 'de retard';
+} else if (joursAvant === 0) {
+  grandChiffre = '';
+  grandMot = 'Aujourd’hui';
+  phraseCentre = 'tes règles sont attendues';
+} else if (joursAvant === 1) {
+  grandChiffre = '1';
+  grandMot = 'jour';
+}
+
+// --- La phase, dite avec les mots de cycle.ts -------------------------------
+let nomPhase: keyof typeof PHASES = 'elan';
+if (info?.type === 'regles') nomPhase = 'regles';
+else if (info?.type === 'fertile' || info?.type === 'ovulation') nomPhase = 'fertile';
+else if (info && info.jourDuCycle > jourOvulation(dureeCycle)) nomPhase = 'lune';
+const phase = PHASES[nomPhase];
+
+// --- Le risque de grossesse -------------------------------------------------
+// Trois niveaux seulement : au-delà, on donnerait une impression de précision
+// que ce calcul n'a pas. L'avertissement en bas d'écran dit le reste.
+const RISQUES: Record<TypeJour, { mot: string; part: number; classe: string }> = {
+  ovulation: { mot: 'Élevé', part: 100, classe: 'risque-haut' },
+  fertile: { mot: 'Élevé', part: 82, classe: 'risque-haut' },
+  regles: { mot: 'Faible', part: 16, classe: 'risque-bas' },
+  faible: { mot: 'Faible', part: 24, classe: 'risque-bas' },
+};
+// Les deux jours qui bordent la fenêtre fertile : ni l'un ni l'autre.
+let risque = RISQUES[info?.type ?? 'faible'];
+if (info && info.type === 'faible') {
+  const f = fenetreFertile(dureeCycle);
+  const distance = Math.min(Math.abs(info.jourDuCycle - f.debut), Math.abs(info.jourDuCycle - f.fin));
+  if (distance <= 2) risque = { mot: 'Moyen', part: 52, classe: 'risque-moyen' };
+}
+
+// --- Les points qu'elle a notés, posés sur l'anneau -------------------------
+const notesAnneau = notes
+  .filter((n) => {
+    const i = infoDuJour(n.jour, reglages, confirmes, hui);
+    return i.jourDuCycle >= 1 && ecartEnJours(hui, n.jour) < dureeCycle;
+  })
+  .map((n) => ({
+    jour: infoDuJour(n.jour, reglages, confirmes, hui).jourDuCycle,
+    saigne: n.flux !== 'rien',
+  }));
+
+// --- La bande des quatorze prochains jours ----------------------------------
+const JOURS_COURTS = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+const bande = Array.from({ length: 14 }, (_, i) => {
+  const iso = plusDeJours(hui, i - 2);
+  const d = dateDe(iso);
+  const j = aDesDonnees ? infoDuJour(iso, reglages, confirmes, hui) : null;
+  return {
+    iso,
+    nom: JOURS_COURTS[d.getDay()],
+    numero: d.getDate(),
+    type: (j?.type ?? 'faible') as TypeJour,
+    aujourdhui: iso === hui,
+  };
+});
+
+// --- Les alertes santé ------------------------------------------------------
+const dureesRegles: number[] = [];
+for (const c of (cyclesBase ?? []) as { debut: string; fin: string | null }[]) {
+  if (c.fin) dureesRegles.push(ecartEnJours(c.fin, c.debut) + 1);
+}
+const ecartsCycles: number[] = [];
+for (let i = 0; i < debuts.length - 1; i += 1) ecartsCycles.push(ecartEnJours(debuts[i], debuts[i + 1]));
+
+const alertes = aDesDonnees
+  ? alertesSante({
+      dureesRegles,
+      ecartsCycles,
+      retard,
+      douleursFortes: notes.filter((n) => n.douleur >= 4).length,
+      fluxAbondants: notes.filter((n) => n.flux === 'abondant').length,
+    })
+  : [];
+
+// L'avertissement obligatoire, avec deux fragments mis en gras.
+const GRAS_1 = "n'est pas une méthode de contraception fiable";
+const GRAS_2 = 'utilise une contraception adaptée';
+const i1 = AVERTISSEMENT_CONTRACEPTION.indexOf(GRAS_1);
+const i2 = AVERTISSEMENT_CONTRACEPTION.indexOf(GRAS_2);
+
+const noteDuJour = notes.find((n) => n.jour === hui) ?? null;
+const enRegles = info?.type === 'regles';
+---
+
+<Base titre="Mon cycle" nav="cycle" panier={panier} prenom={moi.prenom}>
+  <DefsCycle />
+
+  <main class="page tableau">
+    {/* --- Les deux vues de « Mon cycle » --- */}
+    <nav class="deux-vues" aria-label="Vues de mon cycle">
+      <a class="vue-choix vue-actif" href="/cycle" aria-current="page">Tableau de bord</a>
+      <a class="vue-choix" href="/cycle/calendrier">Calendrier</a>
+    </nav>
+
+    {message && <Alerte type="reussite" texte={message} />}
+    {erreur && <Alerte type="erreur" texte={erreur} />}
+
+    {
+      !aDesDonnees && (
+        <section class="carte bloc vide">
+          <h1>On ne connaît pas encore ton cycle</h1>
+          <p>
+            Dis-moi quand tes dernières règles ont commencé, et cet écran se remplit : les dates à venir, la période
+            fertile, et ce que ton corps fait en ce moment.
+          </p>
+          <form method="post">
+            <button class="btn btn-rose btn-plein" type="submit" name="geste" value="commencent">
+              Mes règles ont commencé aujourd'hui
+            </button>
+          </form>
+          <a class="btn btn-texte" href="/cycle/calendrier">Choisir une autre date dans le calendrier</a>
+        </section>
+      )
+    }
+
+    {
+      aDesDonnees && info && (
+        <>
+          {/* --- 4.1 Le grand anneau --- */}
+          <section class="anneau-bloc" aria-label="Où en est ton cycle">
+            <AnneauSegmente
+              jourActuel={info.jourDuCycle}
+              dureeRegles={moi.dureeRegles}
+              dureeCycle={dureeCycle}
+              notes={notesAnneau}
+              lien="/cycle/calendrier"
+            >
+              <span class="grand-chiffre">
+                {grandChiffre}
+                <span class="grand-mot">{grandMot}</span>
+              </span>
+              <span class="grand-phrase">{phraseCentre}</span>
+              <span class="grand-sous">Jour {info.jourDuCycle} de ton cycle</span>
+            </AnneauSegmente>
+
+            <ul class="legende-anneau">
+              <li><span class="pion pion-regles"></span>Règles</li>
+              <li><span class="pion pion-fertile"></span>Fenêtre fertile</li>
+              <li><span class="pion pion-ovulation"></span>Ovulation</li>
+              <li><span class="pion pion-faible"></span>Risque plus faible</li>
+            </ul>
+          </section>
+
+          {/* --- 4.4 La saisie du jour, tout de suite sous l'anneau --- */}
+          <section class="bloc-saisie">
+            <form class="deux" method="post">
+              {enRegles ? (
+                <button class="btn btn-rose" type="submit" name="geste" value="finies">
+                  Mes règles sont terminées
+                </button>
+              ) : (
+                <button class="btn btn-rose" type="submit" name="geste" value="commencent">
+                  Mes règles ont commencé
+                </button>
+              )}
+              <a class="btn btn-contour" href="/journal">
+                {noteDuJour ? 'Modifier ma journée' : 'Noter ma journée'}
+              </a>
+            </form>
+
+            <div class="humeur">
+              <p class="humeur-titre">Comment tu te sens aujourd'hui ?</p>
+              <div class="humeur-rail">
+                {SIGNES.slice(0, 6).map((s) => (
+                  <a class="humeur-puce" href={`/journal?signe=${s.id}`}>
+                    {s.libelle}
+                  </a>
+                ))}
+                <a class="humeur-puce humeur-puce-plus" href="/journal">
+                  Tout noter
+                  <Icone nom="avant" taille={14} epaisseur={2.4} />
+                </a>
+              </div>
+              {noteDuJour && (
+                <p class="humeur-deja">
+                  Noté aujourd'hui : flux {FLUX.find((f) => f.id === noteDuJour.flux)?.libelle.toLowerCase() ?? '—'},
+                  douleur {noteDuJour.douleur} sur 5.
+                </p>
+              )}
+            </div>
+          </section>
+
+          {/* --- 4.2 Les cartes d'information --- */}
+          <section class="cartes" aria-label="Les dates de ton cycle">
+            <article class="info info-rose">
+              <span class="info-icone"><GoutteJour largeur={16} hauteur={20} /></span>
+              <h2>Prochaines règles</h2>
+              <p class="info-grand">{prochaines ? dateLongue(prochaines) : '—'}</p>
+              <p class="info-petit">
+                {enRetard ? `${retard} jour${retard > 1 ? 's' : ''} de retard` : joursAvant === 0 ? "Attendues aujourd'hui" : `Dans ${joursAvant} jour${joursAvant > 1 ? 's' : ''}`}
+              </p>
+            </article>
+
+            <article class="info info-lilas">
+              <span class="info-icone"><BebeJour taille={18} /></span>
+              <h2>Fenêtre fertile</h2>
+              <p class="info-grand">
+                {fertileDu && fertileAu ? `${dateCourte(fertileDu)} au ${dateCourte(fertileAu)}` : '—'}
+              </p>
+              <p class="info-petit">Les jours où une grossesse est possible</p>
+            </article>
+
+            <article class="info info-lilas">
+              <span class="info-icone"><BebeJour taille={18} ovulation /></span>
+              <h2>Ovulation estimée</h2>
+              <p class="info-grand">{ovulation ? dateLongue(ovulation) : '—'}</p>
+              <p class="info-petit">Une estimation, pas une certitude</p>
+            </article>
+
+            <article class:list={['info', 'info-jauge', risque.classe]}>
+              <span class="info-icone"><Icone nom="info" taille={18} /></span>
+              <h2>Risque de grossesse aujourd'hui</h2>
+              <p class="info-grand">{risque.mot}</p>
+              <div class="jauge" role="img" aria-label={`Risque ${risque.mot.toLowerCase()}`}>
+                <span class:list={['jauge-pleine', `jauge-${risque.part}`]}></span>
+              </div>
+            </article>
+          </section>
+
+          {/* --- 4.2 La phase, et ce qui se passe dans le corps --- */}
+          <section class="carte bloc phase">
+            <div class="phase-tete">
+              <h2>{phase.nom}</h2>
+              <span class="phase-savant">{phase.savant}</span>
+            </div>
+            <p class="phase-texte">{phase.explique}</p>
+            <p class="phase-conseil">
+              <Icone nom="pousse" taille={17} />
+              {phase.conseil}
+            </p>
+          </section>
+
+          {/* --- 4.3 La bande des jours --- */}
+          <section aria-label="Les jours à venir">
+            <h2 class="titre-section">Les jours qui viennent</h2>
+            <div class="semaine-jours">
+              {bande.map((j) => (
+                <a
+                  class:list={['jour-case', j.aujourdhui && 'jour-case-aujourdhui', `jour-case-${j.type}`]}
+                  href={`/cycle/calendrier?jour=${j.iso}`}
+                  aria-label={dateLongue(j.iso)}
+                >
+                  <span class="jour-case-nom">{j.nom}</span>
+                  <span class="jour-case-numero">{j.numero}</span>
+                  <span class="jour-case-marque">
+                    {j.type === 'regles' ? (
+                      <GoutteJour largeur={11} hauteur={13} />
+                    ) : j.type === 'ovulation' ? (
+                      <BebeJour taille={15} ovulation />
+                    ) : j.type === 'fertile' ? (
+                      <BebeJour taille={15} />
+                    ) : (
+                      <span class="jour-case-point"></span>
+                    )}
+                  </span>
+                </a>
+              ))}
+            </div>
+          </section>
+
+          {/* --- 4.5 Les alertes santé --- */}
+          {alertes.length > 0 && (
+            <section class="sante" aria-label="À signaler à une sage-femme">
+              {alertes.map((a) => (
+                <article class="sante-carte">
+                  <span class="sante-icone"><Icone nom="coeur" taille={18} /></span>
+                  <div>
+                    <h3>{a.titre}</h3>
+                    <p>{a.texte}</p>
+                  </div>
+                </article>
+              ))}
+            </section>
+          )}
+        </>
+      )
+    }
+
+    {/* --- L'avertissement obligatoire, section 5 --- */}
+    <aside class="avertissement">
+      <Icone nom="info" taille={18} />
+      <p>
+        {i1 >= 0 ? (
+          <>
+            {AVERTISSEMENT_CONTRACEPTION.slice(0, i1)}
+            <strong>{GRAS_1}</strong>
+            {AVERTISSEMENT_CONTRACEPTION.slice(i1 + GRAS_1.length, i2 >= 0 ? i2 : undefined)}
+            {i2 >= 0 && <strong>{GRAS_2}</strong>}
+            {i2 >= 0 && AVERTISSEMENT_CONTRACEPTION.slice(i2 + GRAS_2.length)}
+          </>
+        ) : (
+          AVERTISSEMENT_CONTRACEPTION
+        )}
+      </p>
+    </aside>
+
+    <div class="espace"></div>
+  </main>
+</Base>
+
+<style>
+  .tableau {
+    padding-top: var(--e4);
+  }
+
+  /* --- La deux-vues entre les deux vues --- */
+  .deux-vues {
+    display: flex;
+    gap: 4px;
+    margin-bottom: var(--e4);
+    padding: 4px;
+    border-radius: var(--r-ronde);
+    background: var(--surface-douce);
+  }
+
+  .vue-choix {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 40px;
+    border-radius: var(--r-ronde);
+    color: var(--texte-2);
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .vue-actif {
+    background: var(--surface);
+    color: var(--encre);
+    box-shadow: var(--ombre);
+  }
+
+  /* --- L'anneau et son centre --- */
+  .anneau-bloc {
+    padding: var(--e3) 0 var(--e4);
+  }
+
+  .grand-chiffre {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    font-family: var(--titre);
+    font-size: 54px;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -2px;
+  }
+
+  .grand-mot {
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: 0;
+  }
+
+  .grand-phrase {
+    margin-top: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.25;
+  }
+
+  .grand-sous {
+    font-size: 12.5px;
+    color: var(--texte-3);
+  }
+
+  .legende-anneau {
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--e2) var(--e3);
+    margin: var(--e4) 0 0;
+    padding: 0;
+    font-size: 12px;
+    color: var(--texte-2);
+  }
+
+  .legende-anneau li {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .pion {
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+  }
+
+  .pion-regles { background: var(--grenat); }
+  .pion-fertile { background: var(--lilas); }
+  .pion-ovulation { background: var(--lilas-fort); }
+  .pion-faible { background: var(--vert-doux-trait); }
+
+  /* --- La saisie du jour --- */
+  .bloc-saisie {
+    margin-bottom: var(--e5);
+  }
+
+  .deux {
+    display: flex;
+    gap: var(--e2);
+    margin-bottom: var(--e3);
+  }
+
+  .deux > * {
+    flex: 1;
+    white-space: nowrap;
+    padding: 0 var(--e2);
+  }
+
+  .humeur-titre {
+    margin-bottom: var(--e2);
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .humeur-rail {
+    display: flex;
+    gap: 6px;
+    margin: 0 calc(var(--e4) * -1);
+    padding: 2px var(--e4);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .humeur-rail::-webkit-scrollbar {
+    display: none;
+  }
+
+  .humeur-puce {
+    flex: none;
+    padding: 9px 13px;
+    border: 1px solid var(--bordure);
+    border-radius: var(--r-ronde);
+    background: var(--surface);
+    color: var(--encre);
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .humeur-puce-plus {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    border-color: var(--rose);
+    color: var(--rose);
+    font-weight: 600;
+  }
+
+  .humeur-deja {
+    margin-top: var(--e2);
+    font-size: 12.5px;
+    color: var(--texte-3);
+  }
+
+  /* --- Les cartes d'information --- */
+  .cartes {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--e2);
+    margin-bottom: var(--e5);
+  }
+
+  .info {
+    padding: var(--e3);
+    border-radius: var(--r-carte);
+    background: var(--surface);
+    border: 1px solid var(--bordure);
+  }
+
+  .info-rose {
+    background: var(--poudre);
+    border-color: transparent;
+  }
+
+  .info-lilas {
+    background: var(--lilas-fond);
+    border-color: transparent;
+  }
+
+  .info-icone {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    margin-bottom: 6px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.7);
+    color: var(--encre);
+  }
+
+  .info h2 {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--texte-2);
+    line-height: 1.25;
+  }
+
+  .info-grand {
+    margin-top: 3px;
+    font-family: var(--titre);
+    font-size: 15.5px;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  .info-petit {
+    margin-top: 3px;
+    font-size: 11.5px;
+    color: var(--texte-2);
+    line-height: 1.3;
+  }
+
+  /* La jauge de risque : une barre, et le mot à côté. La couleur ne porte
+     jamais l'information toute seule. */
+  .info-jauge {
+    grid-column: 1 / -1;
+  }
+
+  .jauge {
+    height: 8px;
+    margin-top: 8px;
+    border-radius: var(--r-ronde);
+    background: var(--surface-douce);
+    overflow: hidden;
+  }
+
+  .jauge-pleine {
+    display: block;
+    height: 100%;
+    border-radius: var(--r-ronde);
+    animation: jauge-monte 0.8s 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .jauge-16 { width: 16%; }
+  .jauge-24 { width: 24%; }
+  .jauge-52 { width: 52%; }
+  .jauge-82 { width: 82%; }
+  .jauge-100 { width: 100%; }
+
+  .risque-bas .jauge-pleine { background: var(--vert-doux); }
+  .risque-moyen .jauge-pleine { background: var(--peche); }
+  .risque-haut .jauge-pleine { background: var(--lilas); }
+
+  .risque-bas .info-grand { color: var(--vert-doux); }
+  .risque-moyen .info-grand { color: var(--peche); }
+  .risque-haut .info-grand { color: var(--lilas-fort); }
+
+  @keyframes jauge-monte {
+    from {
+      transform: scaleX(0);
+      transform-origin: left;
+    }
+  }
+
+  /* --- La phase --- */
+  .phase {
+    margin-bottom: var(--e5);
+  }
+
+  .phase-tete {
+    display: flex;
+    align-items: baseline;
+    gap: var(--e2);
+  }
+
+  .phase-tete h2 {
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  .phase-savant {
+    font-size: 12px;
+    color: var(--texte-3);
+  }
+
+  .phase-texte {
+    margin-top: var(--e2);
+    font-size: 14px;
+    color: var(--texte-2);
+    line-height: 1.5;
+  }
+
+  .phase-conseil {
+    display: flex;
+    gap: var(--e2);
+    align-items: flex-start;
+    margin-top: var(--e3);
+    padding-top: var(--e3);
+    border-top: 1px solid var(--bordure);
+    font-size: 13.5px;
+    line-height: 1.45;
+  }
+
+  /* --- La bande des jours --- */
+  .titre-section {
+    margin-bottom: var(--e2);
+    font-size: 16px;
+    font-weight: 700;
+  }
+
+  .semaine-jours {
+    display: flex;
+    gap: 6px;
+    margin: 0 calc(var(--e4) * -1) var(--e5);
+    padding: 2px var(--e4) var(--e2);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .semaine-jours::-webkit-scrollbar {
+    display: none;
+  }
+
+  .jour-case {
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    width: 52px;
+    padding: 9px 0;
+    border: 1px solid var(--bordure);
+    border-radius: 16px;
+    background: var(--surface);
+    color: var(--encre);
+  }
+
+  .jour-case-regles { background: var(--grenat-clair); border-color: transparent; }
+  .jour-case-fertile,
+  .jour-case-ovulation { background: var(--lilas-fond); border-color: transparent; }
+
+  .jour-case-aujourdhui {
+    border-color: var(--encre);
+    border-width: 2px;
+  }
+
+  .jour-case-nom {
+    font-size: 11px;
+    color: var(--texte-2);
+  }
+
+  .jour-case-numero {
+    font-family: var(--titre);
+    font-size: 17px;
+    font-weight: 700;
+  }
+
+  .jour-case-marque {
+    display: grid;
+    place-items: center;
+    height: 16px;
+  }
+
+  .jour-case-point {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--vert-doux);
+  }
+
+  /* --- Les alertes santé --- */
+  .sante {
+    display: flex;
+    flex-direction: column;
+    gap: var(--e2);
+    margin-bottom: var(--e5);
+  }
+
+  .sante-carte {
+    display: flex;
+    gap: var(--e3);
+    padding: var(--e3);
+    border-radius: var(--r-carte);
+    background: var(--creme);
+    border: 1px solid var(--bordure);
+  }
+
+  .sante-icone {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    flex: none;
+    border-radius: 11px;
+    background: var(--surface);
+    color: var(--rose);
+  }
+
+  .sante-carte h3 {
+    font-size: 14.5px;
+    font-weight: 700;
+  }
+
+  .sante-carte p {
+    margin-top: 3px;
+    font-size: 13px;
+    color: var(--texte-2);
+    line-height: 1.45;
+  }
+
+  /* --- L'avertissement obligatoire --- */
+  .avertissement {
+    display: flex;
+    gap: var(--e2);
+    align-items: flex-start;
+    padding: var(--e3);
+    border: 1px solid var(--bordure);
+    border-radius: var(--r-carte);
+    background: var(--surface);
+    font-size: 12.5px;
+    color: var(--texte-2);
+    line-height: 1.5;
+  }
+
+  .avertissement strong {
+    color: var(--encre);
+  }
+
+  /* --- Le vide --- */
+  .vide h1 {
+    font-size: 20px;
+    font-weight: 700;
+  }
+
+  .vide p {
+    margin: var(--e2) 0 var(--e3);
+    font-size: 14px;
+    color: var(--texte-2);
+    line-height: 1.5;
+  }
+</style>

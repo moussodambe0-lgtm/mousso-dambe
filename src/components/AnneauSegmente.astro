@@ -1,0 +1,285 @@
+---
+/**
+ * LE GRAND ANNEAU DU CYCLE.
+ *
+ * Section 4.1 du cahier d'Arthur : un segment par jour, coloré selon la
+ * phase, un curseur sur le jour actuel, et le chiffre au centre.
+ *
+ * Arthur, le 12 octobre 2026 : « jour 1 sur 28, c'est trop basique ». Ce qui
+ * rend celui-ci différent d'une jauge, c'est qu'il montre TOUT le cycle d'un
+ * coup : on voit où sont les règles, où est la fenêtre fertile, et où on en
+ * est entre les deux. Un chiffre seul ne dit jamais ça.
+ *
+ * Tout est dessiné sur le serveur. Les segments sont des arcs tracés un par
+ * un : chacun porte son jour, donc chacun est touchable, et le navigateur
+ * peut les annoncer un par un à un lecteur d'écran.
+ *
+ * Trois règles de dessin tenues d'un bout à l'autre :
+ *   - deux couleurs qu'il faut distinguer ne diffèrent jamais par la seule
+ *     teinte : le jour d'ovulation a un halo et un segment plus épais ;
+ *   - rien n'est posé en `style=` (la politique de sécurité du contenu les
+ *     refuse) : les retards d'animation passent par des classes ;
+ *   - l'animation d'entrée se joue une fois, et jamais quand elle a demandé
+ *     moins de mouvement.
+ */
+import { segmentsAnneau, type TypeJour } from '../lib/cycle-calcul';
+
+interface Props {
+  jourActuel: number;
+  dureeRegles: number;
+  dureeCycle: number;
+  /** Les jours du cycle qu'elle a notés, et si elle y a déclaré du sang. */
+  notes?: { jour: number; saigne: boolean }[];
+  /** Où mène un segment touché. `{jour}` est remplacé par le numéro. */
+  lien?: string;
+  anime?: boolean;
+}
+
+const { jourActuel, dureeRegles, dureeCycle, notes = [], lien, anime = true } = Astro.props;
+
+const segments = segmentsAnneau(dureeRegles, dureeCycle);
+
+const CENTRE = 120;
+const RAYON = 96;
+const RAYON_NOTES = 74;
+// Un petit vide entre deux segments, pour qu'on les compte à l'œil.
+const VIDE = Math.min(1.6, 160 / dureeCycle);
+
+const point = (angleDegres: number, rayon: number) => {
+  const a = ((angleDegres - 90) * Math.PI) / 180;
+  return {
+    x: Number((CENTRE + rayon * Math.cos(a)).toFixed(2)),
+    y: Number((CENTRE + rayon * Math.sin(a)).toFixed(2)),
+  };
+};
+
+const arc = (debut: number, fin: number, rayon: number) => {
+  const d = point(debut, rayon);
+  const f = point(fin, rayon);
+  const grand = fin - debut > 180 ? 1 : 0;
+  return `M ${d.x} ${d.y} A ${rayon} ${rayon} 0 ${grand} 1 ${f.x} ${f.y}`;
+};
+
+const COULEURS: Record<TypeJour, string> = {
+  regles: 'var(--grenat)',
+  fertile: 'var(--lilas)',
+  ovulation: 'var(--lilas-fort)',
+  faible: 'var(--vert-doux-trait)',
+};
+
+const DIT: Record<TypeJour, string> = {
+  regles: 'règles',
+  fertile: 'jour fertile',
+  ovulation: 'ovulation',
+  faible: 'risque plus faible',
+};
+
+const parJour = 360 / dureeCycle;
+const traits = segments.map((s) => {
+  const debut = (s.jour - 1) * parJour + VIDE / 2;
+  const fin = s.jour * parJour - VIDE / 2;
+  return {
+    ...s,
+    chemin: arc(debut, fin, RAYON),
+    passe: s.jour < jourActuel,
+    actuel: s.jour === jourActuel,
+    // Le retard d'apparition, par paquets de cinq jours : trente classes
+    // suffisent pour un cycle de 45 jours, là où un style en ligne par
+    // segment serait refusé par la politique de sécurité du contenu.
+    vague: Math.min(9, Math.floor((s.jour - 1) / Math.max(1, Math.ceil(dureeCycle / 10)))),
+  };
+});
+
+const curseur = point((jourActuel - 0.5) * parJour, RAYON);
+const typeActuel = segments.find((s) => s.jour === jourActuel)?.type ?? 'faible';
+
+const pointsNotes = notes
+  .filter((n) => n.jour >= 1 && n.jour <= dureeCycle)
+  .map((n) => ({ ...point((n.jour - 0.5) * parJour, RAYON_NOTES), saigne: n.saigne }));
+
+const resume =
+  `Jour ${jourActuel} sur ${dureeCycle} de ton cycle, ${DIT[typeActuel]}` +
+  (pointsNotes.length > 0 ? `, ${pointsNotes.length} journées notées` : '');
+---
+
+<div class="anneau-s">
+  <svg viewBox="0 0 240 240" role="img" aria-label={resume} class={anime ? 'anneau-s-entre' : ''}>
+    <defs>
+      <radialGradient id="halo-ovulation" cx=".5" cy=".5" r=".5">
+        <stop offset="0" stop-color="var(--lilas)" stop-opacity=".55" />
+        <stop offset="1" stop-color="var(--lilas)" stop-opacity="0" />
+      </radialGradient>
+    </defs>
+
+    {
+      traits.map((t) => (
+        <>
+          {t.type === 'ovulation' && (
+            <circle cx={point((t.jour - 0.5) * parJour, RAYON).x} cy={point((t.jour - 0.5) * parJour, RAYON).y} r="15" fill="url(#halo-ovulation)" />
+          )}
+          {lien ? (
+            <a href={lien.replace('{jour}', String(t.jour))} aria-label={`Jour ${t.jour}, ${DIT[t.type]}`}>
+              <path
+                d={t.chemin}
+                stroke={COULEURS[t.type]}
+                stroke-width={t.type === 'ovulation' ? 17 : 12}
+                stroke-linecap="round"
+                fill="none"
+                class:list={['segment', `vague-${t.vague}`, t.passe && 'segment-passe', t.actuel && 'actuel']}
+              />
+            </a>
+          ) : (
+            <path
+              d={t.chemin}
+              stroke={COULEURS[t.type]}
+              stroke-width={t.type === 'ovulation' ? 17 : 12}
+              stroke-linecap="round"
+              fill="none"
+              class:list={['segment', `vague-${t.vague}`, t.passe && 'segment-passe', t.actuel && 'actuel']}
+            />
+          )}
+        </>
+      ))
+    }
+
+    {/* Ses journées notées, posées à l'intérieur : l'anneau devient son carnet. */}
+    {
+      pointsNotes.map((p) => (
+        <circle cx={p.x} cy={p.y} r={p.saigne ? 3.4 : 2.4} fill={p.saigne ? 'var(--grenat)' : 'var(--texte-3)'} class={anime ? 'note-posee' : ''} />
+      ))
+    }
+
+    {/* Le curseur : une bille qui glisse jusqu'au jour d'aujourd'hui. */}
+    <g class={anime ? 'curseur-glisse' : ''}>
+      <circle cx={curseur.x} cy={curseur.y} r="11" fill="var(--fond)" />
+      <circle cx={curseur.x} cy={curseur.y} r="7" fill="var(--encre)" class={anime ? 'curseur-respire' : ''} />
+      <circle cx={curseur.x - 2.2} cy={curseur.y - 2.2} r="2.2" fill="#fff" opacity=".55" />
+    </g>
+  </svg>
+
+  <div class="anneau-s-centre">
+    <slot />
+  </div>
+</div>
+
+<style>
+  .anneau-s {
+    position: relative;
+    width: 100%;
+    max-width: 282px;
+    margin: 0 auto;
+    aspect-ratio: 1;
+  }
+
+  .anneau-s svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+
+  .anneau-s-centre {
+    position: absolute;
+    inset: 22%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    text-align: center;
+    pointer-events: none;
+  }
+
+  /* Les jours déjà passés restent lisibles, mais ne tirent plus l'œil. */
+  .segment-passe {
+    opacity: 0.42;
+  }
+
+  .actuel {
+    opacity: 1;
+  }
+
+  /* L'anneau se dessine : les segments apparaissent par vagues, du jour 1
+     jusqu'au dernier, puis le curseur glisse. */
+  .segment {
+    transform-box: view-box;
+    transform-origin: 120px 120px;
+    animation: seg-pose 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
+
+  .vague-0 { animation-delay: 40ms; }
+  .vague-1 { animation-delay: 90ms; }
+  .vague-2 { animation-delay: 140ms; }
+  .vague-3 { animation-delay: 190ms; }
+  .vague-4 { animation-delay: 240ms; }
+  .vague-5 { animation-delay: 290ms; }
+  .vague-6 { animation-delay: 340ms; }
+  .vague-7 { animation-delay: 390ms; }
+  .vague-8 { animation-delay: 440ms; }
+  .vague-9 { animation-delay: 490ms; }
+
+  .curseur-glisse {
+    transform-box: view-box;
+    transform-origin: 120px 120px;
+    animation: curseur-arrive 0.9s 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .note-posee {
+    animation: note-pose 0.4s 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
+
+  .curseur-respire {
+    animation: respire 3.4s 1.4s ease-in-out infinite;
+  }
+
+  @keyframes seg-pose {
+    from {
+      opacity: 0;
+      transform: scale(0.86);
+    }
+  }
+
+  /* Le curseur part du haut de l'anneau, c'est-à-dire du premier jour, et
+     tourne jusqu'à aujourd'hui. On tourne le groupe entier, ce qui coûte un
+     seul calcul au navigateur. */
+  @keyframes curseur-arrive {
+    from {
+      opacity: 0;
+      transform: rotate(-26deg);
+    }
+    to {
+      opacity: 1;
+      transform: rotate(0);
+    }
+  }
+
+  @keyframes note-pose {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @keyframes respire {
+    0%,
+    100% {
+      r: 7;
+    }
+    50% {
+      r: 8.2;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .segment,
+    .curseur-glisse,
+    .note-posee,
+    .curseur-respire {
+      animation: none;
+      opacity: 1;
+    }
+
+    .segment-passe {
+      opacity: 0.42;
+    }
+  }
+</style>

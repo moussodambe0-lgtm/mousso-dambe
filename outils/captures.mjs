@@ -47,6 +47,7 @@ const ECRANS = [
   { nom: '07-questionnaire-5', url: '/bienvenue?etape=5', connectee: true },
   { nom: '07b-questionnaire-6', url: '/bienvenue?etape=6', connectee: true },
   { nom: '08-cycle', url: '/cycle', connectee: true },
+  { nom: '08b-calendrier', url: '/cycle/calendrier', connectee: true },
   { nom: '09-journal', url: '/journal', connectee: true },
   { nom: '10-dambe', url: '/dambe', connectee: true },
   { nom: '11-boutique', url: '/boutique', connectee: true },
@@ -120,6 +121,12 @@ function pilote(ws) {
 }
 
 fs.mkdirSync(SORTIE, { recursive: true });
+
+// Le profil du navigateur est jeté à chaque fois. Sans ça, l'agent de service
+// de l'application (public/sw.js) garde les feuilles de style de la dernière
+// fois : le 12 octobre 2026, un anneau tout neuf s'est affiché sans ses
+// couleurs pendant deux captures, et la cause n'était pas dans le code.
+fs.rmSync(path.join(SORTIE, '.profil'), { recursive: true, force: true });
 const cookie = await cookieDeSession();
 
 const navigateur = spawn(
