@@ -259,7 +259,15 @@ console.log('\nEntrer sans compte');
   // téléphone n'a plus d'écran qui y mène.
   const compte = await ouvrir('/compte');
   verifier('la page Compte montre son prénom', compte.html.includes('Salimata'));
-  verifier('et dit qu’elle n’a pas d’adresse', compte.html.includes('Sans compte, sans mot de passe'));
+  // La phrase « Sans compte, sans mot de passe » a été supprimée le 13 octobre
+  // 2026, à la demande d'Arthur : elle expliquait un manque à quelqu'un qui
+  // n'avait rien demandé. Ce qu'on vérifie maintenant, c'est qu'un compte sans
+  // email n'affiche AUCUNE ligne d'email, au lieu d'une ligne vide ou d'un
+  // « null » écrit en toutes lettres.
+  verifier(
+    'et n’affiche aucune adresse email',
+    !compte.html.includes('Sans compte, sans mot de passe') && !/>\s*null\s*</.test(compte.html)
+  );
 
   const accueil = await ouvrir('/');
   verifier(

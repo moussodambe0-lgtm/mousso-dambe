@@ -16,7 +16,20 @@
  */
 import { OLLAMA_URL, OLLAMA_API_KEY, ASSISTANTE_MODELE } from 'astro:env/server';
 
-const MODELE_PAR_DEFAUT = 'gemma3:4b';
+/**
+ * `gemma3:4b` était le modèle visé au départ. Ollama l'a RETIRÉ le 15 juillet
+ * 2026 : il répond maintenant « 410, retired », et l'assistante aurait donc
+ * été muette dès sa mise en service. Constaté le 13 octobre 2026, en branchant
+ * la vraie clé d'Arthur.
+ *
+ * `gemma4:31b` le remplace : c'est son successeur direct, il est compris dans
+ * le plan gratuit d'Ollama (les modèles « flash » de GLM et de DeepSeek, eux,
+ * demandent l'abonnement payant), il répond en trois secondes et il écrit un
+ * français correct. `gpt-oss:20b` a été écarté : il met tout son texte dans un
+ * champ « thinking » et laisse `content` vide, donc Dambé n'aurait rien eu à
+ * dire.
+ */
+const MODELE_PAR_DEFAUT = 'gemma4:31b';
 
 /**
  * Au-delà d'une minute, elle est déjà partie : mieux vaut dire que Dambé ne

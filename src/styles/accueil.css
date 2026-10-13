@@ -90,7 +90,7 @@
   outline: none;
   background: transparent;
   font-family: inherit;
-  font-size: 15px;
+  font-size: 17px;
   color: var(--acc-ink);
 }
 
@@ -119,7 +119,7 @@
 
 .acc-recherche-dit {
   margin: 4px 0 8px;
-  font-size: 13px;
+  font-size: 14.5px;
   color: var(--acc-muted);
 }
 
@@ -173,7 +173,7 @@
 
 .acc-carte-titre {
   font-family: var(--titre);
-  font-size: 22px;
+  font-size: 24.5px;
   font-weight: 800;
   line-height: 1.05;
   letter-spacing: -0.4px;
@@ -184,7 +184,7 @@
 
 .acc-carte-sous {
   margin-top: 4px;
-  font-size: 12px;
+  font-size: 13.5px;
   font-weight: 500;
   line-height: 1.35;
   opacity: 0.85;
@@ -221,13 +221,13 @@
   border-radius: 50%;
   background: var(--acc-lilas-fonce);
   color: #fff;
-  font-size: 11px;
+  font-size: 12.5px;
   font-weight: 700;
 }
 
 .acc-pied-texte {
   max-width: 118px;
-  font-size: 11.5px;
+  font-size: 13px;
   font-weight: 600;
   line-height: 1.2;
   opacity: 0.8;
@@ -244,7 +244,7 @@
   background: var(--acc-ink);
   color: #fff;
   font-family: var(--texte);
-  font-size: 14px;
+  font-size: 15.5px;
   font-weight: 600;
 }
 
@@ -327,14 +327,14 @@
 }
 
 .acc-capsule-nom {
-  font-size: 13px;
+  font-size: 14.5px;
   font-weight: 500;
   color: var(--acc-muted);
 }
 
 .acc-capsule-num {
   font-family: var(--titre);
-  font-size: 17px;
+  font-size: 19px;
   font-weight: 600;
 }
 
@@ -363,7 +363,7 @@
   border: 1.5px solid var(--acc-line);
   border-radius: 18px;
   background: var(--acc-surface);
-  font-size: 14px;
+  font-size: 15.5px;
   line-height: 1.35;
   animation: acc-monte 0.5s 0.5s ease both;
 }
@@ -473,7 +473,7 @@
 
 .banniere-mots h2 {
   font-family: var(--titre);
-  font-size: 21px;
+  font-size: 23.5px;
   font-weight: 800;
   line-height: 1.1;
   letter-spacing: -0.3px;
@@ -481,7 +481,7 @@
 
 .banniere-mots p {
   margin-top: 6px;
-  font-size: 12.5px;
+  font-size: 14px;
   font-weight: 500;
   line-height: 1.35;
   opacity: 0.88;
@@ -497,7 +497,7 @@
   border-radius: 999px;
   background: #fff;
   color: var(--encre);
-  font-size: 13.5px;
+  font-size: 15px;
   font-weight: 700;
 }
 
@@ -550,7 +550,7 @@
   }
 
   .banniere-mots h2 {
-    font-size: 19px;
+    font-size: 21.5px;
   }
 }
 

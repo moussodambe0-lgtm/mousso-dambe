@@ -21,7 +21,7 @@
   fill: var(--encre, #1B1116);
   font-family: "Bricolage Grotesque", system-ui, sans-serif;
   font-weight: 800;
-  font-size: 30px;
+  font-size: 32px;
   letter-spacing: -.02em;
   animation: md-logo-nom .4s .58s cubic-bezier(.2, .8, .2, 1) both;
 }

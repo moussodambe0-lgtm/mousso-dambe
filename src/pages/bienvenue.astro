@@ -464,6 +464,11 @@ const prenomFini = Astro.url.searchParams.get('prenom') ?? moi.prenom;
     min-height: 100dvh;
     max-width: 480px;
     margin: 0 auto;
+    /* Le glissement d'arrivée part de la droite : sans ça, l'écran se laisse
+       tirer de côté pendant une demi-seconde. `clip` plutôt que `hidden`, qui
+       créerait une zone de défilement. Défaut d'avant l'agrandissement des
+       écritures du 13 octobre 2026, trouvé en le vérifiant. */
+    overflow-x: clip;
   }
 
   /* --- La barre d'avancement --- */
@@ -494,7 +499,7 @@ const prenomFini = Astro.url.searchParams.get('prenom') ?? moi.prenom;
     display: flex;
     justify-content: space-between;
     margin-bottom: 5px;
-    font-size: 12px;
+    font-size: 13.5px;
     color: var(--texte-3);
   }
 
@@ -565,14 +570,14 @@ const prenomFini = Astro.url.searchParams.get('prenom') ?? moi.prenom;
   }
 
   .bas h1 {
-    font-size: 23px;
+    font-size: 26px;
     font-weight: 800;
     line-height: 1.2;
   }
 
   .aide {
     margin-top: 6px;
-    font-size: 13.5px;
+    font-size: 15px;
     color: var(--texte-2);
     line-height: 1.45;
   }
@@ -596,7 +601,7 @@ const prenomFini = Astro.url.searchParams.get('prenom') ?? moi.prenom;
     border-radius: var(--r-ronde);
     background: var(--surface-douce);
     color: var(--texte-2);
-    font-size: 11.5px;
+    font-size: 13px;
     font-weight: 600;
   }
 
@@ -608,13 +613,13 @@ const prenomFini = Astro.url.searchParams.get('prenom') ?? moi.prenom;
   .libelle-petit {
     display: block;
     margin-bottom: 5px;
-    font-size: 13px;
+    font-size: 14.5px;
     font-weight: 600;
     color: var(--texte-2);
   }
 
   .libelle-petit {
-    font-size: 12px;
+    font-size: 13.5px;
   }
 
   .champ {
@@ -625,7 +630,7 @@ const prenomFini = Astro.url.searchParams.get('prenom') ?? moi.prenom;
     border-radius: var(--r-champ);
     background: var(--surface);
     font-family: var(--texte);
-    font-size: 16px;
+    font-size: 18px;
   }
 
   .ligne-saisie {
@@ -652,7 +657,7 @@ const prenomFini = Astro.url.searchParams.get('prenom') ?? moi.prenom;
     border-radius: var(--r-ronde);
     background: var(--surface);
     font-family: var(--texte);
-    font-size: 13.5px;
+    font-size: 15px;
     font-weight: 500;
   }
 
@@ -711,12 +716,12 @@ const prenomFini = Astro.url.searchParams.get('prenom') ?? moi.prenom;
 
   .goutte-n {
     font-family: var(--titre);
-    font-size: 19px;
+    font-size: 21.5px;
     font-weight: 800;
   }
 
   .goutte-mot {
-    font-size: 10.5px;
+    font-size: 12px;
     color: var(--texte-3);
   }
 
@@ -765,12 +770,12 @@ const prenomFini = Astro.url.searchParams.get('prenom') ?? moi.prenom;
   }
 
   .je-sais-pas b {
-    font-size: 14px;
+    font-size: 15.5px;
     font-weight: 700;
   }
 
   .je-sais-pas span {
-    font-size: 11.5px;
+    font-size: 13px;
     color: var(--texte-3);
   }
 
@@ -780,12 +785,12 @@ const prenomFini = Astro.url.searchParams.get('prenom') ?? moi.prenom;
 
   .carte-courte-n {
     font-family: var(--titre);
-    font-size: 21px;
+    font-size: 23.5px;
     font-weight: 800;
   }
 
   .carte-courte-mot {
-    font-size: 11px;
+    font-size: 12.5px;
     color: var(--texte-3);
   }
 
@@ -847,12 +852,12 @@ const prenomFini = Astro.url.searchParams.get('prenom') ?? moi.prenom;
 
   .carte-texte b {
     display: block;
-    font-size: 15px;
+    font-size: 17px;
     line-height: 1.25;
   }
 
   .carte-texte span {
-    font-size: 12.5px;
+    font-size: 14px;
     color: var(--texte-2);
     line-height: 1.3;
   }
@@ -874,7 +879,7 @@ const prenomFini = Astro.url.searchParams.get('prenom') ?? moi.prenom;
     border: 1px solid var(--bordure);
     border-radius: 18px;
     background: var(--surface);
-    font-size: 13.5px;
+    font-size: 15px;
     line-height: 1.3;
     cursor: pointer;
   }
@@ -942,7 +947,7 @@ const prenomFini = Astro.url.searchParams.get('prenom') ?? moi.prenom;
   }
 
   .carte-carree-mot {
-    font-size: 13.5px;
+    font-size: 15px;
     font-weight: 600;
     line-height: 1.3;
   }
@@ -960,7 +965,7 @@ const prenomFini = Astro.url.searchParams.get('prenom') ?? moi.prenom;
   }
 
   .fin h1 {
-    font-size: 27px;
+    font-size: 30px;
     font-weight: 800;
   }
 

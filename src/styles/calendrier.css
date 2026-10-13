@@ -60,18 +60,18 @@
 }
 
 .cal-resume-quoi {
-  font-size: 12px;
+  font-size: 13.5px;
   color: var(--cal-muted);
 }
 
 .cal-resume-valeur {
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 700;
   line-height: 1.15;
 }
 
 .cal-resume-quand {
-  font-size: 12px;
+  font-size: 13.5px;
   font-weight: 600;
 }
 
@@ -101,7 +101,7 @@
 
 .cal-mois-titre {
   font-family: var(--titre);
-  font-size: 20px;
+  font-size: 22.5px;
   font-weight: 700;
   text-transform: capitalize;
 }
@@ -127,7 +127,7 @@
   grid-template-columns: repeat(7, 1fr);
   margin-bottom: 8px;
   text-align: center;
-  font-size: 14px;
+  font-size: 15.5px;
   font-weight: 600;
   color: var(--cal-muted);
 }
@@ -170,7 +170,7 @@
 .cal-num {
   position: relative;
   z-index: 2;
-  font-size: 17px;
+  font-size: 19px;
   font-weight: 600;
 }
 
@@ -218,7 +218,7 @@
   border-radius: 9px;
   background: #fff;
   color: var(--fertile);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   border: 1px solid var(--fertile-soft);
 }
@@ -318,7 +318,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
+  font-size: 14.5px;
   font-weight: 500;
 }
 
@@ -391,13 +391,13 @@
 
 .cal-fiche-date {
   font-family: var(--titre);
-  font-size: 20px;
+  font-size: 22.5px;
   font-weight: 700;
   text-transform: capitalize;
 }
 
 .cal-fiche-type {
-  font-size: 14px;
+  font-size: 15.5px;
   font-weight: 600;
 }
 
@@ -407,7 +407,7 @@
 
 .cal-fiche-texte {
   margin-bottom: 16px;
-  font-size: 14px;
+  font-size: 15.5px;
   line-height: 1.5;
   color: #5e4e61;
 }
@@ -423,7 +423,7 @@
   background: var(--blood);
   color: #fff;
   font-family: var(--texte);
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 700;
   cursor: pointer;
 }
