@@ -351,10 +351,22 @@ const enRegles = info?.type === 'regles';
               <p class="info-petit">Une estimation, pas une certitude</p>
             </article>
 
-            <article class:list={['info', 'info-jauge', risque.classe]}>
-              <span class="info-icone"><Icone nom="info" taille={24} /></span>
-              <h2>Risque de grossesse aujourd'hui</h2>
-              <p class="info-grand">{risque.mot}</p>
+            {/* Le risque de grossesse, en GRAND et avec un signal d'alerte
+                (demande d'Arthur du 13 octobre 2026 : « écrit en plus gros
+                avec un emoji qui signifie alerte, genre un panneau rouge »).
+                C'est la seule information de cet écran qui engage une
+                décision, elle ne doit pas se lire comme les autres cartes.
+
+                Le panneau est ROUGE quand le risque est élevé, orangé quand il
+                est moyen et vert doux quand il est faible : un panneau rouge
+                posé sur un risque faible ferait crier au loup, et la femme
+                cesserait de le croire le jour où il dit vrai. */}
+            <article class:list={['info', 'info-jauge', 'panneau-risque', risque.classe]}>
+              <span class="info-icone panneau-emoji" aria-hidden="true">
+                {risque.classe === 'risque-haut' ? '🚨' : '⚠️'}
+              </span>
+              <h2 class="panneau-titre">Risque de grossesse aujourd'hui</h2>
+              <p class="info-grand panneau-mot">{risque.mot}</p>
               <div class="jauge" role="img" aria-label={`Risque ${risque.mot.toLowerCase()}`}>
                 <span class:list={['jauge-pleine', `jauge-${risque.part}`]}></span>
               </div>
@@ -617,19 +629,23 @@ const enRegles = info?.type === 'regles';
     color: var(--encre);
   }
 
+  /* Le TITRE est ce qu'on lit d'abord : « Prochaines règles », « Fenêtre
+     fertile ». La date vient dessous, plus petite. C'était l'inverse (la date
+     en gros, le titre en petit) ; Arthur l'a demandé dans l'autre sens le 13
+     octobre 2026. */
   .info h2 {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--texte-2);
-    line-height: 1.25;
+    font-family: var(--titre);
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--encre);
+    line-height: 1.2;
   }
 
   .info-grand {
     margin-top: 3px;
-    font-family: var(--titre);
-    font-size: 17px;
-    font-weight: 700;
-    line-height: 1.2;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.3;
   }
 
   .info-petit {
@@ -670,6 +686,82 @@ const enRegles = info?.type === 'regles';
   .risque-bas .info-grand { color: var(--vert-doux); }
   .risque-moyen .info-grand { color: var(--peche); }
   .risque-haut .info-grand { color: var(--lilas-fort); }
+
+  /* --- Le panneau du risque ---
+     Plus grand que les autres cartes : le titre et le mot sont en gros, et
+     l'icône est un signal d'alerte. La couleur suit le niveau, jamais l'inverse
+     (voir le commentaire dans le balisage). */
+  .panneau-risque {
+    grid-template-columns: 64px 1fr;
+    padding: var(--e4);
+    border-width: 2px;
+  }
+
+  .panneau-risque .info-icone {
+    width: 64px;
+    height: 64px;
+    border-radius: 20px;
+  }
+
+  .panneau-emoji {
+    font-size: 36px;
+    line-height: 1;
+  }
+
+  .panneau-risque .panneau-titre {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--encre);
+    line-height: 1.2;
+  }
+
+  .panneau-risque .panneau-mot {
+    margin-top: 2px;
+    font-size: 32px;
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+  }
+
+  .panneau-risque .jauge {
+    height: 10px;
+    margin-top: 10px;
+  }
+
+  .panneau-risque.risque-haut {
+    background: #ffe9ec;
+    border-color: #e0344f;
+  }
+
+  .panneau-risque.risque-haut .panneau-mot {
+    color: #c4132f;
+  }
+
+  .panneau-risque.risque-haut .info-icone {
+    background: #e0344f;
+  }
+
+  .panneau-risque.risque-haut .jauge-pleine {
+    background: #e0344f;
+  }
+
+  .panneau-risque.risque-moyen {
+    background: #fff3e0;
+    border-color: #f0a640;
+  }
+
+  .panneau-risque.risque-moyen .panneau-mot {
+    color: #b45309;
+  }
+
+  .panneau-risque.risque-bas {
+    background: #eaf7ef;
+    border-color: #9fd4b3;
+  }
+
+  .panneau-risque.risque-bas .panneau-mot {
+    color: #1e7a45;
+  }
 
   @keyframes jauge-monte {
     from {

@@ -407,13 +407,16 @@ const photoDe = (i: number) => photos[i] ?? photos[photos.length - 1] ?? null;
           <i class="actif"></i><i></i><i></i>
         </div>
 
-        {/* --- La bande des jours --- */}
+        {/* --- La bande des jours ---
+            Toucher une date ouvre le CALENDRIER sur ce jour, avec sa fiche
+            (demande d'Arthur du 13 octobre 2026). Elle menait avant à
+            `/?jour=…`, qui ne faisait que changer une ligne sous la bande. */}
         <section class="acc-semaine" aria-label="Les jours à venir">
           {
             semaine.slice(0, 7).map((j) => (
               <a
                 class:list={['acc-capsule', j.aujourdhui && 'aujourdhui', !j.aujourdhui && j.iso === choisi?.iso && 'choisie']}
-                href={`/?jour=${j.iso}`}
+                href={`/cycle/calendrier?mois=${j.iso.slice(0, 7)}&jour=${j.iso}`}
                 aria-label={`${dateLongue(j.iso)}, ${DIT[j.type].quoi}`}
               >
                 <span class="acc-capsule-marque">

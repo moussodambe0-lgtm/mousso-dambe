@@ -15,14 +15,16 @@ interface Props {
   largeur?: number;
   hauteur?: number;
   titre?: string;
+  /** Aplat, sans dégradé ni reflet ni ombre : pour le calendrier. */
+  plat?: boolean;
 }
 
-const { numero = '', prevue = false, largeur = 36, hauteur = 43, titre } = Astro.props;
+const { numero = '', prevue = false, largeur = 36, hauteur = 43, titre, plat = false } = Astro.props;
 const CHEMIN = 'M20 2C20 2 5 20 5 31a15 15 0 0 0 30 0C35 20 20 2 20 2Z';
 ---
 
 <svg
-  class:list={['goutte', prevue && 'goutte-prevue']}
+  class:list={['goutte', prevue && 'goutte-prevue', plat && 'goutte-plate']}
   width={largeur}
   height={hauteur}
   viewBox="0 0 40 48"
@@ -41,8 +43,8 @@ const CHEMIN = 'M20 2C20 2 5 20 5 31a15 15 0 0 0 30 0C35 20 20 2 20 2Z';
       />
     ) : (
       <>
-        <path d={CHEMIN} fill="url(#g-sang)" />
-        <ellipse
+        <path d={CHEMIN} fill={plat ? 'var(--blood)' : 'url(#g-sang)'} />
+        {!plat && <ellipse
           cx="13.5"
           cy="21"
           rx="2.4"
@@ -50,7 +52,7 @@ const CHEMIN = 'M20 2C20 2 5 20 5 31a15 15 0 0 0 30 0C35 20 20 2 20 2Z';
           fill="#fff"
           opacity=".45"
           transform="rotate(-25 13.5 21)"
-        />
+        />}
       </>
     )
   }

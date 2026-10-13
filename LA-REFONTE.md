@@ -274,12 +274,36 @@ brune, le reste tel quel, la fleur du logo à la place de la croix). Outils :
 gardée : un emblème proche de la croix rouge est protégé par les Conventions de
 Genève, dont le Burkina Faso est signataire. La fleur du logo est à la place.
 
-**Les photos du panneau « médecin ».** Trois personnes différentes : la femme
-au stéthoscope, l'homme que tu as envoyé, et une troisième (Pexels). Attention :
-la page dit « le médecin » au singulier. Ce sont des photos d'illustration,
-chacune porte la mention « Illustration », et **la photo de l'homme n'a pas de
-source connue** : dis-moi d'où elle vient, ou remplaçons-la avant la mise en
-ligne (`atelier-motion/images/medecin/LICENCE.md`).
+**Les photos du panneau « médecin ».** Trois personnes différentes : une femme
+au stéthoscope, un homme (la photo que tu avais envoyée n'avait pas de source
+connue, elle a été remplacée par une photo libre, Pexels n° 4989148, et tu m'as
+demandé de la changer encore : Motion prépare des candidats plus âgés), et une
+troisième femme. Attention : la page dit « le médecin » au singulier. Ce sont
+des photos d'illustration, chacune porte la mention « Illustration ». Les
+sources et licences sont dans `atelier-motion/images/medecin/LICENCE.md`.
+
+**Le calendrier, à plat.** Plus de dégradés, d'ombres, de halo qui respire ni
+de rebonds. La période fertile est en lilas (c'est la couleur de l'anneau de
+Mon cycle), le bébé n'est plus que sur le jour d'ovulation, et toutes les
+autres dates sont ordinaires. Tu avais dit « vert » : le vert veut dire
+« risque plus faible » partout dans l'application, le mettre sur les jours
+fertiles aurait inversé son sens, et tu as choisi le lilas. Les jours de règles
+gardent une goutte (plate) : sans elle le calendrier perd sa raison d'être. Dis
+-moi si tu veux la retirer aussi.
+
+**L'avertissement contraception a été réécrit** : il disait « les jours verts
+indiquent un risque plus faible », et il n'y a plus de jours verts. Il dit
+maintenant « les jours en lilas sont ceux où une grossesse est possible, mais
+les autres jours ne sont pas sans risque ». Il reste obligatoire sur le
+calendrier et sur Mon cycle.
+
+**Mon cycle.** Les titres des cartes de dates sont grands et les dates
+petites. Le « Risque de grossesse » est un panneau : titre et mot en grand,
+avec un signal d'alerte (🚨 quand le risque est élevé, ⚠️ sinon). Il est rouge
+quand le risque est élevé, orangé quand il est moyen et vert doux quand il est
+faible : un panneau rouge posé sur un risque faible ferait crier au loup.
+
+**Les dates de l'accueil** ouvrent le calendrier sur le jour touché.
 
 ---
 

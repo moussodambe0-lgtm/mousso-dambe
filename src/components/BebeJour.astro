@@ -13,9 +13,11 @@ interface Props {
   ovulation?: boolean;
   taille?: number;
   titre?: string;
+  /** Aplat, sans dégradé ni halo qui respire : pour le calendrier. */
+  plat?: boolean;
 }
 
-const { ovulation = false, taille = 44, titre } = Astro.props;
+const { ovulation = false, taille = 44, titre, plat = false } = Astro.props;
 
 /** Un cœur dessiné autour d'un point, pour les yeux du jour d'ovulation. */
 function coeur(cx: number, cy: number, s: number): string {
@@ -32,10 +34,10 @@ function coeur(cx: number, cy: number, s: number): string {
   aria-label={titre}
   aria-hidden={titre ? undefined : 'true'}
 >
-  {ovulation && <circle class="halo" cx="24" cy="26" r="23" fill="url(#g-halo)" />}
+  {ovulation && !plat && <circle class="halo" cx="24" cy="26" r="23" fill="url(#g-halo)" />}
   <circle cx="7.6" cy="28" r="3.6" fill="#B97A50" />
   <circle cx="40.4" cy="28" r="3.6" fill="#B97A50" />
-  <circle cx="24" cy="27" r="17" fill="url(#g-peau)" />
+  <circle cx="24" cy="27" r="17" fill={plat ? '#C98B5E' : 'url(#g-peau)'} />
   <path d="M22.6 11.2C19.6 7.4 22.4 3.4 26.6 4.6C24 5.4 23.4 8 26 10.2Z" fill="#3A2215" />
   <circle cx="13.5" cy="32" r="3.2" fill="#FF7E96" opacity={ovulation ? '.8' : '.5'} />
   <circle cx="34.5" cy="32" r="3.2" fill="#FF7E96" opacity={ovulation ? '.8' : '.5'} />

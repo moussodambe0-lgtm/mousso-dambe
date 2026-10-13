@@ -145,14 +145,24 @@ for (let j = 1; j <= dernier.getDate(); j += 1) {
 }
 while (cases.length % 7 !== 0) cases.push(null);
 
-// La bande verte relie les jours à risque faible qui se suivent DANS LA MÊME
-// RANGÉE : une bande qui sauterait d'une ligne à l'autre ne voudrait rien dire.
+// La bande LILAS relie les jours fertiles qui se suivent DANS LA MÊME RANGÉE :
+// une bande qui sauterait d'une ligne à l'autre ne voudrait rien dire.
+//
+// Demande d'Arthur du 13 octobre 2026 : « seulement sur la période fertile, le
+// bébé seulement le jour de l'ovulation, le reste des dates normal, sans rien
+// de distinctif ». Les jours à risque faible n'ont donc plus de bande verte :
+// ce sont des dates ordinaires. (Il avait dit « vert » ; le vert veut dire
+// « risque plus faible » partout ailleurs dans l'application, et le mettre
+// sur les jours les plus risqués aurait inversé son sens. Il a choisi le
+// lilas, qui est déjà celui de l'anneau du tableau de bord.)
+const fertileOuOvulation = (c: Case | null | undefined) =>
+  !!c && (c.type === 'fertile' || c.type === 'ovulation');
 for (let i = 0; i < cases.length; i += 1) {
   const c = cases[i];
-  if (!c || c.type !== 'faible') continue;
+  if (!c || !fertileOuOvulation(c)) continue;
   const colonne = i % 7;
-  const gauche = colonne > 0 && cases[i - 1]?.type === 'faible';
-  const droite = colonne < 6 && cases[i + 1]?.type === 'faible';
+  const gauche = colonne > 0 && fertileOuOvulation(cases[i - 1]);
+  const droite = colonne < 6 && fertileOuOvulation(cases[i + 1]);
   c.bande = gauche && droite ? '' : gauche ? 'bande-fin' : droite ? 'bande-debut' : 'bande-seule';
 }
 
@@ -208,7 +218,10 @@ const RISQUES: Record<string, { mot: string; classe: string }> = {
 // seule source. On met en gras deux morceaux de CETTE phrase, au lieu de la
 // recopier ici : une phrase recopiee finit toujours par diverger de
 // l'originale, et celle-ci ne doit jamais changer sans qu'on le veuille.
-const A_METTRE_EN_GRAS = ['jours verts', "n'est pas une methode de contraception fiable".replace('methode', 'méthode')];
+const A_METTRE_EN_GRAS = [
+  'les autres jours ne sont pas sans risque',
+  "n'est pas une méthode de contraception fiable",
+];
 const morceauxAvertissement: { texte: string; fort: boolean }[] = [];
 {
   let reste = AVERTISSEMENT_CONTRACEPTION;
@@ -229,7 +242,6 @@ function libelle(c: Case): string {
   if (c.type === 'regles') bouts.push(c.prevu ? 'règles prévues' : 'règles');
   else if (c.type === 'ovulation') bouts.push('ovulation probable');
   else if (c.type === 'fertile') bouts.push('jour fertile');
-  else bouts.push('risque plus faible');
   if (c.aujourdhui) bouts.push("aujourd'hui");
   return bouts.join(', ');
 }
@@ -254,7 +266,7 @@ function libelle(c: Case): string {
         aDesDonnees && (
           <section class="cal-resume">
             <div class="cal-resume-carte">
-              <GoutteJour largeur={26} hauteur={31} />
+              <GoutteJour plat largeur={26} hauteur={31} />
               <div>
                 <div class="cal-resume-quoi">Prochaines règles</div>
                 <div class="cal-resume-valeur">{dateCourte(prochaines!)}</div>
@@ -262,7 +274,7 @@ function libelle(c: Case): string {
               </div>
             </div>
             <div class="cal-resume-carte">
-              <BebeJour ovulation taille={34} />
+              <BebeJour plat ovulation taille={34} />
               <div>
                 <div class="cal-resume-quoi">Ovulation</div>
                 <div class="cal-resume-valeur">{dateCourte(ovulation!)}</div>
@@ -275,7 +287,7 @@ function libelle(c: Case): string {
 
       <section class="cal-carte">
         <div class="cal-marque">
-          <GoutteJour largeur={14} hauteur={17} />
+          <GoutteJour plat largeur={14} hauteur={17} />
           Mousso Dambé
         </div>
 
@@ -312,16 +324,22 @@ function libelle(c: Case): string {
                   {
                     c.type === 'regles' ? (
                       <span class="cal-icone">
-                        <GoutteJour numero={c.numero} prevue={c.prevu} />
+                        <GoutteJour plat numero={c.numero} prevue={c.prevu} />
                       </span>
                     ) : c.type === 'fertile' || c.type === 'ovulation' ? (
-                      <span class="cal-icone">
-                        <BebeJour ovulation={c.type === 'ovulation'} />
-                        <span class="cal-badge">{c.numero}</span>
-                      </span>
+                      <>
+                        <span class:list={['bande', 'bande-fertile', c.bande]}></span>
+                        {c.type === 'ovulation' ? (
+                          <span class="cal-icone">
+                            <BebeJour plat ovulation />
+                            <span class="cal-badge">{c.numero}</span>
+                          </span>
+                        ) : (
+                          <span class="cal-num">{c.numero}</span>
+                        )}
+                      </>
                     ) : (
                       <>
-                        <span class:list={['bande', c.bande]}></span>
                         {c.aujourdhui && <span class="cal-rond-plein"></span>}
                         <span class="cal-num">{c.numero}</span>
                       </>
@@ -334,13 +352,10 @@ function libelle(c: Case): string {
         </div>
 
         <div class="cal-legende">
-          <div><GoutteJour largeur={18} hauteur={22} /> Règles</div>
-          <div><GoutteJour largeur={18} hauteur={22} prevue /> Règles prévues</div>
-          <div><BebeJour taille={24} /> Jours fertiles</div>
-          <div><BebeJour taille={24} ovulation /> Ovulation</div>
-          <div class="cal-legende-large">
-            <span class="cal-legende-bande"></span> Risque de grossesse plus faible
-          </div>
+          <div><GoutteJour plat largeur={18} hauteur={22} /> Règles</div>
+          <div><GoutteJour plat largeur={18} hauteur={22} prevue /> Règles prévues</div>
+          <div><span class="cal-legende-bande"></span> Période fertile</div>
+          <div><BebeJour plat taille={24} ovulation /> Ovulation</div>
         </div>
       </section>
 
@@ -378,11 +393,13 @@ function libelle(c: Case): string {
               <div class:list={['cal-fiche-icone', TEXTES[fiche.type].fond]}>
                 {
                   fiche.type === 'regles' ? (
-                    <GoutteJour largeur={30} hauteur={36} prevue={fiche.prevu} />
+                    <GoutteJour plat largeur={30} hauteur={36} prevue={fiche.prevu} />
                   ) : fiche.type === 'faible' ? (
-                    <span class="pastille-verte-pleine"></span>
+                    <span class="pastille-neutre"></span>
+                  ) : fiche.type === 'ovulation' ? (
+                    <BebeJour plat ovulation taille={46} />
                   ) : (
-                    <BebeJour ovulation={fiche.type === 'ovulation'} taille={46} />
+                    <span class="pastille-fertile"></span>
                   )
                 }
               </div>
@@ -441,8 +458,8 @@ function libelle(c: Case): string {
   }
 
   .ecran-calendrier .rond {
-    border: none;
-    box-shadow: 0 4px 14px -6px rgba(150, 40, 80, 0.25);
+    border: 1px solid var(--cal-line);
+    box-shadow: none;
   }
 
   .marge-bas {
@@ -460,12 +477,20 @@ function libelle(c: Case): string {
     line-height: 1.5;
   }
 
-  .pastille-verte-pleine {
+  .pastille-neutre,
+  .pastille-fertile {
     display: block;
     width: 26px;
     height: 26px;
     border-radius: 50%;
-    background: #58b97a;
+  }
+
+  .pastille-neutre {
+    background: #d9d1d6;
+  }
+
+  .pastille-fertile {
+    background: var(--fertile);
   }
 </style>
 

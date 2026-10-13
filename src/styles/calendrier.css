@@ -27,12 +27,12 @@
   --cal-ink: #2a1a2e;
   --cal-muted: #9a8c9d;
   --cal-line: #f1e6eb;
-  --rayon-carte: 30px;
-  --ombre-carte: 0 18px 40px -18px rgba(150, 40, 80, 0.28), 0 2px 6px rgba(150, 40, 80, 0.06);
+  --rayon-carte: 22px;
+  --ombre-carte: none;
   --hauteur-case: 56px;
   --ressort: cubic-bezier(0.34, 1.56, 0.64, 1);
 
-  background: #fcf1f4;
+  background: var(--fond);
   color: var(--cal-ink);
   min-height: 100vh;
 }
@@ -52,12 +52,7 @@
   padding: 12px 14px;
   border-radius: 20px;
   background: var(--cal-card);
-  box-shadow: 0 6px 18px -12px rgba(150, 40, 80, 0.35);
-  animation: cal-monte 0.5s ease both;
-}
-
-.cal-resume-carte:nth-child(2) {
-  animation-delay: 0.08s;
+  border: 1px solid var(--cal-line);
 }
 
 .cal-resume-carte svg {
@@ -93,9 +88,8 @@
   padding: 20px 14px 18px;
   border-radius: var(--rayon-carte);
   background: var(--cal-card);
-  box-shadow: var(--ombre-carte);
+  border: 1px solid var(--cal-line);
   overflow: hidden;
-  animation: cal-monte 0.55s 0.1s ease both;
 }
 
 .cal-marque {
@@ -132,13 +126,13 @@
   height: 44px;
   border: none;
   border-radius: 50%;
-  background: #fbf3f6;
+  background: var(--surface-douce);
   color: var(--cal-ink);
   cursor: pointer;
 }
 
 .cal-fleche:hover {
-  background: #f6e9ef;
+  background: var(--cal-line);
 }
 
 .cal-jours-noms {
@@ -184,18 +178,7 @@
   z-index: 2;
   display: grid;
   place-items: center;
-  animation: cal-pop 0.45s var(--ressort) both;
 }
-
-/* Le décalage en cascade, sans attribut style : une règle par colonne de la
-   grille suffit à donner l'impression d'une vague. */
-.cal-grille > *:nth-child(7n + 1) .cal-icone { animation-delay: 20ms; }
-.cal-grille > *:nth-child(7n + 2) .cal-icone { animation-delay: 40ms; }
-.cal-grille > *:nth-child(7n + 3) .cal-icone { animation-delay: 60ms; }
-.cal-grille > *:nth-child(7n + 4) .cal-icone { animation-delay: 80ms; }
-.cal-grille > *:nth-child(7n + 5) .cal-icone { animation-delay: 100ms; }
-.cal-grille > *:nth-child(7n + 6) .cal-icone { animation-delay: 120ms; }
-.cal-grille > *:nth-child(7n + 7) .cal-icone { animation-delay: 140ms; }
 
 .cal-num {
   position: relative;
@@ -212,11 +195,6 @@
   display: block;
   width: 36px;
   height: 43px;
-  filter: drop-shadow(0 3px 4px rgba(160, 15, 35, 0.25));
-}
-
-.goutte-prevue {
-  filter: none;
 }
 
 .bebe {
@@ -240,7 +218,7 @@
   color: var(--fertile);
   font-size: 10px;
   font-weight: 700;
-  box-shadow: 0 1px 4px rgba(90, 50, 160, 0.25);
+  border: 1px solid var(--fertile-soft);
 }
 
 .halo {
@@ -248,7 +226,10 @@
   animation: cal-halo 2.2s ease-in-out infinite;
 }
 
-/* --- La bande verte des jours à risque faible ---------------------------- */
+/* --- La bande lilas de la période fertile -------------------------------
+   Demande d'Arthur du 13 octobre 2026 : la couleur seulement sur la période
+   fertile, le bébé seulement le jour de l'ovulation, et toutes les autres
+   dates ordinaires, sans rien de distinctif. */
 .bande {
   position: absolute;
   z-index: 1;
@@ -256,7 +237,10 @@
   bottom: 7px;
   left: 0;
   right: 0;
-  background: var(--safe);
+}
+
+.bande-fertile {
+  background: var(--fertile-soft);
 }
 
 .bande-debut {
@@ -275,8 +259,9 @@
   border-radius: 999px;
 }
 
-.jour-faible .cal-num {
-  color: var(--safe-ink);
+.jour-fertile .cal-num {
+  color: #4f35a8;
+  font-weight: 700;
 }
 
 /* --- Aujourd'hui --------------------------------------------------------- */
@@ -348,7 +333,7 @@
   height: 16px;
   flex: none;
   border-radius: 999px;
-  background: var(--safe);
+  background: var(--fertile-soft);
 }
 
 /* --- L'avertissement, qui ne se retire pas ------------------------------- */
@@ -363,7 +348,6 @@
   color: #6b5420;
   font-size: 13px;
   line-height: 1.45;
-  animation: cal-monte 0.5s 0.25s ease both;
 }
 
 .cal-avertissement b {
@@ -424,7 +408,7 @@
 
 .fond-regles { background: #ffe9ed; }
 .fond-fertile { background: var(--fertile-soft); }
-.fond-faible { background: var(--safe); }
+.fond-faible { background: #f1ecef; }
 
 .cal-fiche-date {
   font-family: var(--titre);
@@ -440,7 +424,7 @@
 
 .texte-regles { color: var(--blood); }
 .texte-fertile { color: var(--fertile); }
-.texte-faible { color: var(--safe-ink); }
+.texte-faible { color: var(--cal-ink); }
 
 .cal-risque {
   margin-bottom: 12px;
@@ -495,7 +479,6 @@
   font-size: 16px;
   font-weight: 700;
   cursor: pointer;
-  box-shadow: 0 10px 22px -10px rgba(224, 30, 58, 0.7);
 }
 
 .cal-bouton:active {
@@ -503,9 +486,8 @@
 }
 
 .cal-bouton-pale {
-  background: #fbf3f6;
+  background: var(--surface-douce);
   color: var(--cal-muted);
-  box-shadow: none;
   cursor: not-allowed;
 }
 
@@ -545,10 +527,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .cal-icone,
-  .cal-resume-carte,
-  .cal-carte,
-  .cal-avertissement,
   .cal-case.aujourdhui::after,
   .halo,
   .cal-voile,
