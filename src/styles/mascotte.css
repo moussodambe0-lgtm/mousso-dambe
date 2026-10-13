@@ -1,54 +1,59 @@
-/* Mousso Dambé : la mascotte, une femme de Ouagadougou au foulard noué.
+/* Mousso Dambé : la mascotte, Dambé l'infirmière, visage d'IA Dambé.
    Trois poses (salut, écoute, bravo) et le visage seul en rond.
-   Entrée jouée une fois en moins de 1,6 s, puis seuls les yeux clignent
-   (et, dans « écoute », la tête acquiesce et les points de la bulle
-   ondulent). N'anime que transform et opacity. */
+   Même femme que la mascotte au foulard (même peau), nouvelle tenue :
+   bonnet blanc à la fleur du logo, blouse blanche à liserés roses,
+   badge au cou, planchette. Aucune croix, aucun caducée, aucun violet.
+   Entrée jouée une fois, finie avant 1,6 s ; ensuite seuls les yeux
+   clignent (et, dans « écoute », les trois points de la bulle ondulent
+   doucement : c'est l'état « l'IA écrit »). N'anime que transform et
+   opacity. */
 
 .md-mascotte { display: block; width: 100%; max-width: 300px; height: auto; overflow: visible; }
 .md-mascotte-visage { display: block; width: 44px; height: 44px; }
 
-/* Couleurs : jetons du DESIGN.md, plus deux teintes de peau et deux de lèvres */
+/* Couleurs : jetons du DESIGN.md, plus la peau et les cheveux */
 .md-m-disque { fill: var(--rose-clair, #FFDCE9); }
 .md-m-peau { fill: var(--md-peau, #6E3B26); }
 .md-m-peau-o { fill: var(--md-peau-ombre, #55291A); }
+.md-m-cheveux { fill: var(--md-cheveux, #24141A); }
 .md-m-rose { fill: var(--rose, #D0206A); }
 .md-m-rose-f { fill: var(--rose-fonce, #9C1450); }
+.md-m-fleur { fill: var(--rose-logo, #EA194E); }
 .md-m-encre { fill: var(--encre, #1B1116); }
 .md-m-blanc { fill: var(--surface, #FFFFFF); }
-.md-m-haut { fill: var(--encre, #1B1116); }
-.md-m-bande1 { fill: var(--rose, #D0206A); }
-.md-m-bande2 { fill: var(--surface, #FFFFFF); }
-.md-m-motif { fill: var(--rose, #D0206A); }
-.md-m-levre-h { fill: #4E1A26; }
-.md-m-levre-b { fill: #6E2838; }
+.md-m-bouche { fill: #3E1020; }
+.md-m-joue { fill: var(--rose, #D0206A); opacity: .32; }
+.md-m-cerne { stroke: var(--md-trait, #2A1219); stroke-linejoin: round; }
 .md-m-trait { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.md-m-s-trait { stroke: var(--md-trait, #2A1219); }
 .md-m-s-rose { stroke: var(--rose, #D0206A); }
 .md-m-s-rose-f { stroke: var(--rose-fonce, #9C1450); }
+.md-m-s-rose-clair { stroke: var(--rose-clair, #FFDCE9); }
 .md-m-s-encre { stroke: var(--encre, #1B1116); }
 .md-m-s-blanc { stroke: var(--surface, #FFFFFF); }
-.md-m-s-haut { stroke: var(--encre, #1B1116); }
+.md-m-s-cheveux { stroke: var(--md-cheveux, #24141A); }
+.md-m-s-bouche { stroke: #3E1020; }
 .md-m-s-peau { stroke: var(--md-peau, #6E3B26); }
 .md-m-s-peau-o { stroke: var(--md-peau-ombre, #55291A); }
-.md-m-s-perle { stroke: var(--rose-clair, #FFDCE9); }
 
-/* Entrée commune : le disque se pose, elle monte dans le cadre */
+/* Entrée commune : le disque se pose, elle monte dans le cadre, le bonnet se pose sur sa tête */
 .md-m-disque { transform-box: fill-box; transform-origin: 50% 50%; animation: md-m-pose .42s cubic-bezier(.2, .8, .2, 1) both; }
 .md-m-entre { animation: md-m-monte .55s .08s cubic-bezier(.2, .8, .2, 1) both; }
-.md-m-noeud { transform-box: fill-box; transform-origin: 40% 85%; animation: md-m-noue .5s .4s cubic-bezier(.34, 1.56, .64, 1) both; }
+.md-m-bonnet { transform-box: fill-box; transform-origin: 50% 100%; animation: md-m-bonnet .5s .4s cubic-bezier(.34, 1.56, .64, 1) both; }
 .md-m-yeux { transform-box: fill-box; transform-origin: 50% 55%; animation: md-m-cligne 5.2s 1.8s ease-in-out infinite; }
 
-/* Salut : la main s'agite trois fois depuis le coude, puis reste levée */
-.md-m-bras { transform-box: view-box; transform-origin: 38px 157px; animation: md-m-salue 1.1s .5s ease-in-out both; }
+/* Salut : la main fait coucou trois fois depuis le coude, puis reste levée */
+.md-m-bras { transform-box: view-box; transform-origin: 40px 165px; animation: md-m-salue 1.05s .5s ease-in-out both; }
 
-/* Écoute : elle penche la tête vers la bulle, puis acquiesce doucement */
-.md-m-penche { transform-box: view-box; transform-origin: 100px 146px; animation: md-m-penche .6s .35s cubic-bezier(.2, .8, .2, 1) both, md-m-acquiesce 3.6s 1.2s ease-in-out infinite; }
-.md-m-bulle { transform-box: fill-box; transform-origin: 85% 100%; animation: md-m-pop .4s .55s cubic-bezier(.34, 1.56, .64, 1) both; }
-.md-m-point { transform-box: fill-box; transform-origin: 50% 50%; animation: md-m-point 1.3s 1s ease-in-out infinite; }
-.md-m-point-2 { animation-delay: 1.15s; }
-.md-m-point-3 { animation-delay: 1.3s; }
+/* Écoute : elle penche la tête, la bulle apparaît, les trois points ondulent */
+.md-m-penche { transform-box: view-box; transform-origin: 100px 146px; animation: md-m-penche .6s .35s cubic-bezier(.2, .8, .2, 1) both; }
+.md-m-bulle { transform-box: fill-box; transform-origin: 15% 100%; animation: md-m-pop .4s .55s cubic-bezier(.34, 1.56, .64, 1) both; }
+.md-m-point { transform-box: fill-box; transform-origin: 50% 50%; animation: md-m-point 1.4s 1s ease-in-out infinite; }
+.md-m-point-2 { animation-delay: 1.17s; }
+.md-m-point-3 { animation-delay: 1.34s; }
 
-/* Bravo : le pouce se lève, trois éclats s'allument, une seule fois */
-.md-m-pouce { transform-box: view-box; transform-origin: 160px 176px; animation: md-m-pouce .55s .45s cubic-bezier(.34, 1.56, .64, 1) both; }
+/* Bravo : le pouce se lève, trois éclats s'allument une seule fois, elle hoche la tête */
+.md-m-pouce { transform-box: view-box; transform-origin: 148px 196px; animation: md-m-pouce .55s .45s cubic-bezier(.34, 1.56, .64, 1) both; }
 .md-m-eclat { transform-box: fill-box; transform-origin: 50% 50%; animation: md-m-pop .36s cubic-bezier(.34, 1.56, .64, 1) both; }
 .md-m-eclat-1 { animation-delay: .75s; }
 .md-m-eclat-2 { animation-delay: .85s; }
@@ -57,7 +62,7 @@
 
 @keyframes md-m-pose { from { opacity: 0; transform: scale(.82); } to { opacity: 1; transform: scale(1); } }
 @keyframes md-m-monte { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes md-m-noue { from { opacity: 0; transform: scale(.4) rotate(-24deg); } to { opacity: 1; transform: scale(1) rotate(0); } }
+@keyframes md-m-bonnet { from { opacity: 0; transform: translateY(-14px) scale(.5) rotate(-16deg); } to { opacity: 1; transform: translateY(0) scale(1) rotate(0); } }
 @keyframes md-m-cligne { 0%, 93%, 100% { transform: scaleY(1); } 96% { transform: scaleY(.1); } }
 @keyframes md-m-salue {
   0% { transform: rotate(18deg); opacity: 0; }
@@ -68,13 +73,12 @@
   100% { transform: rotate(0); opacity: 1; }
 }
 @keyframes md-m-penche { from { transform: rotate(7deg); } to { transform: rotate(0); } }
-@keyframes md-m-acquiesce { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(2.5deg) translateY(1px); } }
 @keyframes md-m-pop { from { opacity: 0; transform: scale(.3); } to { opacity: 1; transform: scale(1); } }
-@keyframes md-m-point { 0%, 60%, 100% { transform: translateY(0); opacity: .45; } 30% { transform: translateY(-3px); opacity: 1; } }
+@keyframes md-m-point { 0%, 60%, 100% { transform: translateY(0); opacity: .5; } 30% { transform: translateY(-3px); opacity: 1; } }
 @keyframes md-m-pouce { from { opacity: 0; transform: translateY(26px) rotate(-14deg); } to { opacity: 1; transform: translateY(0) rotate(0); } }
 @keyframes md-m-hoche { 0%, 100% { transform: rotate(0); } 40% { transform: rotate(3deg) translateY(1.5px); } }
 
 @media (prefers-reduced-motion: reduce) {
-  .md-m-disque, .md-m-entre, .md-m-noeud, .md-m-yeux, .md-m-bras, .md-m-bulle,
+  .md-m-disque, .md-m-entre, .md-m-bonnet, .md-m-yeux, .md-m-bras, .md-m-bulle,
   .md-m-point, .md-m-pouce, .md-m-eclat, .md-m-content, .md-m-penche { animation: none; }
 }
