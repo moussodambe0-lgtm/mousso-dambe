@@ -21,8 +21,23 @@ const PANIER = JSON.stringify([
 
 titre('Le catalogue est lisible sans compte');
 {
-  const r = await rpc(`select count(*)::int as n from public.produits`, [], { role: 'anon' });
-  verifier('un visiteur voit les sept produits du catalogue', r.n === 7, `${r.n} produits`);
+  // Ce qui compte n'est pas le NOMBRE de lignes, c'est qu'un produit dépublié
+  // ne se voie nulle part. Compter les lignes faisait échouer l'essai chaque
+  // fois qu'un produit entrait ou sortait du catalogue, pour une raison qui
+  // n'était pas un défaut.
+  const r = await rpc(`select count(*)::int as n from public.produits where publie = true`, [], { role: 'anon' });
+  verifier('un visiteur voit le catalogue', r.n >= 5, `${r.n} produits publiés`);
+
+  const cachee = await rpc(
+    `select count(*)::int as n from public.produits where publie = true and slug = 'culotte-rose'`,
+    [],
+    { role: 'anon' }
+  );
+  verifier(
+    'un produit dépublié ne s’affiche plus',
+    cachee.n === 0,
+    'la culotte rose, retirée le 13 octobre 2026, est encore en vente'
+  );
   const p = await rpc(`select nom, prix_cfa, tailles from public.produits where slug = 'culotte-flux-abondant'`, [], { role: 'anon' });
   verifier('le prix est un entier en FCFA', p.prix_cfa === 9000);
   verifier('les quatre tailles sont là', p.tailles.length === 4);

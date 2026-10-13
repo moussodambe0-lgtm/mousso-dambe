@@ -41,8 +41,11 @@ titre('Une autre utilisatrice ne voit rien du dossier intime');
 
 titre('Un visiteur sans compte ne lit que le catalogue');
 {
+  // Ce qui est vérifié ici, c'est qu'un visiteur SANS COMPTE lit bien le
+  // catalogue, pas combien de produits il contient : ce nombre change dès
+  // qu'Arthur en ajoute ou en retire un.
   const pr = await rpc(`select count(*)::int as n from public.produits`, [], anon);
-  verifier('il voit les produits', pr.n === 7, `${pr.n} produits`);
+  verifier('il voit les produits', pr.n >= 5, `${pr.n} produits`);
   await echoue('il ne lit pas les profils', () => rpc(`select * from public.profils`, [], anon), 'permission');
   await echoue('il ne lit pas le journal', () => rpc(`select * from public.journal`, [], anon), 'permission');
   await echoue('il ne lit pas les cycles', () => rpc(`select * from public.cycles`, [], anon), 'permission');
