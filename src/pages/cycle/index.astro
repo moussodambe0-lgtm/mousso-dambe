@@ -542,7 +542,12 @@ const enRegles = info?.type === 'regles';
   .pion-regles { background: var(--grenat); }
   .pion-fertile { background: var(--lilas); }
   .pion-ovulation { background: var(--lilas-fort); }
-  .pion-faible { background: var(--vert-doux-trait); }
+  /* Les jours à risque plus faible sont BLANCS dans la couronne, comme sur
+     la planche d'Arthur : la légende doit dire la même chose qu'elle. */
+  .pion-faible {
+    background: var(--surface);
+    border: 1.5px solid var(--bordure);
+  }
 
   /* --- La saisie du jour --- */
   .bloc-saisie {

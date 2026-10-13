@@ -69,33 +69,30 @@ const PHOTOS = [
     ancre: 0.5,
   },
   {
-    // La serviette du premier plan, posée à plat : on y voit le tissu, la
-    // doublure et la pression. Les autres photos de cette série portent
-    // l'étiquette d'un autre fabricant, et celle-ci la laisse hors cadre.
+    // LA SERVIETTE DE JOUR. Celle du premier plan, posée à plat : on y voit le
+    // tissu, la doublure et la pression.
+    //
+    // Les autres serviettes de cette série portent, SUR LE PRODUIT, l'étiquette
+    // d'un autre fabricant. Ce cadrage est le seul de toute la photo qui la
+    // laisse hors champ, et c'est pour ça qu'il est si serré. Décision
+    // d'Arthur du 13 octobre 2026 : « je garde les cadrages qui l'évitent ».
     source: 'serviettes-lavables-pochette.jpg',
-    nom: 'serviettes-lavables',
+    nom: 'serviettes-jour',
     cadre: [0.0, 0.52, 0.78, 1.0],
   },
   {
-    source: 'serviettes-jetables-nuit.jpg',
+    // LA SERVIETTE DE NUIT : la grande rose, vue de près. C'est la plus longue
+    // de la planche, et c'est ce qui distingue une serviette de nuit.
+    source: 'serviettes-lavables-douze.jpg',
     nom: 'serviettes-nuit',
-    ancre: 0.5,
+    cadre: [0.02, 0.0, 0.66, 0.52],
   },
   {
-    // Un peu bas : un brin de fleurs traverse le haut de la photo et, à la
-    // taille d'une carte, on le prend pour une partie du produit.
-    source: 'serviettes-jetables-jour.jpg',
-    nom: 'serviettes-jour',
-    ancre: 0.62,
-  },
-  {
-    // Le badge « 12 PCS » est hors cadre : notre produit n'en vend pas douze,
-    // et un chiffre écrit par le fournisseur sur notre fiche serait une
-    // promesse qu'on ne tient pas.
+    // LE LOT : plusieurs serviettes en éventail. Le badge « 12 PCS » du
+    // fournisseur est hors cadre, parce que notre lot n'en vend pas douze.
     source: 'serviettes-lavables-douze.jpg',
     nom: 'serviettes-lavables-lot',
-    cadre: [0.0, 0.0, 1.0, 0.82],
-    ancre: 0.45,
+    cadre: [0.30, 0.28, 1.0, 0.80],
   },
 ];
 

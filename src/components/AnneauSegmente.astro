@@ -1,26 +1,44 @@
 ---
 /**
- * LE GRAND ANNEAU DU CYCLE.
+ * LE CALENDRIER CIRCULAIRE DU CYCLE.
  *
- * Section 4.1 du cahier d'Arthur : un segment par jour, coloré selon la
- * phase, un curseur sur le jour actuel, et le chiffre au centre.
+ * Refait le 13 octobre 2026 d'après une planche médicale qu'Arthur m'a
+ * envoyée : une couronne de cases numérotées de 1 au dernier jour du cycle,
+ * une bande rouge sur les règles, une bande plus sombre sur l'ovulation, et
+ * le nom de chaque phase écrit en courbe au-dessus de sa bande.
  *
- * Arthur, le 12 octobre 2026 : « jour 1 sur 28, c'est trop basique ». Ce qui
- * rend celui-ci différent d'une jauge, c'est qu'il montre TOUT le cycle d'un
- * coup : on voit où sont les règles, où est la fenêtre fertile, et où on en
- * est entre les deux. Un chiffre seul ne dit jamais ça.
+ * CE QUI EST REPRIS DE SA PLANCHE :
+ *   - chaque jour a SA case, avec son numéro. C'est la différence qui compte
+ *     avec l'anneau d'avant : on peut dire « je suis au 17 » et le trouver,
+ *     au lieu de deviner une position sur un arc lisse ;
+ *   - les bandes de phase se lisent d'un coup, sans légende ;
+ *   - le nom de la phase est écrit sur sa bande, pas renvoyé plus bas.
  *
- * Tout est dessiné sur le serveur. Les segments sont des arcs tracés un par
- * un : chacun porte son jour, donc chacun est touchable, et le navigateur
- * peut les annoncer un par un à un lecteur d'écran.
+ * CE QUI EST ADAPTÉ, ET POURQUOI :
  *
- * Trois règles de dessin tenues d'un bout à l'autre :
- *   - deux couleurs qu'il faut distinguer ne diffèrent jamais par la seule
- *     teinte : le jour d'ovulation a un halo et un segment plus épais ;
- *   - rien n'est posé en `style=` (la politique de sécurité du contenu les
- *     refuse) : les retards d'animation passent par des classes ;
- *   - l'animation d'entrée se joue une fois, et jamais quand elle a demandé
- *     moins de mouvement.
+ *   1. Les numéros restent DROITS. Sur sa planche ils tournent avec le
+ *      cercle, ce qui oblige à pencher la tête pour lire le bas. Sur une
+ *      affiche accrochée au mur c'est élégant ; sur un téléphone tenu à une
+ *      main, c'est pénible. Les traits de séparation tournent, les chiffres
+ *      non.
+ *
+ *   2. Pas de dessins de follicules au centre. Sa planche est un document
+ *      médical ; l'application parle à des jeunes filles qui n'oseront pas
+ *      ouvrir un écran qui ressemble à un cours de biologie. Le centre garde
+ *      le chiffre qui répond à la vraie question : dans combien de jours.
+ *
+ *   3. Les couleurs sont celles de l'application, pas celles de la planche.
+ *      Sa planche met du rouge sombre sur l'ovulation ; ici le violet ne sert
+ *      QU'À la fertilité (DESIGN.md), et il ne doit jamais se confondre avec
+ *      le rouge des règles. Grenat pour les règles, lilas pour la fenêtre
+ *      fertile, lilas foncé pour le jour d'ovulation.
+ *
+ *   4. Au-delà de 32 jours de cycle, un numéro sur deux seulement est écrit
+ *      (plus celui d'aujourd'hui) : à 45 jours, les cases font 8 degrés et
+ *      les chiffres se chevauchent. Les cases, elles, restent toutes là.
+ *
+ * Tout est dessiné sur le serveur. Chaque case est un lien, donc touchable,
+ * et annoncée une par une par un lecteur d'écran.
  */
 import { segmentsAnneau, type TypeJour } from '../lib/cycle-calcul';
 
@@ -30,41 +48,70 @@ interface Props {
   dureeCycle: number;
   /** Les jours du cycle qu'elle a notés, et si elle y a déclaré du sang. */
   notes?: { jour: number; saigne: boolean }[];
-  /** Où mène un segment touché. `{jour}` est remplacé par le numéro. */
+  /** Où mène une case touchée. */
   lien?: string;
   anime?: boolean;
 }
 
 const { jourActuel, dureeRegles, dureeCycle, notes = [], lien, anime = true } = Astro.props;
 
-const segments = segmentsAnneau(dureeRegles, dureeCycle);
+const jours = segmentsAnneau(dureeRegles, dureeCycle);
 
-const CENTRE = 120;
-const RAYON = 96;
-const RAYON_NOTES = 74;
-// Un petit vide entre deux segments, pour qu'on les compte à l'œil.
-const VIDE = Math.min(1.6, 160 / dureeCycle);
+// --- La géométrie -----------------------------------------------------------
+// Le cadre fait 340 et non 320 : l'étiquette de la bande du bas est tracée
+// un peu PLUS LOIN du centre que celle du haut (elle s'écrit sous sa courbe,
+// voir `arcTexte`), et à 320 elle sortait du dessin. « FERTILE » se retrouvait
+// coupé en deux. Trouvé le 13 octobre 2026 en regardant la capture.
+const C = 170; // centre
+const R_DEHORS = 150; // bord extérieur de la couronne
+const R_DEDANS = 121; // bord intérieur
+const R_CHIFFRE = 135.5; // là où se pose le numéro
+const R_ETIQUETTE = 157; // la courbe qui porte « RÈGLES » et « OVULATION »
+const R_NOTES = 104; // les journées qu'elle a notées, juste sous la couronne
 
-const point = (angleDegres: number, rayon: number) => {
-  const a = ((angleDegres - 90) * Math.PI) / 180;
-  return {
-    x: Number((CENTRE + rayon * Math.cos(a)).toFixed(2)),
-    y: Number((CENTRE + rayon * Math.sin(a)).toFixed(2)),
-  };
+const pas = 360 / dureeCycle;
+
+const point = (deg: number, r: number) => {
+  const a = ((deg - 90) * Math.PI) / 180;
+  return { x: Number((C + r * Math.cos(a)).toFixed(2)), y: Number((C + r * Math.sin(a)).toFixed(2)) };
 };
 
-const arc = (debut: number, fin: number, rayon: number) => {
-  const d = point(debut, rayon);
-  const f = point(fin, rayon);
+/** Une case de la couronne : un secteur d'anneau. */
+const caseJour = (debut: number, fin: number) => {
+  const a = point(debut, R_DEHORS);
+  const b = point(fin, R_DEHORS);
+  const c = point(fin, R_DEDANS);
+  const d = point(debut, R_DEDANS);
   const grand = fin - debut > 180 ? 1 : 0;
-  return `M ${d.x} ${d.y} A ${rayon} ${rayon} 0 ${grand} 1 ${f.x} ${f.y}`;
+  return `M ${a.x} ${a.y} A ${R_DEHORS} ${R_DEHORS} 0 ${grand} 1 ${b.x} ${b.y} L ${c.x} ${c.y} A ${R_DEDANS} ${R_DEDANS} 0 ${grand} 0 ${d.x} ${d.y} Z`;
 };
 
-const COULEURS: Record<TypeJour, string> = {
+/**
+ * Un arc fait pour porter du texte.
+ *
+ * Quand la bande est dans la MOITIÉ BASSE du cercle, on trace l'arc à
+ * l'envers, de la fin vers le début. Sans ça, le texte suit la courbe la tête
+ * en bas : « FERTILE » s'affichait renversé, parce que la fenêtre fertile
+ * tombe en bas du cercle. Trouvé le 13 octobre 2026 en regardant la capture.
+ *
+ * L'arc inversé passe aussi un peu plus bas (rayon réduit), sinon le texte,
+ * qui s'écrit alors SOUS la courbe, chevaucherait la couronne.
+ */
+const arcTexte = (debut: number, fin: number, r: number) => {
+  const milieu = (debut + fin) / 2;
+  const enBas = milieu > 90 && milieu < 270;
+  const rayon = enBas ? r + 9 : r;
+  const a = point(enBas ? fin : debut, rayon);
+  const b = point(enBas ? debut : fin, rayon);
+  const grand = fin - debut > 180 ? 1 : 0;
+  return `M ${a.x} ${a.y} A ${rayon} ${rayon} 0 ${grand} ${enBas ? 0 : 1} ${b.x} ${b.y}`;
+};
+
+const FONDS: Record<TypeJour, string> = {
   regles: 'var(--grenat)',
   fertile: 'var(--lilas)',
   ovulation: 'var(--lilas-fort)',
-  faible: 'var(--vert-doux-trait)',
+  faible: 'var(--surface)',
 };
 
 const DIT: Record<TypeJour, string> = {
@@ -74,87 +121,132 @@ const DIT: Record<TypeJour, string> = {
   faible: 'risque plus faible',
 };
 
-const parJour = 360 / dureeCycle;
-const traits = segments.map((s) => {
-  const debut = (s.jour - 1) * parJour + VIDE / 2;
-  const fin = s.jour * parJour - VIDE / 2;
+// Au-delà de 32 jours, les chiffres se chevauchent : on en écrit un sur deux,
+// et toujours celui d'aujourd'hui.
+const serre = dureeCycle > 32;
+
+const cases = jours.map((j) => {
+  const debut = (j.jour - 1) * pas;
+  const fin = j.jour * pas;
+  const milieu = debut + pas / 2;
+  const p = point(milieu, R_CHIFFRE);
   return {
-    ...s,
-    chemin: arc(debut, fin, RAYON),
-    passe: s.jour < jourActuel,
-    actuel: s.jour === jourActuel,
-    // Le retard d'apparition, par paquets de cinq jours : trente classes
-    // suffisent pour un cycle de 45 jours, là où un style en ligne par
-    // segment serait refusé par la politique de sécurité du contenu.
-    vague: Math.min(9, Math.floor((s.jour - 1) / Math.max(1, Math.ceil(dureeCycle / 10)))),
+    ...j,
+    chemin: caseJour(debut, fin),
+    x: p.x,
+    y: p.y,
+    actuel: j.jour === jourActuel,
+    ecrit: !serre || j.jour % 2 === 1 || j.jour === jourActuel,
+    // Le retard d'apparition, par paquets : une classe par vague, parce qu'un
+    // style en ligne par case serait refusé par la politique de sécurité.
+    vague: Math.min(9, Math.floor((j.jour - 1) / Math.max(1, Math.ceil(dureeCycle / 10)))),
   };
 });
 
-const curseur = point((jourActuel - 0.5) * parJour, RAYON);
-const typeActuel = segments.find((s) => s.jour === jourActuel)?.type ?? 'faible';
+/** Le premier et le dernier jour d'une phase, pour poser son étiquette. */
+function bande(type: TypeJour | TypeJour[]) {
+  const types = Array.isArray(type) ? type : [type];
+  const dedans = jours.filter((j) => types.includes(j.type));
+  if (dedans.length === 0) return null;
+  const premier = dedans[0].jour;
+  const dernier = dedans[dedans.length - 1].jour;
+  return { chemin: arcTexte((premier - 1) * pas, dernier * pas, R_ETIQUETTE) };
+}
+
+const bandeRegles = bande('regles');
+const bandeFertile = bande(['fertile', 'ovulation']);
 
 const pointsNotes = notes
   .filter((n) => n.jour >= 1 && n.jour <= dureeCycle)
-  .map((n) => ({ ...point((n.jour - 0.5) * parJour, RAYON_NOTES), saigne: n.saigne }));
+  .map((n) => ({ ...point((n.jour - 0.5) * pas, R_NOTES), saigne: n.saigne }));
 
+const typeActuel = jours.find((j) => j.jour === jourActuel)?.type ?? 'faible';
 const resume =
   `Jour ${jourActuel} sur ${dureeCycle} de ton cycle, ${DIT[typeActuel]}` +
   (pointsNotes.length > 0 ? `, ${pointsNotes.length} journées notées` : '');
 ---
 
 <div class="anneau-s">
-  <svg viewBox="0 0 240 240" role="img" aria-label={resume} class={anime ? 'anneau-s-entre' : ''}>
+  <svg viewBox="0 0 340 340" role="img" aria-label={resume}>
     <defs>
-      <radialGradient id="halo-ovulation" cx=".5" cy=".5" r=".5">
-        <stop offset="0" stop-color="var(--lilas)" stop-opacity=".55" />
-        <stop offset="1" stop-color="var(--lilas)" stop-opacity="0" />
-      </radialGradient>
+      {bandeRegles && <path id="courbe-regles" d={bandeRegles.chemin} fill="none" />}
+      {bandeFertile && <path id="courbe-fertile" d={bandeFertile.chemin} fill="none" />}
     </defs>
 
+    {/* Le cercle qui porte la couronne : il donne son trait extérieur. */}
+    <circle cx={C} cy={C} r={R_DEHORS} fill="var(--surface)" stroke="var(--bordure)" stroke-width="1.2" />
+
+    {/* Les cases, une par jour. */}
     {
-      traits.map((t) => (
-        <>
-          {t.type === 'ovulation' && (
-            <circle cx={point((t.jour - 0.5) * parJour, RAYON).x} cy={point((t.jour - 0.5) * parJour, RAYON).y} r="15" fill="url(#halo-ovulation)" />
-          )}
-          {lien ? (
-            <a href={lien.replace('{jour}', String(t.jour))} aria-label={`Jour ${t.jour}, ${DIT[t.type]}`}>
-              <path
-                d={t.chemin}
-                stroke={COULEURS[t.type]}
-                stroke-width={t.type === 'ovulation' ? 17 : 12}
-                stroke-linecap="round"
-                fill="none"
-                class:list={['segment', `vague-${t.vague}`, t.passe && 'segment-passe', t.actuel && 'actuel']}
-              />
-            </a>
-          ) : (
+      cases.map((c) => {
+        const contenu = (
+          <>
             <path
-              d={t.chemin}
-              stroke={COULEURS[t.type]}
-              stroke-width={t.type === 'ovulation' ? 17 : 12}
-              stroke-linecap="round"
-              fill="none"
-              class:list={['segment', `vague-${t.vague}`, t.passe && 'segment-passe', t.actuel && 'actuel']}
+              d={c.chemin}
+              fill={c.actuel ? 'var(--encre)' : FONDS[c.type]}
+              stroke="var(--surface)"
+              stroke-width="1.4"
+              class:list={['case', `vague-${c.vague}`]}
             />
-          )}
-        </>
-      ))
+            {c.ecrit && (
+              <text
+                x={c.x}
+                y={c.y}
+                class:list={[
+                  'num',
+                  c.actuel && 'num-actuel',
+                  !c.actuel && c.type !== 'faible' && 'num-sur-couleur',
+                ]}
+              >
+                {c.jour}
+              </text>
+            )}
+          </>
+        );
+        return lien ? (
+          <a href={lien} aria-label={`Jour ${c.jour}, ${DIT[c.type]}`}>{contenu}</a>
+        ) : (
+          contenu
+        );
+      })
     }
 
-    {/* Ses journées notées, posées à l'intérieur : l'anneau devient son carnet. */}
+    {/* Le trait intérieur, qui ferme la couronne proprement. */}
+    <circle cx={C} cy={C} r={R_DEDANS} fill="none" stroke="var(--bordure)" stroke-width="1.2" />
+
+    {/* Les noms des phases, écrits sur leur bande comme sur la planche. */}
+    {
+      bandeRegles && (
+        <text class="etiquette etiquette-regles">
+          <textPath href="#courbe-regles" startOffset="50%" text-anchor="middle">
+            RÈGLES
+          </textPath>
+        </text>
+      )
+    }
+    {
+      bandeFertile && (
+        <text class="etiquette etiquette-fertile">
+          <textPath href="#courbe-fertile" startOffset="50%" text-anchor="middle">
+            FERTILE
+          </textPath>
+        </text>
+      )
+    }
+
+    {/* Ses journées notées : l'anneau devient son carnet, pas seulement un
+        calcul. */}
     {
       pointsNotes.map((p) => (
-        <circle cx={p.x} cy={p.y} r={p.saigne ? 3.4 : 2.4} fill={p.saigne ? 'var(--grenat)' : 'var(--texte-3)'} class={anime ? 'note-posee' : ''} />
+        <circle
+          cx={p.x}
+          cy={p.y}
+          r={p.saigne ? 3.2 : 2.4}
+          fill={p.saigne ? 'var(--grenat)' : 'var(--texte-3)'}
+          class={anime ? 'note-posee' : ''}
+        />
       ))
     }
-
-    {/* Le curseur : une bille qui glisse jusqu'au jour d'aujourd'hui. */}
-    <g class={anime ? 'curseur-glisse' : ''}>
-      <circle cx={curseur.x} cy={curseur.y} r="11" fill="var(--fond)" />
-      <circle cx={curseur.x} cy={curseur.y} r="7" fill="var(--encre)" class={anime ? 'curseur-respire' : ''} />
-      <circle cx={curseur.x - 2.2} cy={curseur.y - 2.2} r="2.2" fill="#fff" opacity=".55" />
-    </g>
   </svg>
 
   <div class="anneau-s-centre">
@@ -166,7 +258,7 @@ const resume =
   .anneau-s {
     position: relative;
     width: 100%;
-    max-width: 282px;
+    max-width: 310px;
     margin: 0 auto;
     aspect-ratio: 1;
   }
@@ -175,12 +267,11 @@ const resume =
     display: block;
     width: 100%;
     height: 100%;
-    overflow: visible;
   }
 
   .anneau-s-centre {
     position: absolute;
-    inset: 22%;
+    inset: 26%;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -190,66 +281,69 @@ const resume =
     pointer-events: none;
   }
 
-  /* Les jours déjà passés restent lisibles, mais ne tirent plus l'œil. */
-  .segment-passe {
-    opacity: 0.42;
+  /* --- Les numéros : droits, toujours. --- */
+  .num {
+    font-family: var(--texte);
+    font-size: 11px;
+    font-weight: 600;
+    fill: var(--texte-2);
+    text-anchor: middle;
+    dominant-baseline: central;
+    pointer-events: none;
   }
 
-  .actuel {
-    opacity: 1;
+  .num-sur-couleur {
+    fill: #fff;
   }
 
-  /* L'anneau se dessine : les segments apparaissent par vagues, du jour 1
-     jusqu'au dernier, puis le curseur glisse. */
-  .segment {
+  .num-actuel {
+    fill: #fff;
+    font-size: 12.5px;
+    font-weight: 800;
+  }
+
+  /* --- Les noms des phases --- */
+  .etiquette {
+    font-family: var(--texte);
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: 1.6px;
+  }
+
+  .etiquette-regles {
+    fill: var(--grenat);
+  }
+
+  .etiquette-fertile {
+    fill: var(--lilas-fort);
+  }
+
+  /* --- Le mouvement : les cases se posent, du jour 1 au dernier. --- */
+  .case {
     transform-box: view-box;
-    transform-origin: 120px 120px;
-    animation: seg-pose 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    transform-origin: 170px 170px;
+    animation: case-pose 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
   }
 
-  .vague-0 { animation-delay: 40ms; }
-  .vague-1 { animation-delay: 90ms; }
-  .vague-2 { animation-delay: 140ms; }
-  .vague-3 { animation-delay: 190ms; }
-  .vague-4 { animation-delay: 240ms; }
-  .vague-5 { animation-delay: 290ms; }
-  .vague-6 { animation-delay: 340ms; }
-  .vague-7 { animation-delay: 390ms; }
-  .vague-8 { animation-delay: 440ms; }
-  .vague-9 { animation-delay: 490ms; }
-
-  .curseur-glisse {
-    transform-box: view-box;
-    transform-origin: 120px 120px;
-    animation: curseur-arrive 0.9s 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
-  }
+  .vague-0 { animation-delay: 30ms; }
+  .vague-1 { animation-delay: 75ms; }
+  .vague-2 { animation-delay: 120ms; }
+  .vague-3 { animation-delay: 165ms; }
+  .vague-4 { animation-delay: 210ms; }
+  .vague-5 { animation-delay: 255ms; }
+  .vague-6 { animation-delay: 300ms; }
+  .vague-7 { animation-delay: 345ms; }
+  .vague-8 { animation-delay: 390ms; }
+  .vague-9 { animation-delay: 435ms; }
 
   .note-posee {
-    animation: note-pose 0.4s 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    animation: note-pose 0.4s 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
   }
 
-  .curseur-respire {
-    animation: respire 3.4s 1.4s ease-in-out infinite;
-  }
-
-  @keyframes seg-pose {
+  @keyframes case-pose {
     from {
       opacity: 0;
-      transform: scale(0.86);
-    }
-  }
-
-  /* Le curseur part du haut de l'anneau, c'est-à-dire du premier jour, et
-     tourne jusqu'à aujourd'hui. On tourne le groupe entier, ce qui coûte un
-     seul calcul au navigateur. */
-  @keyframes curseur-arrive {
-    from {
-      opacity: 0;
-      transform: rotate(-26deg);
-    }
-    to {
-      opacity: 1;
-      transform: rotate(0);
+      transform: scale(0.9);
     }
   }
 
@@ -259,27 +353,22 @@ const resume =
     }
   }
 
-  @keyframes respire {
-    0%,
-    100% {
-      r: 7;
+  @media (max-width: 360px) {
+    .num {
+      font-size: 10px;
     }
-    50% {
-      r: 8.2;
+
+    .etiquette {
+      font-size: 9.5px;
+      letter-spacing: 1.2px;
     }
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .segment,
-    .curseur-glisse,
-    .note-posee,
-    .curseur-respire {
+    .case,
+    .note-posee {
       animation: none;
       opacity: 1;
-    }
-
-    .segment-passe {
-      opacity: 0.42;
     }
   }
 </style>
