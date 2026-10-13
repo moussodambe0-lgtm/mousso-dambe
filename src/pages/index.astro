@@ -15,10 +15,10 @@
  */
 import Base from '../layouts/Base.astro';
 import Icone from '../components/Icone.astro';
-import Avatar from '../components/Avatar.astro';
 import ObjetsCarte from '../components/ObjetsCarte.astro';
 import Mascotte from '../components/Mascotte.astro';
 import Symbole from '../components/Symbole.astro';
+import MenuAccueil from '../components/MenuAccueil.astro';
 import DefsCycle from '../components/DefsCycle.astro';
 import GoutteJour from '../components/GoutteJour.astro';
 import BebeJour from '../components/BebeJour.astro';
@@ -156,7 +156,6 @@ if (infoAujourdhui) {
   else if (infoAujourdhui.type === 'fertile' || infoAujourdhui.type === 'ovulation') nomPhase = 'fertile';
   else nomPhase = infoAujourdhui.jourDuCycle > jourOvulation(reglages!.dureeCycle) ? 'lune' : 'elan';
 }
-const phase = nomPhase ? PHASES[nomPhase] : null;
 const joursAvant = prochaines ? ecartEnJours(prochaines, hui) : 0;
 
 let carteClasse = 'carte-elan';
@@ -185,41 +184,6 @@ if (infoAujourdhui) {
         : `Jour ${infoAujourdhui.jourDuCycle} de ton cycle`;
   }
 }
-
-const PROMESSES = [
-  'Livraison discrète',
-  'Paiement à la livraison',
-  'Colis neutre',
-  'Conseils vérifiés',
-  'Ouagadougou et environs',
-];
-
-/** Trois conseils par phase, dits comme une grande sœur les dirait. Le
- * premier vient de `cycle.ts` pour ne pas répéter deux vérités différentes. */
-const CONSEILS: Record<string, { icone: string; titre: string; texte: string }[]> = {
-  regles: [
-    { icone: 'goutte', titre: 'Change souvent', texte: 'Toutes les 4 à 6 heures, même si le flux est léger.' },
-    { icone: 'soleil', titre: 'Chaleur sur le ventre', texte: "Une bouteille d'eau chaude enveloppée dans un pagne calme les crampes." },
-    { icone: 'coeur', titre: 'Mange du fer', texte: 'Haricots, foie, feuilles vertes : tu en perds un peu ces jours-ci.' },
-  ],
-  elan: [
-    { icone: 'pousse', titre: "C'est ta bonne semaine", texte: 'Place ici ce qui demande de la force : examens, sport, grosses journées.' },
-    { icone: 'soleil', titre: 'Bois beaucoup', texte: "Avec la chaleur de Ouaga, deux litres d'eau ne sont pas de trop." },
-    { icone: 'paquet', titre: 'Fais ton stock', texte: 'Commande tes protections maintenant, pas la veille.' },
-  ],
-  fertile: [
-    { icone: 'info', titre: 'Risque élevé', texte: "C'est la semaine où une grossesse est possible." },
-    { icone: 'bouclier', titre: 'Contraception', texte: "Si tu n'en veux pas maintenant, c'est là qu'il faut être la plus attentive." },
-    { icone: 'goutte', titre: 'Pertes plus claires', texte: "Plus liquides et élastiques : c'est le signe, et c'est normal." },
-  ],
-  lune: [
-    { icone: 'lune', titre: 'Dors un peu plus', texte: 'Ton corps travaille plus pour le même effort.' },
-    { icone: 'coeur', titre: "L'humeur bouge", texte: 'Seins sensibles, envie de sucré : ça vient des hormones, et ça passe.' },
-    { icone: 'camion', titre: 'Tes règles arrivent', texte: 'Garde une protection dans ton sac dès maintenant.' },
-  ],
-};
-
-const conseilsPhase = nomPhase ? CONSEILS[nomPhase] : [];
 
 // --- La bannière du médecin -------------------------------------------------
 // Trois messages, une seule personne. Aucun ne promet un délai de réponse,
@@ -271,7 +235,6 @@ const photos = POSES.map((nom) => {
 
 /** La photo du message numéro `i`, ou la dernière livrée si celle-là manque. */
 const photoDe = (i: number) => photos[i] ?? photos[photos.length - 1] ?? null;
-const photoMedecin = photos.length > 0;
 
 ---
 
@@ -295,24 +258,17 @@ const photoMedecin = photos.length > 0;
     moi && (
       <main class="accueil">
         {/* --- L'en-tête --- */}
+        {/* Demandé par Arthur le 13 octobre 2026 : le logo en haut à gauche,
+            les trois traits en haut à droite.
+
+            L'avatar et la barre de recherche ne sont plus posés là en permanence.
+            Son compte est revenu dans le menu, avec son avatar, parce qu'elle
+            doit pouvoir s'y rendre ; la recherche n'y est pas revenue, parce que
+            la boutique a la sienne. Un raccourci de plus vers un endroit déjà
+            accessible, c'est de l'encombrement, pas un service. */}
         <header class="acc-entete acc-marges">
-          <a class="acc-avatar-bouton" href="/compte" aria-label="Mon compte">
-            <Avatar
-              graine={moi.avatarGraine}
-              prenom={moi.prenom}
-              identifiant={moi.id}
-              taille={48}
-              morph
-            />
-          </a>
-          {/* Le logo à la place du « Bonjour » et de la date (demande d'Arthur
-              du 13 octobre 2026). Elle sait comment elle s'appelle et quel
-              jour on est : son téléphone le lui dit déjà. Le logo, lui, dit
-              où elle est. */}
-          <Symbole forme="nom" taille={120} classe="acc-marque" titre="Mousso Dambé" />
-          <a class="acc-rond" href="/boutique" aria-label="Chercher un produit">
-            <Icone nom="recherche" taille={22} epaisseur={2} />
-          </a>
+          <Symbole forme="nom" taille={88} classe="acc-marque" titre="Mousso Dambé" />
+          <MenuAccueil prenom={moi.prenom} identifiant={moi.id} avatarGraine={moi.avatarGraine} />
         </header>
 
         {/* --- La carte du cycle : elle ne défile pas.
@@ -405,6 +361,25 @@ const photoMedecin = photos.length > 0;
                       <Mascotte etat="ecoute" taille={160} titre={null} />
                     )
                   }
+
+                  {
+                    photoDe(b.pose) && (
+                      // ELLE EST OBLIGATOIRE, PAS DÉCORATIVE. La licence
+                      // Pexels interdit de laisser croire que la personne
+                      // photographiée recommande le service : il faut dire
+                      // que c'est une photo d'illustration, et non le médecin
+                      // qui répondra.
+                      //
+                      // Arthur ne voulait plus la voir sous le panneau (13
+                      // octobre 2026). Elle n'est donc pas supprimée, elle est
+                      // posée dans le coin de la photo, en tout petit : la
+                      // ligne grise sous la bannière disparaît, la vérité
+                      // reste. Le jour où la photo sera remplacée par un
+                      // dessin de Motion, cette mention pourra partir pour de
+                      // bon.
+                      <span class="banniere-mention">Illustration</span>
+                    )
+                  }
                 </div>
               </article>
             ))
@@ -414,16 +389,6 @@ const photoMedecin = photos.length > 0;
         <div class="acc-points" id="points" aria-hidden="true">
           <i class="actif"></i><i></i><i></i>
         </div>
-
-        {
-          photoMedecin && (
-            // La licence Pexels interdit de laisser croire que la personne
-            // photographiée recommande le produit. Cette ligne est donc
-            // obligatoire, pas décorative : elle dit que c'est une photo
-            // d'illustration, et non le médecin qui répondra.
-            <p class="acc-mention-photo">Photo d'illustration</p>
-          )
-        }
 
         {/* --- La bande des jours --- */}
         <section class="acc-semaine" aria-label="Les jours à venir">
@@ -477,49 +442,38 @@ const photoMedecin = photos.length > 0;
           )
         }
 
-        {/* --- La bande défilante des promesses --- */}
-        <div class="acc-ruban" aria-hidden="true">
-          <div class="acc-ruban-piste">
-            {[0, 1].map(() => (
-              <span class="acc-ruban-lot">
-                {PROMESSES.map((t) => (
-                  <>
-                    <b>{t}</b>
-                    <i>•</i>
-                  </>
-                ))}
-              </span>
-            ))}
-          </div>
-        </div>
-        <p class="lecture-seule">Livraison discrète à Ouagadougou, paiement à la livraison, conseils vérifiés.</p>
+        {/* La bande défilante des promesses a été retirée le 13 octobre 2026,
+            à la demande d'Arthur. Les quatre promesses ne sont pas perdues :
+            elles sont dites là où elles décident d'un achat, c'est-à-dire sur
+            l'écran d'ouverture, dans la boutique et sur la fiche produit. Ici,
+            elles défilaient sous les yeux de quelqu'un qui venait voir son
+            cycle. */}
 
         {/* --- Sous la bande : les sections de la section 10 --- */}
         <div class="page suite-accueil">
-          <div class="deux-boutons">
-            <a class="btn btn-rose sans-retour" href="/journal">Noter aujourd'hui</a>
-            <a class="btn btn-contour" href="/cycle/calendrier">Mon calendrier</a>
-          </div>
+          {/* « Noter aujourd'hui » a été retiré le 13 octobre 2026 : il menait
+              au même carnet que le bouton noir de la carte rose, deux écrans
+              plus haut. Deux boutons pour un seul endroit, ce n'est pas deux
+              fois plus de chances d'y aller, c'est une hésitation de plus.
+              Reste le calendrier, qui va ailleurs. */}
+          {/* Arthur, 13 octobre 2026 : « suivre mon cycle doit être remarqué ».
+              Il était blanc à filet rose, posé sur un fond presque blanc : on
+              passait devant sans le voir. Il est maintenant plein, rose, sur
+              toute la largeur, avec l'icône du calendrier. C'est le seul
+              bouton plein de cette moitié d'écran, donc l'œil y va. */}
+          <a class="btn btn-rose pleine-largeur bouton-cycle" href="/cycle/calendrier">
+            <Icone nom="cycle" taille={19} epaisseur={2.2} />
+            Suivre mon cycle
+          </a>
 
-          {
-            phase && (
-              <section class="phase-bloc" aria-label="Conseils pour ta phase">
-                <div class="section-titre">
-                  <h2>Conseils pour ta phase</h2>
-                  <span class="etiquette-phase">{phase.nom}</span>
-                </div>
-                <div class="rail-conseils">
-                  {conseilsPhase.map((c, i) => (
-                    <article class:list={['conseil-carte', `conseil-${i % 3}`]}>
-                      <span class="conseil-icone"><Icone nom={c.icone} taille={20} /></span>
-                      <h3>{c.titre}</h3>
-                      <p>{c.texte}</p>
-                    </article>
-                  ))}
-                </div>
-              </section>
-            )
-          }
+          {/* Le bloc « Conseils pour ta phase » a été retiré le 13 octobre 2026,
+              à la demande d'Arthur.
+
+              L'avertissement obligatoire sur la contraception, lui, n'a pas
+              bougé d'un pouce : il vient de `cycle-calcul.ts` et il s'affiche
+              sur le tableau de bord du cycle et sur le calendrier, qui sont
+              les deux écrans où elle regarde ses jours fertiles. Il ne doit
+              jamais être retiré de ces deux endroits. */}
 
           {produits.length > 0 && (
             <section>
@@ -562,84 +516,18 @@ const photoMedecin = photos.length > 0;
     padding-top: var(--e5);
   }
 
-  .deux-boutons {
+  .pleine-largeur {
     display: flex;
-    gap: var(--e2);
+    width: 100%;
     margin-bottom: var(--e4);
   }
 
-  .deux-boutons > * {
-    flex: 1;
-  }
-
-  .sans-retour {
-    flex: 1.25;
-    white-space: nowrap;
-    padding: 0 var(--e2);
-  }
-
-  /* --- Les conseils de la phase, en bande horizontale --- */
-  .phase-bloc {
-    margin-bottom: var(--e5);
-  }
-
-  .etiquette-phase {
-    padding: 4px 11px;
-    border-radius: 999px;
-    background: var(--surface-douce);
-    color: var(--rose);
-    font-size: 12px;
-    font-weight: 600;
-  }
-
-  /* La bande sort des marges de la page pour aller jusqu'au bord de l'écran,
-     sinon la dernière carte semble coupée au milieu de rien. */
-  .rail-conseils {
-    display: flex;
-    gap: var(--e2);
-    margin: 0 calc(var(--e4) * -1);
-    padding: 2px var(--e4) var(--e2);
-    overflow-x: auto;
-    scroll-snap-type: x proximity;
-    scrollbar-width: none;
-  }
-
-  .rail-conseils::-webkit-scrollbar {
-    display: none;
-  }
-
-  .conseil-carte {
-    flex: 0 0 196px;
-    padding: var(--e3);
-    border-radius: 20px;
-    scroll-snap-align: start;
-  }
-
-  .conseil-0 { background: #ffe7ee; }
-  .conseil-1 { background: #ece4ff; }
-  .conseil-2 { background: #fff0db; }
-
-  .conseil-icone {
-    display: grid;
-    place-items: center;
-    width: 36px;
-    height: 36px;
-    margin-bottom: var(--e2);
-    border-radius: 12px;
-    background: rgba(255, 255, 255, 0.72);
-    color: var(--encre);
-  }
-
-  .conseil-carte h3 {
-    font-size: 15px;
-    font-weight: 700;
-  }
-
-  .conseil-carte p {
-    margin-top: 4px;
-    font-size: 13px;
-    line-height: 1.4;
-    opacity: 0.8;
+  /* Le bouton du cycle : plein, rose, avec son icône. C'est le seul bouton
+     plein de cette moitié d'écran, et c'est voulu. Un écran où tout crie est
+     un écran où plus rien ne se remarque. */
+  .bouton-cycle {
+    gap: 9px;
+    font-size: 16px;
   }
 
   /* --- Les cartes produits qui montent en cascade --- */

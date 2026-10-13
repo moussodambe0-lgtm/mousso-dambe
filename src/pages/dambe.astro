@@ -220,6 +220,19 @@ const branchee = ollamaConfigure();
     <div class="place-saisie"></div>
   </main>
 
+  {/* --- La case où elle écrit, et le micro ---------------------------------
+      Le micro ne pose pas un vocal : il écrit ses mots dans la case, qu'elle
+      relit avant d'envoyer (décision d'Arthur du 13 octobre 2026). Dambé lit
+      du texte et n'entend rien ; un vocal qui part sans être compris est une
+      promesse en l'air.
+
+      Il arrive CACHÉ. Le serveur ne sait pas si le navigateur sait écouter :
+      c'est `dictee.ts` qui le montre, une fois sûr. Celle dont le téléphone
+      ne sait pas écrit comme avant, sans voir un bouton mort.
+
+      Le vrai vocal, celui qu'on enregistre et qu'on envoie, est dans la
+      discussion avec le médecin : là-bas un humain écoute, donc le moré et le
+      dioula passent, et aucun son ne sort vers un service extérieur. */}
   <form method="POST" class="saisie">
     <div class="page saisie-dedans">
       <label class="lecture-seule" for="question">Ta question</label>
@@ -233,11 +246,21 @@ const branchee = ollamaConfigure();
         required
         autocomplete="off"
       />
+      <button class="rond dictee" type="button" aria-pressed="false" aria-label="Dicter ma question" hidden>
+        <Icone nom="micro" taille={21} />
+      </button>
       <button class="rond rond-rose" type="submit" aria-label="Envoyer ma question">
         <Icone nom="envoyer" taille={21} />
       </button>
     </div>
+    {/* Ce que le micro entend, dit à voix haute pour le lecteur d'écran :
+        `aria-live` fait relire la ligne à chaque changement. */}
+    <p class="page dictee-dit" aria-live="polite" hidden></p>
   </form>
+
+  <script>
+    import '../scripts/dictee';
+  </script>
 </Base>
 
 <style>
@@ -423,5 +446,51 @@ const branchee = ollamaConfigure();
     gap: var(--e2);
     align-items: center;
     padding: var(--e3) var(--e4);
+  }
+
+  /* --- Le micro ---
+     Au repos il est discret : un rond blanc comme les autres. En train
+     d'écouter il devient rose et respire, parce qu'un micro ouvert doit se
+     voir de loin. On n'enregistre rien, mais elle doit quand même savoir à la
+     seconde près quand le téléphone l'écoute. */
+  .dictee[hidden] {
+    display: none;
+  }
+
+  .dictee-ecoute {
+    background: var(--rose);
+    border-color: var(--rose);
+    color: #fff;
+    animation: dictee-respire 1.6s ease-in-out infinite;
+  }
+
+  .dictee-ecoute:hover {
+    background: var(--rose-fonce);
+  }
+
+  @keyframes dictee-respire {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(208, 32, 106, 0.45); }
+    60% { box-shadow: 0 0 0 9px rgba(208, 32, 106, 0); }
+  }
+
+  /* La ligne sous la case : ce que le micro entend, ou pourquoi il n'entend
+     rien. Elle pousse la case vers le haut au lieu de passer par-dessus : un
+     message qui recouvre ce qu'elle écrit n'aide personne. */
+  .dictee-dit {
+    padding: 0 var(--e4) var(--e3);
+    margin-top: calc(var(--e3) * -1);
+    font-size: 13px;
+    line-height: 1.35;
+    color: var(--texte-2);
+  }
+
+  .dictee-dit[hidden] {
+    display: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .dictee-ecoute {
+      animation: none;
+    }
   }
 </style>

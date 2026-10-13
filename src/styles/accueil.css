@@ -45,58 +45,24 @@ body:has(.accueil) .nav-basse {
 
 /* --- L'en-tête ----------------------------------------------------------- */
 .acc-entete {
-  display: grid;
-  grid-template-columns: 48px 1fr 48px;
+  display: flex;
   align-items: center;
+  justify-content: space-between;
   margin-bottom: 6px;
   animation: acc-descend 0.5s ease both;
-}
 
-/* Le logo, au milieu de l'en-tête. Il est posé dans une colonne qui prend
-   toute la place restante, donc il se centre tout seul entre l'avatar et le
-   bouton de recherche, quelle que soit la largeur de l'écran. */
-.acc-marque {
-  margin: 0 auto;
-}
-
-.acc-rond {
-  display: grid;
-  place-items: center;
-  width: 48px;
-  height: 48px;
+  /* Le menu des trois traits ouvre un panneau qui vient par-dessus la carte
+     du cycle et les cartes vedettes. Ces deux-là montent à `z-index: 2` dans
+     leur coin : l'en-tête monte plus haut, une fois, pour tout le monde. */
   position: relative;
-  border: 1.5px solid var(--acc-line);
-  border-radius: 50%;
-  background: var(--acc-surface);
-  color: var(--acc-ink);
+  z-index: 30;
 }
 
-.acc-rond:active {
-  transform: scale(0.94);
-}
-
-.acc-point {
-  position: absolute;
-  top: 11px;
-  right: 12px;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--acc-sang);
-  box-shadow: 0 0 0 2px #fff;
-}
-
-.acc-avatar-bouton {
-  display: block;
-  border: none;
-  background: none;
-  padding: 0;
-  cursor: pointer;
-  transition: transform 0.2s var(--ressort);
-}
-
-.acc-avatar-bouton:active {
-  transform: scale(0.92);
+/* Le logo, calé à gauche ; les trois traits à l'autre bout, poussés par la
+   ligne elle-même. Rien n'a besoin d'être centré, donc rien ne se décale
+   quand le logo change de taille. */
+.acc-marque {
+  flex: none;
 }
 
 /* --- Les cartes vedettes ------------------------------------------------- */
@@ -120,11 +86,11 @@ body:has(.accueil) .nav-basse {
   flex: 0 0 100%;
   flex-direction: column;
   justify-content: space-between;
-  /* Raccourcie le 13 octobre 2026 à la demande d'Arthur : elle prenait près
-     d'un quart de l'écran avant qu'on ait rien lu. */
-  min-height: 132px;
-  padding: 15px 16px 14px;
-  border-radius: 24px;
+  /* Raccourcie deux fois le 13 octobre 2026, à la demande d'Arthur : elle
+     prenait près d'un quart de l'écran avant qu'on ait rien lu. */
+  min-height: 108px;
+  padding: 13px 14px 12px;
+  border-radius: 22px;
   scroll-snap-align: center;
   color: var(--acc-ink);
   animation: acc-carte-entre 0.6s 0.1s var(--ressort) both;
@@ -145,18 +111,18 @@ body:has(.accueil) .nav-basse {
 
 .acc-carte-titre {
   font-family: var(--titre);
-  font-size: 25px;
+  font-size: 22px;
   font-weight: 800;
-  line-height: 1.04;
-  letter-spacing: -0.5px;
+  line-height: 1.05;
+  letter-spacing: -0.4px;
   /* Le titre est écrit avec un retour à la ligne volontaire, comme dans la
      maquette de référence : « Tes règles / dans 4 jours ». */
   white-space: pre-line;
 }
 
 .acc-carte-sous {
-  margin-top: 5px;
-  font-size: 12.5px;
+  margin-top: 4px;
+  font-size: 12px;
   font-weight: 500;
   line-height: 1.35;
   opacity: 0.85;
@@ -168,7 +134,7 @@ body:has(.accueil) .nav-basse {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-top: 11px;
+  margin-top: 9px;
 }
 
 .acc-pile {
@@ -209,8 +175,8 @@ body:has(.accueil) .nav-basse {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 36px;
-  padding: 0 15px;
+  height: 33px;
+  padding: 0 14px;
   border: none;
   border-radius: 999px;
   background: var(--acc-ink);
@@ -387,59 +353,6 @@ body:has(.accueil) .nav-basse {
   }
 }
 
-/* --- La bande défilante ---------------------------------------------------
- * Deux lots identiques côte à côte, la piste glisse de la largeur d'un lot,
- * puis revient : la boucle est invisible. Caché des lecteurs d'écran, une
- * phrase normale dit la même chose juste en dessous.
- */
-.acc-ruban {
-  margin-top: 18px;
-  overflow: hidden;
-  border-top: 1px solid var(--acc-line);
-  border-bottom: 1px solid var(--acc-line);
-  background: var(--acc-surface);
-  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
-}
-
-.acc-ruban-piste {
-  display: flex;
-  width: max-content;
-  animation: acc-defile 26s linear infinite;
-}
-
-.acc-ruban-lot {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 10px 7px;
-  white-space: nowrap;
-}
-
-.acc-ruban-lot b {
-  font-size: 12.5px;
-  font-weight: 600;
-  letter-spacing: 0.2px;
-  text-transform: uppercase;
-  color: var(--acc-ink);
-}
-
-.acc-ruban-lot i {
-  font-style: normal;
-  color: var(--rose);
-}
-
-@keyframes acc-defile {
-  to {
-    transform: translateX(-50%);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .acc-ruban-piste {
-    animation: none;
-  }
-}
-
 /* --- La carte du cycle, seule et fixe -------------------------------------
  * Elle ne défile plus : c'est l'information pour laquelle elle a ouvert
  * l'application, et une information qui s'en va toute seule au bout de
@@ -585,10 +498,22 @@ body:has(.accueil) .nav-basse {
   }
 }
 
-/* La mention obligatoire sous la bannière : discrète, mais lisible. */
-.acc-mention-photo {
-  margin-top: 4px;
-  font-size: 10.5px;
-  color: var(--acc-muted);
-  text-align: center;
+/* La mention obligatoire, posée dans le coin de la photo.
+   Elle doit rester LISIBLE : une mention qu'on ne peut pas lire ne vaut pas
+   mieux qu'une mention absente. D'où le voile sombre derrière, qui la tient
+   quelle que soit la photo, claire ou foncée. */
+.banniere-mention {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  z-index: 2;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(27, 17, 22, 0.42);
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 9.5px;
+  letter-spacing: 0.2px;
+  line-height: 1.5;
+  white-space: nowrap;
+  pointer-events: none;
 }

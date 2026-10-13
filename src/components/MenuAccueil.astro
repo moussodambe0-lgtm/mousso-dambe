@@ -1,0 +1,257 @@
+---
+/**
+ * LE MENU DE L'ACCUEIL.
+ *
+ * Demande d'Arthur du 13 octobre 2026 : trois petits traits en haut à droite,
+ * et dessous son compte avec son avatar, puis les trois choses qu'on vient
+ * faire ici.
+ *
+ * C'est un `<details>`, pas un panneau piloté par du JavaScript. Trois raisons,
+ * et elles comptent plus que l'élégance du code :
+ *
+ *   1. Il s'ouvre et se ferme SANS SCRIPT. Sur une 3G de Ouagadougou, la page
+ *      arrive avant ses scripts : un menu qui attend du JavaScript est un
+ *      bouton mort pendant une seconde, et on tape dessus deux fois.
+ *   2. Le navigateur sait déjà le faire au clavier et le dire à un lecteur
+ *      d'écran : « bouton, replié ». Rien à réécrire, rien à oublier.
+ *   3. La politique de sécurité du contenu interdit un script en ligne. Tout
+ *      ce qui peut s'en passer doit s'en passer.
+ *
+ * Le petit script (`src/scripts/menu.ts`) n'ajoute que le confort : fermer en
+ * touchant à côté, ou avec la touche Échap. Sans lui, on referme avec les
+ * trois traits, comme on l'a ouvert.
+ */
+import Icone from './Icone.astro';
+import Avatar from './Avatar.astro';
+
+interface Props {
+  prenom: string;
+  identifiant: string;
+  avatarGraine: string;
+}
+
+const { prenom, identifiant, avatarGraine } = Astro.props;
+
+// Les trois choses qu'on vient faire dans Mousso Dambé, dites avec les mots
+// d'Arthur. Pas une liste de pages : une liste d'intentions.
+const ENTREES = [
+  { lien: '/cycle', icone: 'cycle', titre: 'Suivre mes règles', sous: 'Ton calendrier et tes prévisions' },
+  { lien: '/discussions/medecin', icone: 'coeur', titre: 'Contacter un médecin', sous: 'Un conseil, pas un diagnostic' },
+  {
+    lien: '/boutique',
+    icone: 'boutique',
+    titre: 'Acheter des serviettes réutilisables',
+    sous: 'Livrées à Ouaga, payées à la remise',
+  },
+];
+---
+
+<details class="menu">
+  <summary class="menu-bouton" aria-label="Menu">
+    <span class="menu-traits" aria-hidden="true">
+      <i></i><i></i><i></i>
+    </span>
+  </summary>
+
+  <div class="menu-panneau">
+    <a class="menu-compte" href="/compte">
+      <Avatar graine={avatarGraine} prenom={prenom} identifiant={identifiant} taille={48} />
+      <span class="menu-compte-mots">
+        <b>{prenom || 'Mon compte'}</b>
+        <span>Voir mon compte</span>
+      </span>
+      <Icone nom="avant" taille={17} classe="menu-fleche" />
+    </a>
+
+    <ul class="menu-liste">
+      {
+        ENTREES.map((e) => (
+          <li>
+            <a class="menu-entree" href={e.lien}>
+              <span class="menu-icone">
+                <Icone nom={e.icone} taille={20} />
+              </span>
+              <span class="menu-mots">
+                <b>{e.titre}</b>
+                <span>{e.sous}</span>
+              </span>
+              <Icone nom="avant" taille={16} classe="menu-fleche" />
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+</details>
+
+<script>
+  import '../scripts/menu';
+</script>
+
+<style>
+  .menu {
+    position: relative;
+  }
+
+  /* Les trois traits. On enlève la flèche que le navigateur pose d'office sur
+     un `<summary>`, sur toutes les familles de navigateurs. */
+  .menu-bouton {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    list-style: none;
+    cursor: pointer;
+  }
+
+  .menu-bouton::-webkit-details-marker {
+    display: none;
+  }
+
+  .menu-bouton::marker {
+    content: '';
+  }
+
+  .menu-bouton:active {
+    transform: scale(0.94);
+  }
+
+  .menu-traits {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: 20px;
+  }
+
+  .menu-traits i {
+    height: 2.4px;
+    border-radius: 2px;
+    background: var(--encre);
+    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s;
+  }
+
+  /* Ouvert, les trois traits deviennent une croix : on voit tout de suite
+     comment refermer. */
+  .menu[open] .menu-traits i:nth-child(1) {
+    transform: translateY(6.4px) rotate(45deg);
+  }
+
+  .menu[open] .menu-traits i:nth-child(2) {
+    opacity: 0;
+  }
+
+  .menu[open] .menu-traits i:nth-child(3) {
+    transform: translateY(-6.4px) rotate(-45deg);
+  }
+
+  /* --- Le panneau --- */
+  .menu-panneau {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    z-index: 30;
+    width: min(290px, calc(100vw - 32px));
+    padding: 8px;
+    border: 1px solid var(--bordure);
+    border-radius: 20px;
+    background: var(--surface);
+    box-shadow: 0 18px 40px rgba(27, 17, 22, 0.16);
+    animation: menu-ouvre 0.22s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
+
+  .menu-compte {
+    display: flex;
+    align-items: center;
+    gap: var(--e3);
+    padding: 10px;
+    border-radius: 14px;
+    background: var(--surface-douce);
+    color: var(--encre);
+  }
+
+  .menu-compte-mots {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .menu-compte-mots b {
+    display: block;
+    font-size: 15px;
+    line-height: 1.2;
+  }
+
+  .menu-compte-mots span {
+    font-size: 12px;
+    color: var(--texte-2);
+  }
+
+  .menu-liste {
+    list-style: none;
+    margin: 6px 0 0;
+    padding: 0;
+  }
+
+  .menu-entree {
+    display: flex;
+    align-items: center;
+    gap: var(--e3);
+    padding: 10px;
+    border-radius: 14px;
+    color: var(--encre);
+  }
+
+  .menu-entree:active {
+    background: var(--surface-douce);
+  }
+
+  .menu-icone {
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    flex: none;
+    border-radius: 12px;
+    background: var(--surface-douce);
+    color: var(--rose);
+  }
+
+  .menu-mots {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .menu-mots b {
+    display: block;
+    font-size: 14px;
+    line-height: 1.25;
+  }
+
+  .menu-mots span {
+    font-size: 11.5px;
+    color: var(--texte-2);
+    line-height: 1.3;
+  }
+
+  .menu :global(.menu-fleche) {
+    flex: none;
+    color: var(--texte-3);
+  }
+
+  @keyframes menu-ouvre {
+    from {
+      opacity: 0;
+      transform: translateY(-8px) scale(0.97);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .menu-panneau {
+      animation: none;
+    }
+
+    .menu-traits i {
+      transition: none;
+    }
+  }
+</style>

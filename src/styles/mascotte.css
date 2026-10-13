@@ -13,8 +13,8 @@
 
 /* Couleurs : jetons du DESIGN.md, plus la peau et les cheveux */
 .md-m-disque { fill: var(--rose-clair, #FFDCE9); }
-.md-m-peau { fill: var(--md-peau, #6E3B26); }
-.md-m-peau-o { fill: var(--md-peau-ombre, #55291A); }
+.md-m-peau { fill: var(--md-peau, #8E5A3B); }
+.md-m-peau-o { fill: var(--md-peau-ombre, #6E3B26); }
 .md-m-cheveux { fill: var(--md-cheveux, #24141A); }
 .md-m-rose { fill: var(--rose, #D0206A); }
 .md-m-rose-f { fill: var(--rose-fonce, #9C1450); }
@@ -33,8 +33,8 @@
 .md-m-s-blanc { stroke: var(--surface, #FFFFFF); }
 .md-m-s-cheveux { stroke: var(--md-cheveux, #24141A); }
 .md-m-s-bouche { stroke: #3E1020; }
-.md-m-s-peau { stroke: var(--md-peau, #6E3B26); }
-.md-m-s-peau-o { stroke: var(--md-peau-ombre, #55291A); }
+.md-m-s-peau { stroke: var(--md-peau, #8E5A3B); }
+.md-m-s-peau-o { stroke: var(--md-peau-ombre, #6E3B26); }
 
 /* Entrée commune : le disque se pose, elle monte dans le cadre, le bonnet se pose sur sa tête */
 .md-m-disque { transform-box: fill-box; transform-origin: 50% 50%; animation: md-m-pose .42s cubic-bezier(.2, .8, .2, 1) both; }
@@ -42,30 +42,30 @@
 .md-m-bonnet { transform-box: fill-box; transform-origin: 50% 100%; animation: md-m-bonnet .5s .4s cubic-bezier(.34, 1.56, .64, 1) both; }
 .md-m-yeux { transform-box: fill-box; transform-origin: 50% 55%; animation: md-m-cligne 5.2s 1.8s ease-in-out infinite; }
 
-/* Salut : la main fait coucou trois fois depuis le coude, puis reste levée */
-.md-m-bras { transform-box: view-box; transform-origin: 40px 165px; animation: md-m-salue 1.05s .5s ease-in-out both; }
+/* Salut : la manche reste à l'épaule ; l'avant-bras fait coucou trois fois depuis le coude, puis reste levé */
+.md-m-bras { transform-box: view-box; transform-origin: 33px 132.5px; animation: md-m-salue 1.05s .5s ease-in-out both; }
 
 /* Écoute : elle penche la tête, la bulle apparaît, les trois points ondulent */
-.md-m-penche { transform-box: view-box; transform-origin: 100px 146px; animation: md-m-penche .6s .35s cubic-bezier(.2, .8, .2, 1) both; }
+.md-m-penche { transform-box: view-box; transform-origin: 100px 104px; animation: md-m-penche .6s .35s cubic-bezier(.2, .8, .2, 1) both; }
 .md-m-bulle { transform-box: fill-box; transform-origin: 15% 100%; animation: md-m-pop .4s .55s cubic-bezier(.34, 1.56, .64, 1) both; }
 .md-m-point { transform-box: fill-box; transform-origin: 50% 50%; animation: md-m-point 1.4s 1s ease-in-out infinite; }
 .md-m-point-2 { animation-delay: 1.17s; }
 .md-m-point-3 { animation-delay: 1.34s; }
 
-/* Bravo : le pouce se lève, trois éclats s'allument une seule fois, elle hoche la tête */
-.md-m-pouce { transform-box: view-box; transform-origin: 148px 196px; animation: md-m-pouce .55s .45s cubic-bezier(.34, 1.56, .64, 1) both; }
+/* Bravo : l'avant-bras se redresse depuis le coude, pouce levé, trois éclats s'allument une seule fois, elle hoche la tête */
+.md-m-pouce { transform-box: view-box; transform-origin: 166px 133px; animation: md-m-pouce .55s .45s cubic-bezier(.34, 1.56, .64, 1) both; }
 .md-m-eclat { transform-box: fill-box; transform-origin: 50% 50%; animation: md-m-pop .36s cubic-bezier(.34, 1.56, .64, 1) both; }
 .md-m-eclat-1 { animation-delay: .75s; }
 .md-m-eclat-2 { animation-delay: .85s; }
 .md-m-eclat-3 { animation-delay: .95s; }
-.md-m-content { transform-box: view-box; transform-origin: 100px 146px; animation: md-m-hoche .6s .9s ease-in-out both; }
+.md-m-content { transform-box: view-box; transform-origin: 100px 104px; animation: md-m-hoche .6s .9s ease-in-out both; }
 
 @keyframes md-m-pose { from { opacity: 0; transform: scale(.82); } to { opacity: 1; transform: scale(1); } }
 @keyframes md-m-monte { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes md-m-bonnet { from { opacity: 0; transform: translateY(-14px) scale(.5) rotate(-16deg); } to { opacity: 1; transform: translateY(0) scale(1) rotate(0); } }
 @keyframes md-m-cligne { 0%, 93%, 100% { transform: scaleY(1); } 96% { transform: scaleY(.1); } }
 @keyframes md-m-salue {
-  0% { transform: rotate(18deg); opacity: 0; }
+  0% { transform: rotate(-24deg); opacity: 0; }
   15% { transform: rotate(-12deg); opacity: 1; }
   35% { transform: rotate(9deg); }
   55% { transform: rotate(-9deg); }
@@ -75,7 +75,7 @@
 @keyframes md-m-penche { from { transform: rotate(7deg); } to { transform: rotate(0); } }
 @keyframes md-m-pop { from { opacity: 0; transform: scale(.3); } to { opacity: 1; transform: scale(1); } }
 @keyframes md-m-point { 0%, 60%, 100% { transform: translateY(0); opacity: .5; } 30% { transform: translateY(-3px); opacity: 1; } }
-@keyframes md-m-pouce { from { opacity: 0; transform: translateY(26px) rotate(-14deg); } to { opacity: 1; transform: translateY(0) rotate(0); } }
+@keyframes md-m-pouce { from { opacity: 0; transform: rotate(30deg); } to { opacity: 1; transform: rotate(0); } }
 @keyframes md-m-hoche { 0%, 100% { transform: rotate(0); } 40% { transform: rotate(3deg) translateY(1.5px); } }
 
 @media (prefers-reduced-motion: reduce) {

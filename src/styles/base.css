@@ -122,3 +122,68 @@ textarea {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* --- D'une page à l'autre, sans clignotement -------------------------------
+ *
+ * Demande d'Arthur du 13 octobre 2026 : « quand je switch de l'accueil à mon
+ * cycle, messages, mon compte, il y a souvent un petit bug, ce n'est pas
+ * fluide ».
+ *
+ * Ce n'était pas un bug : chaque onglet est une vraie page, donc le navigateur
+ * jetait l'écran et le redessinait. Entre les deux, un éclair blanc, et la
+ * barre basse qui se redessine à chaque fois.
+ *
+ * Cette règle demande au navigateur de faire le passage lui-même : il
+ * photographie l'écran qu'on quitte, attend la page suivante, et fond de l'un
+ * à l'autre. UNE RÈGLE DE CSS, PAS UN SCRIPT. C'est important ici : la
+ * solution habituelle (le routeur d'Astro) charge du JavaScript sur chaque
+ * page et refait la navigation à la main. Sur une 3G de Ouagadougou, on
+ * paierait la fluidité en secondes d'attente.
+ *
+ * Le navigateur qui ne sait pas faire ignore la règle et se comporte comme
+ * avant : rien ne casse, c'est seulement moins joli. Chrome sur Android sait,
+ * et c'est l'immense majorité des téléphones ici.
+ */
+@view-transition {
+  navigation: auto;
+}
+
+/* La barre basse et la mascotte flottante ne doivent PAS fondre : elles sont
+   aux deux écrans, au même endroit. Leur donner un nom dit au navigateur
+   « c'est le même objet », et il les laisse tranquilles pendant que le contenu
+   change derrière. Sans ça, la barre disparaît et réapparaît à chaque onglet,
+   ce qui est précisément ce qu'il voyait. */
+.nav-basse {
+  view-transition-name: barre-basse;
+}
+
+.flottante {
+  view-transition-name: mascotte-flottante;
+}
+
+/* Le contenu glisse légèrement dans le sens de la lecture, au lieu de fondre
+   sur place : on comprend qu'on a changé d'écran, pas que la page a clignoté. */
+@keyframes vt-entre {
+  from { opacity: 0; transform: translateY(8px); }
+}
+
+@keyframes vt-sort {
+  to { opacity: 0; }
+}
+
+::view-transition-old(root) {
+  animation: vt-sort 0.16s ease both;
+}
+
+::view-transition-new(root) {
+  animation: vt-entre 0.26s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Elle a demandé moins de mouvement : on ne fait plus glisser, on coupe net.
+   `animation: none` sur une transition de vue revient à ne pas en faire. */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none !important;
+  }
+}
