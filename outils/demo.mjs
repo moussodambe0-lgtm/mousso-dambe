@@ -66,11 +66,18 @@ lancer('dambé', process.execPath, ['outils/banc-local/faux-ollama.mjs']);
 
 // Le site attend que la base ait fini de rejouer les migrations.
 setTimeout(() => {
-  // « --host 127.0.0.1 » n'est pas un détail : sans lui, Astro n'écoute qu'en
-  // IPv6 (« [::1] »), et tout ce qui appelle en IPv4 tombe sur un lien mort.
-  // C'est le cas du navigateur intégré de VS Code. Trouvé le 12 octobre 2026,
-  // quand Arthur m'a dit « le lien ne marche pas ».
-  lancer('site', 'npx', ['astro', 'dev', '--port', '4322', '--host', '127.0.0.1'], true);
+  // « --host » tout court n'est pas un détail. Sans aucun hôte, Astro n'écoute
+  // qu'en IPv6 (« [::1] ») et tout ce qui appelle en IPv4 tombe sur un lien
+  // mort : c'est le cas du navigateur intégré de VS Code (trouvé le 12 octobre
+  // 2026, « le lien ne marche pas »). Mais avec « --host 127.0.0.1 », c'est
+  // l'inverse : « localhost » se résout d'abord en IPv6 sur Windows, et c'est
+  // LUI qui tombe sur un lien mort (trouvé le 13 octobre, « NON LOCALHOST »).
+  //
+  // « --host » écoute sur les deux, donc les deux adresses marchent. Revers à
+  // connaître : le site devient aussi joignable depuis le wifi de la maison.
+  // C'est une démonstration locale avec des données inventées, donc sans
+  // conséquence ici.
+  lancer('site', 'npx', ['astro', 'dev', '--port', '4322', '--host'], true);
   // Le site met une bonne trentaine de secondes à être prêt sur cette
   // machine : on n'annonce l'adresse qu'une fois qu'elle répond vraiment,
   // sinon on envoie Arthur sur une page blanche.

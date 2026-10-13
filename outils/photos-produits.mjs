@@ -68,6 +68,23 @@ const PHOTOS = [
     nom: 'culottes-pastel',
     ancre: 0.5,
   },
+  {
+    // La serviette du premier plan, posée à plat : on y voit le tissu, la
+    // doublure et la pression. Les autres photos de cette série portent
+    // l'étiquette d'un autre fabricant, et celle-ci la laisse hors cadre.
+    source: 'serviettes-lavables-pochette.jpg',
+    nom: 'serviettes-lavables',
+    cadre: [0.0, 0.52, 0.78, 1.0],
+  },
+  {
+    // Le badge « 12 PCS » est hors cadre : notre produit n'en vend pas douze,
+    // et un chiffre écrit par le fournisseur sur notre fiche serait une
+    // promesse qu'on ne tient pas.
+    source: 'serviettes-lavables-douze.jpg',
+    nom: 'serviettes-lavables-lot',
+    cadre: [0.0, 0.0, 1.0, 0.82],
+    ancre: 0.45,
+  },
 ];
 
 const PYTHON = `
