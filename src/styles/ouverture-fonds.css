@@ -1,0 +1,40 @@
+/* Mousso Dambé : fonds dessinés de l'écran d'ouverture (13 octobre 2026).
+   Trois fonds, une famille : nuit prune, halo rose derrière la mascotte,
+   bande tissée façon faso dan fani en haut, accents or, corail et rose clair.
+   1 le cycle (anneaux, lunes, pétales), 2 les jours (cercle des 28 jours,
+   calendriers, rappel doré), 3 la livraison (ruban, cadeaux, chemin, confettis).
+   Mouvement discret, transform et opacity seulement, coupé par
+   prefers-reduced-motion. Aucun clignotement : tout respire en 4 à 120 s. */
+
+.ov-fond { display: block; width: 100%; height: 100%; }
+
+/* Rotations lentes autour du centre de la mascotte (195, 260) */
+.ov-tourne, .ov-tourne-inverse, .ov-tourne-lent { transform-box: view-box; transform-origin: 195px 260px; }
+.ov-tourne { animation: ov-tourne 140s linear infinite; }
+.ov-tourne-inverse { animation: ov-tourne 200s linear infinite reverse; }
+.ov-tourne-lent { animation: ov-tourne 240s linear infinite; }
+
+/* Éléments qui flottent, qui respirent, qui tombent doucement */
+.ov-flotte { transform-box: fill-box; transform-origin: 50% 50%; animation: ov-flotte 7s ease-in-out infinite alternate; }
+.ov-pulse { animation: ov-pulse 4.8s ease-in-out infinite alternate; }
+.ov-tombe { transform-box: fill-box; transform-origin: 50% 50%; animation: ov-tombe 9s ease-in-out infinite alternate; }
+.ov-chemin { animation: ov-pulse 6s ease-in-out infinite alternate; }
+
+/* Les ondes du rappel doré */
+.ov-onde { transform-box: fill-box; transform-origin: 50% 50%; opacity: 0; animation: ov-onde 3.6s ease-out infinite; }
+
+/* Décalages, pour que rien ne bouge en même temps */
+.ov-d1 { animation-delay: -1.2s; }
+.ov-d2 { animation-delay: -2.4s; }
+.ov-d3 { animation-delay: -3.6s; }
+
+@keyframes ov-tourne { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes ov-flotte { from { transform: translateY(-4px) rotate(-3deg); } to { transform: translateY(4px) rotate(3deg); } }
+@keyframes ov-pulse { from { opacity: .45; } to { opacity: 1; } }
+@keyframes ov-tombe { from { transform: translateY(-5px) rotate(-12deg); } to { transform: translateY(6px) rotate(12deg); } }
+@keyframes ov-onde { 0% { transform: scale(.5); opacity: .8; } 100% { transform: scale(1.7); opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .ov-tourne, .ov-tourne-inverse, .ov-tourne-lent, .ov-flotte, .ov-pulse, .ov-tombe, .ov-chemin, .ov-onde { animation: none; }
+  .ov-onde { opacity: .5; }
+}

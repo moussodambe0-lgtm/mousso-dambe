@@ -1,5 +1,6 @@
 /**
- * LE VOCAL AU MÉDECIN : elle parle, on enregistre, un humain écoute.
+ * LE VOCAL : elle parle, on enregistre, un humain écoute. Chez le médecin,
+ * chez la boutique, et côté administratrice pour répondre.
  *
  * Contrairement à la dictée de Dambé, ici le son part TEL QUEL. Personne ne le
  * transcrit, aucun service extérieur ne le reçoit : il est rangé dans la base
@@ -195,6 +196,10 @@ if (sait && bouton && panneau && zone) {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
+          // Chez qui ? Une femme écrit à la boutique ou au médecin (`sujet`) ;
+          // l'administratrice répond dans un fil précis (`fil`).
+          sujet: bouton.dataset.sujet ?? 'medecin',
+          fil: bouton.dataset.fil ?? null,
           base64: btoa(texte),
           // « audio/webm;codecs=opus » devient « audio/webm » : la base ne
           // connaît que le type, pas ses paramètres.

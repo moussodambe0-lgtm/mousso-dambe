@@ -29,7 +29,6 @@ import {
   infoDuJour,
   prochainesRegles,
   prochaineOvulation,
-  moyenneCycles,
   ecartEnJours,
   plusDeJours,
   type ReglagesCycle,
@@ -78,12 +77,12 @@ const { data: cyclesBase } = await client
   .limit(24);
 
 const debuts = (cyclesBase ?? []).map((c: { debut: string }) => c.debut);
-const mesure = moyenneCycles(debuts);
+// La durée du cycle est celle du profil ; la moyenne observée n'est plus imposée.
 
 const reglages: ReglagesCycle = {
   debuts,
   dureeRegles: moi.dureeRegles,
-  dureeCycle: mesure ?? moi.cycleMoyen,
+  dureeCycle: moi.cycleMoyen,
 };
 
 // --- Le mois affiché -------------------------------------------------------
@@ -200,7 +199,7 @@ const TEXTES: Record<TypeJour, { nom: string; fond: string; texte: string; class
       "C'est le jour où le risque de grossesse est le plus élevé. Tu peux sentir une légère douleur d'un côté du ventre.",
   },
   faible: {
-    nom: 'Risque plus faible',
+    nom: 'Faible fertilité',
     fond: 'fond-faible',
     classe: 'texte-faible',
     texte:
@@ -327,11 +326,9 @@ function libelle(c: Case): string {
         </div>
       </section>
 
-      {/* L'avertissement sur la contraception a été retiré du calendrier le
-          13 octobre 2026, À LA DEMANDE D'ARTHUR (deux fois : d'abord sur Mon
-          cycle, puis ici). Il l'avait lui-même exigé obligatoire le 12.
-          `AVERTISSEMENT_CONTRACEPTION` est toujours dans `cycle-calcul.ts` :
-          le réafficher tient en quelques lignes. */}
+      {/* La mention d'estimation (posée le 13 octobre 2026 d'après le prompt
+          d'Arthur) a été retirée le même jour, à sa demande : « en bas du
+          calendrier il y a ça, supprime ». */}
 
       {
         !aDesDonnees && (

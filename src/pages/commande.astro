@@ -29,10 +29,14 @@ const lignes = lirePanier(Astro);
 if (lignes.length === 0) return Astro.redirect('/panier', 302);
 
 let erreur = '';
-let nom = moi.prenom;
+let nom = moi.nomLivraison || moi.prenom;
 let telephone = moi.telephone ?? '';
 let quartier = moi.quartier ?? '';
 let repere = moi.repere ?? '';
+// La position déjà enregistrée (« Mes adresses ») pré-remplit les champs
+// cachés : elle n'a pas besoin de la repartager à chaque commande.
+let positionLat = moi.positionLat;
+let positionLng = moi.positionLng;
 
 if (Astro.request.method === 'POST') {
   const f = await Astro.request.formData();
@@ -40,6 +44,14 @@ if (Astro.request.method === 'POST') {
   telephone = String(f.get('telephone') ?? '').trim();
   quartier = String(f.get('quartier') ?? '').trim();
   repere = String(f.get('repere') ?? '').trim();
+  const latBrut = f.get('lat');
+  const lngBrut = f.get('lng');
+  positionLat = latBrut ? Number(latBrut) : null;
+  positionLng = lngBrut ? Number(lngBrut) : null;
+  // « Garder cette adresse dans mon compte », cochée par défaut (Arthur, 13
+  // octobre 2026). C'est déjà ce qui se passait avant que la case existe ;
+  // elle donne juste le choix de dire non.
+  const garder = f.get('garder') === 'oui';
 
   const client = clientSession(Astro)!;
   const { data, error } = await client.rpc('passer_commande', {
@@ -48,13 +60,16 @@ if (Astro.request.method === 'POST') {
     p_telephone: telephone,
     p_quartier: quartier,
     p_repere: repere,
+    p_lat: positionLat,
+    p_lng: positionLng,
+    p_garder: garder,
   });
 
   if (error || !data?.ok) {
     erreur = messageErreur(data?.erreur ?? error?.message);
   } else {
     ecrirePanier(Astro, []);
-    return Astro.redirect(`/commandes?nouvelle=${encodeURIComponent(data.numero)}`, 303);
+    return Astro.redirect(`/commande-confirmee?numero=${encodeURIComponent(data.numero)}`, 303);
   }
 }
 
@@ -86,6 +101,9 @@ const QUARTIERS = [
     {erreur && <div class="marge-bas"><Alerte type="erreur" texte={erreur} /></div>}
 
     <form method="POST" class="apparait">
+      <input type="hidden" name="lat" class="position-lat" value={positionLat ?? ''} />
+      <input type="hidden" name="lng" class="position-lng" value={positionLng ?? ''} />
+
       <div class="champ-bloc">
         <label class="libelle" for="nom">Ton nom pour le livreur</label>
         <input class="champ" id="nom" name="nom" type="text" required maxlength="60" value={nom} autocomplete="name" />
@@ -107,14 +125,32 @@ const QUARTIERS = [
         <p class="aide">8 chiffres, qui commencent par 5, 6 ou 7. Le livreur appelle avant de passer.</p>
       </div>
 
-      <div class="champ-bloc">
+      {/* « Partager ma position », au lieu du quartier (Arthur, 13 octobre
+          2026). Le bouton n'apparaît que si le navigateur sait géolocaliser ;
+          rien ne part avant qu'elle appuie elle-même, et c'est le navigateur
+          qui lui demande la permission, jamais nous à sa place. */}
+      <div class="position-bloc" data-position>
+        <button
+          class:list={['btn', 'btn-contour', 'btn-plein', 'position-bouton', positionLat !== null && 'position-ok']}
+          type="button"
+          hidden
+        >
+          <Icone nom="lieu" taille={18} />
+          {positionLat !== null ? 'Position partagée' : 'Partager ma position'}
+        </button>
+        <p class="position-dit" hidden={positionLat === null}>
+          {positionLat !== null && 'Ta position est partagée. Le quartier n’est plus obligatoire.'}
+        </p>
+      </div>
+
+      <div class:list={['champ-bloc', 'position-quartier', positionLat !== null && 'position-quartier-facultatif']}>
         <label class="libelle" for="quartier">Ton quartier</label>
         <input
           class="champ"
           id="quartier"
           name="quartier"
           type="text"
-          required
+          required={positionLat === null}
           maxlength="60"
           value={quartier}
           list="quartiers"
@@ -138,6 +174,14 @@ const QUARTIERS = [
         />
         <p class="aide">C'est ce qui sert vraiment au livreur, plus qu'un numéro de rue.</p>
       </div>
+
+      {/* « Garder cette adresse dans mon compte » (Arthur, 13 octobre 2026).
+          Cochée par défaut : c'est déjà ce que faisait la commande avant que
+          la case existe, personne ne doit perdre une habitude qui marchait. */}
+      <label class="garder-ligne">
+        <input type="checkbox" name="garder" value="oui" checked />
+        <span>Garder cette adresse dans mon compte</span>
+      </label>
 
       <h2 class="rangee-titre">Comment tu paies</h2>
       <div class="rangees">
@@ -183,7 +227,7 @@ const QUARTIERS = [
 
       <div class="encadre">
         <Icone nom="colis" taille={19} />
-        <p>Le colis est neutre, sans marque ni dessin. Si tu n'es pas là, le livreur rappelle.</p>
+        <p>Si tu n'es pas là, le livreur rappelle.</p>
       </div>
 
       <div class="place-barre"></div>
@@ -196,6 +240,10 @@ const QUARTIERS = [
     </form>
   </main>
 </Base>
+
+<script>
+  import '../scripts/position';
+</script>
 
 <style>
   .champ-bloc {
@@ -290,5 +338,39 @@ const QUARTIERS = [
 
   .marge-bas {
     margin-bottom: var(--e3);
+  }
+
+  .position-bloc {
+    margin-bottom: var(--e4);
+  }
+
+  .position-bouton[hidden] {
+    display: none;
+  }
+
+  .position-ok {
+    border-color: var(--vert, #2f9e5b);
+    color: var(--vert, #2f9e5b);
+  }
+
+  .position-dit {
+    margin-top: 8px;
+    font-size: 12.5px;
+    color: var(--texte-2);
+  }
+
+  .position-quartier-facultatif .libelle::after {
+    content: ' (facultatif)';
+    font-weight: 400;
+    color: var(--texte-3);
+  }
+
+  .garder-ligne {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: var(--e4);
+    font-size: 13.5px;
+    color: var(--texte-2);
   }
 </style>

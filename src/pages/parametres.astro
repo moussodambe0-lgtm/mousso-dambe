@@ -1,0 +1,104 @@
+---
+/**
+ * Paramètres.
+ *
+ * Demande d'Arthur du 13 octobre 2026, par message vocal : « une option
+ * paramètre au niveau de mon compte, un logo de paramètre en haut à droite...
+ * dans paramètres, la première chose, mon compte, en bas de mon compte il y a
+ * quatre boutons : mes informations, mes adresses, mise à jour, service
+ * client ».
+ */
+import Base from '../layouts/Base.astro';
+import Entete from '../components/Entete.astro';
+import Icone from '../components/Icone.astro';
+import { visiteuse, lirePanier, comptePanier } from '../lib/session';
+import { baseConfiguree } from '../lib/supabase';
+
+if (!baseConfiguree()) return Astro.redirect('/', 302);
+const moi = await visiteuse(Astro);
+if (!moi) return Astro.redirect('/connexion', 302);
+
+const panier = comptePanier(lirePanier(Astro));
+
+const LIGNES = [
+  { icone: 'compte', mot: 'Mes informations', href: '/parametres/informations' },
+  { icone: 'lieu', mot: 'Mes adresses', href: '/compte/adresse' },
+  { icone: 'cloche', mot: 'Mise à jour', href: '/parametres/mise-a-jour' },
+  { icone: 'bulle', mot: 'Service client', href: '/discussions/boutique' },
+];
+---
+
+<Base titre="Paramètres" nav="compte" panier={panier}>
+  <main class="page">
+    <Entete titre="Paramètres" retour="/compte" />
+
+    <h2 class="section-titre">Mon compte</h2>
+    <nav class="liste apparait">
+      {
+        LIGNES.map((l) => (
+          <a class="ligne" href={l.href}>
+            <span class="ligne-rond"><Icone nom={l.icone} taille={19} /></span>
+            <span class="ligne-mot">{l.mot}</span>
+            <Icone nom="avant" taille={18} classe="ligne-fleche" />
+          </a>
+        ))
+      }
+    </nav>
+
+    <div class="espace"></div>
+  </main>
+</Base>
+
+<style>
+  .section-titre {
+    margin-bottom: var(--e2);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--texte-3);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  .liste {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--bordure);
+    border-radius: var(--r-carte);
+    background: var(--surface);
+    overflow: hidden;
+  }
+
+  .ligne {
+    display: flex;
+    align-items: center;
+    gap: var(--e3);
+    padding: var(--e3) var(--e4);
+    border-bottom: 1px solid var(--bordure);
+  }
+
+  .ligne:last-child {
+    border-bottom: none;
+  }
+
+  .ligne:active {
+    background: var(--surface-douce);
+  }
+
+  .ligne-rond {
+    display: grid;
+    place-items: center;
+    flex: none;
+    color: var(--rose);
+  }
+
+  .ligne-mot {
+    flex: 1;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .ligne :global(.ligne-fleche) {
+    flex: none;
+    color: var(--texte-3);
+  }
+</style>

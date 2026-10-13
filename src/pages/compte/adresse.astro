@@ -1,0 +1,192 @@
+---
+/**
+ * Mes adresses : où on te livre, sans passer par une commande.
+ *
+ * Demande d'Arthur du 13 octobre 2026, par message vocal : un endroit dans le
+ * compte pour voir et changer son adresse de livraison, avec la possibilité
+ * de « partager sa position » au lieu de donner son quartier à la main.
+ *
+ * Ce que ça change pour une commande : `passer_commande` lit déjà cette
+ * adresse pour pré-remplir le formulaire de commande (c'est le mécanisme qui
+ * existait depuis le premier jour, juste sans écran pour le voir). Ici, on
+ * peut la préparer AVANT d'avoir quoi que ce soit dans le panier.
+ */
+import Base from '../../layouts/Base.astro';
+import Entete from '../../components/Entete.astro';
+import Icone from '../../components/Icone.astro';
+import Alerte from '../../components/Alerte.astro';
+import { clientSession, baseConfiguree } from '../../lib/supabase';
+import { visiteuse, lirePanier, comptePanier } from '../../lib/session';
+import { messageErreur } from '../../lib/format';
+
+if (!baseConfiguree()) return Astro.redirect('/', 302);
+const moi = await visiteuse(Astro);
+if (!moi) return Astro.redirect('/connexion', 302);
+
+const client = clientSession(Astro)!;
+let erreur = '';
+let nom = moi.nomLivraison || moi.prenom;
+let telephone = moi.telephone ?? '';
+let quartier = moi.quartier ?? '';
+let repere = moi.repere ?? '';
+
+if (Astro.request.method === 'POST') {
+  const f = await Astro.request.formData();
+  nom = String(f.get('nom') ?? '').trim();
+  telephone = String(f.get('telephone') ?? '').trim();
+  quartier = String(f.get('quartier') ?? '').trim();
+  repere = String(f.get('repere') ?? '').trim();
+  const lat = f.get('lat');
+  const lng = f.get('lng');
+
+  const { data, error } = await client.rpc('enregistrer_adresse', {
+    p_nom: nom,
+    p_telephone: telephone,
+    p_quartier: quartier,
+    p_repere: repere,
+    p_lat: lat ? Number(lat) : null,
+    p_lng: lng ? Number(lng) : null,
+  });
+  if (error || !data?.ok) erreur = messageErreur(data?.erreur);
+  else return Astro.redirect('/compte?ok=adresse', 303);
+}
+
+const QUARTIERS = [
+  'Dassasgho', 'Tanghin', 'Zogona', 'Gounghin', 'Pissy', 'Cissin', 'Karpala',
+  'Ouaga 2000', 'Somgandé', 'Kossodo', 'Nonsin', 'Patte d’Oie', 'Saaba',
+  'Tampouy', 'Wemtenga', 'Zone du bois', 'Nioko', 'Bonheur-ville',
+];
+
+const aUnePosition = moi.positionLat !== null && moi.positionLng !== null;
+const panier = comptePanier(lirePanier(Astro));
+---
+
+<Base titre="Mes adresses" nav="compte" panier={panier}>
+  <main class="page">
+    <Entete titre="Mes adresses" retour="/compte" />
+
+    {erreur && <div class="marge-bas"><Alerte type="erreur" texte={erreur} /></div>}
+
+    <form method="POST" class="apparait">
+      <input type="hidden" name="lat" class="position-lat" value={aUnePosition ? moi.positionLat : ''} />
+      <input type="hidden" name="lng" class="position-lng" value={aUnePosition ? moi.positionLng : ''} />
+
+      <div class="champ-bloc">
+        <label class="libelle" for="nom">Ton nom pour le livreur</label>
+        <input class="champ" id="nom" name="nom" type="text" required maxlength="60" value={nom} autocomplete="name" />
+      </div>
+
+      <div class="champ-bloc">
+        <label class="libelle" for="telephone">Ton numéro</label>
+        <input
+          class="champ"
+          id="telephone"
+          name="telephone"
+          type="tel"
+          inputmode="numeric"
+          required
+          value={telephone}
+          autocomplete="tel-national"
+          placeholder="70 12 34 56"
+        />
+        <p class="aide">8 chiffres, qui commencent par 5, 6 ou 7. Le livreur appelle avant de passer.</p>
+      </div>
+
+      {/* « Partager ma position » : demande d'Arthur du 13 octobre 2026.
+          Le bouton arrive caché ; `position.ts` ne le montre que si le
+          navigateur sait géolocaliser. Rien n'est envoyé avant qu'elle
+          appuie elle-même dessus, et le navigateur lui demande sa propre
+          autorisation : on ne la lui demande jamais à sa place. */}
+      <div class="position-bloc" data-position>
+        <button class:list={['btn', 'btn-contour', 'btn-plein', 'position-bouton', aUnePosition && 'position-ok']} type="button" hidden>
+          <Icone nom="lieu" taille={18} />
+          {aUnePosition ? 'Position partagée' : 'Partager ma position'}
+        </button>
+        <p class="position-dit" hidden={!aUnePosition}>
+          {aUnePosition && 'Ta position est déjà partagée. Le quartier n’est plus obligatoire.'}
+        </p>
+      </div>
+
+      <div class:list={['champ-bloc', 'position-quartier', aUnePosition && 'position-quartier-facultatif']}>
+        <label class="libelle" for="quartier">Ton quartier</label>
+        <input
+          class="champ"
+          id="quartier"
+          name="quartier"
+          type="text"
+          required={!aUnePosition}
+          maxlength="60"
+          value={quartier}
+          list="quartiers"
+          autocomplete="address-level3"
+        />
+        <datalist id="quartiers">
+          {QUARTIERS.map((q) => <option value={q} />)}
+        </datalist>
+      </div>
+
+      <div class="champ-bloc">
+        <label class="libelle" for="repere">Un point de repère</label>
+        <input
+          class="champ"
+          id="repere"
+          name="repere"
+          type="text"
+          maxlength="120"
+          value={repere}
+          placeholder="À côté de la pharmacie, après le marché…"
+        />
+        <p class="aide">C'est ce qui sert vraiment au livreur, plus qu'un numéro de rue.</p>
+      </div>
+
+      <button class="btn btn-rose btn-plein marge" type="submit">Enregistrer</button>
+    </form>
+
+    <div class="espace"></div>
+  </main>
+</Base>
+
+<script>
+  import '../../scripts/position';
+</script>
+
+<style>
+  .champ-bloc {
+    margin-bottom: var(--e4);
+  }
+
+  .aide {
+    margin-top: 6px;
+    font-size: 12.5px;
+    color: var(--texte-2);
+  }
+
+  .marge {
+    margin-top: var(--e3);
+  }
+
+  .position-bloc {
+    margin-bottom: var(--e4);
+  }
+
+  .position-bouton[hidden] {
+    display: none;
+  }
+
+  .position-ok {
+    border-color: var(--vert, #2f9e5b);
+    color: var(--vert, #2f9e5b);
+  }
+
+  .position-dit {
+    margin-top: 8px;
+    font-size: 12.5px;
+    color: var(--texte-2);
+  }
+
+  .position-quartier-facultatif .libelle::after {
+    content: ' (facultatif)';
+    font-weight: 400;
+    color: var(--texte-3);
+  }
+</style>

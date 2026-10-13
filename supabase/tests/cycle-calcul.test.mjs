@@ -31,23 +31,25 @@ titre('Les dates, sans piège de fuseau');
   verifier('écart négatif', ecartEnJours('2026-10-01', '2026-10-05') === -4);
 }
 
-titre("L'ovulation se compte depuis les règles qui viennent");
+titre("L'ovulation est au jour L − 14");
 {
-  // C'est la correction apportée par le code de référence d'Arthur : pour un
-  // cycle de 28 jours, les prochaines règles tombent au jour 29, donc
-  // l'ovulation au jour 15.
-  verifier('cycle de 28 jours : ovulation au jour 15', jourOvulation(28) === 15, `${jourOvulation(28)}`);
-  verifier('cycle de 21 jours : ovulation au jour 8', jourOvulation(21) === 8, `${jourOvulation(21)}`);
-  verifier('cycle de 35 jours : ovulation au jour 22', jourOvulation(35) === 22, `${jourOvulation(35)}`);
-  verifier('cycle de 40 jours : ovulation au jour 27', jourOvulation(40) === 27, `${jourOvulation(40)}`);
-  verifier('un cycle très court ne sort pas du calendrier', jourOvulation(10) === 1);
+  // La formule du prompt d'Arthur (13 octobre 2026), écrite dans ses cinq cas
+  // de test : pour un cycle de 28 jours, l'ovulation est le jour 14. Avant,
+  // elle était comptée à 14 jours avant le PREMIER jour des règles suivantes,
+  // soit le jour 15 : tout a reculé d'un jour.
+  verifier('cycle de 28 jours : ovulation au jour 14', jourOvulation(28) === 14, `${jourOvulation(28)}`);
+  verifier('cycle de 21 jours : ovulation au jour 7', jourOvulation(21) === 7, `${jourOvulation(21)}`);
+  verifier('cycle de 35 jours : ovulation au jour 21', jourOvulation(35) === 21, `${jourOvulation(35)}`);
+  verifier('cycle de 45 jours : ovulation au jour 31', jourOvulation(45) === 31, `${jourOvulation(45)}`);
+  // Un cycle de 10 jours n'existe pas : il est lu comme un cycle de 21.
+  verifier('un cycle impossible est ramené à 21 jours', jourOvulation(10) === 7, `${jourOvulation(10)}`);
 }
 
 titre('La fenêtre fertile');
 {
   const f = fenetreFertile(28);
-  verifier('elle ouvre cinq jours avant', f.debut === 10, `${f.debut}`);
-  verifier("elle ferme le lendemain de l'ovulation", f.fin === 16, `${f.fin}`);
+  verifier('elle ouvre cinq jours avant (jour L − 19)', f.debut === 9, `${f.debut}`);
+  verifier("elle ferme le lendemain de l'ovulation (jour L − 13)", f.fin === 15, `${f.fin}`);
   verifier('elle dure sept jours', f.fin - f.debut + 1 === 7);
   const court = fenetreFertile(21);
   verifier('sur un cycle court elle reste dans le cycle', court.debut >= 1 && court.fin <= 21);
@@ -60,11 +62,12 @@ titre('Le cycle auquel appartient une date');
   verifier('le dernier jour du cycle', cycleDeLaDate('2026-11-01', REGLAGES).jour === 28, `${cycleDeLaDate('2026-11-01', REGLAGES).jour}`);
   verifier('le cycle suivant repart à 1', cycleDeLaDate('2026-11-02', REGLAGES).jour === 1);
   verifier('et il déclare le bon début', cycleDeLaDate('2026-11-02', REGLAGES).debut === '2026-11-02');
-  // Un mois antérieur à tout ce qu'on connaît : on projette en arrière.
-  // Le cycle précédent commence 28 jours avant le 5 octobre, soit le 7
-  // septembre : le 20 septembre en est donc le quatorzième jour.
-  verifier('une date antérieure se projette en arrière', cycleDeLaDate('2026-09-20', REGLAGES).jour === 14, `${cycleDeLaDate('2026-09-20', REGLAGES).jour}`);
-  verifier('et elle désigne le bon début', cycleDeLaDate('2026-09-20', REGLAGES).debut === '2026-09-07', cycleDeLaDate('2026-09-20', REGLAGES).debut);
+  // Avant le premier début de règles connu, il n'y a PAS de prédiction (prompt
+  // d'Arthur, 13 octobre 2026 : « si diff < 0 : pas de prédiction »). Avant,
+  // le calcul projetait vers l'arrière et montrait des fenêtres fertiles sur
+  // des mois où rien n'avait été noté.
+  verifier('une date antérieure n a aucun jour de cycle', cycleDeLaDate('2026-09-20', REGLAGES).jour === 0, `${cycleDeLaDate('2026-09-20', REGLAGES).jour}`);
+  verifier('et elle est un jour ordinaire, sans couleur', infoDuJour('2026-09-20', REGLAGES).type === 'faible');
 }
 
 titre('Les règles déclarées priment sur la projection');
@@ -82,10 +85,11 @@ titre('La phase de chaque jour');
   verifier('jour 1 : règles', p('2026-10-05') === 'regles');
   verifier('jour 5 : règles', p('2026-10-09') === 'regles');
   verifier('jour 6 : risque faible', p('2026-10-10') === 'faible');
+  verifier('jour 9 : fertile (la fenêtre s ouvre)', p('2026-10-13') === 'fertile');
   verifier('jour 10 : fertile', p('2026-10-14') === 'fertile');
-  verifier('jour 15 : ovulation', p('2026-10-19') === 'ovulation', p('2026-10-19'));
-  verifier('jour 16 : fertile', p('2026-10-20') === 'fertile');
-  verifier('jour 17 : risque faible', p('2026-10-21') === 'faible');
+  verifier('jour 14 : ovulation', p('2026-10-18') === 'ovulation', p('2026-10-18'));
+  verifier('jour 15 : fertile (le lendemain)', p('2026-10-19') === 'fertile');
+  verifier('jour 16 : faible fertilité', p('2026-10-20') === 'faible');
 }
 
 titre('Prévu ou vécu');
@@ -107,7 +111,7 @@ titre('Prévu ou vécu');
 titre('Le risque de grossesse');
 {
   const r = (iso) => infoDuJour(iso, REGLAGES, new Set(), '2026-10-12').risque;
-  verifier("l'ovulation est au risque le plus élevé", r('2026-10-19') === 'tres-eleve');
+  verifier("l'ovulation est au risque le plus élevé", r('2026-10-18') === 'tres-eleve');
   verifier('la fenêtre fertile est élevée', r('2026-10-14') === 'eleve');
   verifier('les règles sont à risque faible', r('2026-10-05') === 'faible');
   verifier('un jour ordinaire est à risque faible', r('2026-10-25') === 'faible');
@@ -116,32 +120,44 @@ titre('Le risque de grossesse');
 titre('Les prochaines dates');
 {
   verifier('prochaines règles', prochainesRegles(REGLAGES, '2026-10-12') === '2026-11-02', prochainesRegles(REGLAGES, '2026-10-12'));
-  verifier('prochaine ovulation', prochaineOvulation(REGLAGES, '2026-10-12') === '2026-10-19', prochaineOvulation(REGLAGES, '2026-10-12'));
+  verifier('prochaine ovulation', prochaineOvulation(REGLAGES, '2026-10-12') === '2026-10-18', prochaineOvulation(REGLAGES, '2026-10-12'));
   // Après l'ovulation de ce cycle, c'est celle du cycle suivant qui est annoncée.
   verifier(
     "passé l'ovulation, on annonce la suivante",
-    prochaineOvulation(REGLAGES, '2026-10-22') === '2026-11-16',
+    prochaineOvulation(REGLAGES, '2026-10-22') === '2026-11-15',
     prochaineOvulation(REGLAGES, '2026-10-22')
   );
   verifier(
     'le jour même, on annonce ce jour',
-    prochaineOvulation(REGLAGES, '2026-10-19') === '2026-10-19'
+    prochaineOvulation(REGLAGES, '2026-10-18') === '2026-10-18'
   );
 }
 
 titre('La moyenne des cycles réels');
 {
-  verifier('trois cycles de 28 jours', moyenneCycles(['2026-10-05', '2026-09-07', '2026-08-10']) === 28);
-  verifier('une moyenne arrondie', moyenneCycles(['2026-10-05', '2026-09-06', '2026-08-10']) === 28);
+  // Elle exige AU MOINS TROIS cycles complets (quatre débuts), comme le
+  // prompt d'Arthur : moins, ce n'est pas une moyenne, c'est un hasard.
+  verifier(
+    'quatre débuts, trois cycles de 28 jours',
+    moyenneCycles(['2026-10-05', '2026-09-07', '2026-08-10', '2026-07-13']) === 28
+  );
+  verifier(
+    'une moyenne arrondie (28, 29, 30 donne 29)',
+    moyenneCycles(['2026-04-02', '2026-03-03', '2026-02-02', '2026-01-05']) === 29
+  );
+  verifier('deux cycles ne suffisent pas', moyenneCycles(['2026-10-05', '2026-09-07', '2026-08-10']) === null);
   verifier('un seul début ne donne aucune moyenne', moyenneCycles(['2026-10-05']) === null);
   verifier('aucun début ne donne aucune moyenne', moyenneCycles([]) === null);
-  // Un oubli de trois mois ne doit pas faire croire à un cycle de 90 jours.
+  // Un oubli de deux mois ne doit pas faire croire à un cycle de 60 jours.
   verifier(
     'un écart impossible est écarté',
-    moyenneCycles(['2026-10-05', '2026-07-05', '2026-06-07']) === 28,
-    `${moyenneCycles(['2026-10-05', '2026-07-05', '2026-06-07'])}`
+    moyenneCycles(['2026-10-05', '2026-08-05', '2026-07-08', '2026-06-10', '2026-05-13']) === 28,
+    `${moyenneCycles(['2026-10-05', '2026-08-05', '2026-07-08', '2026-06-10', '2026-05-13'])}`
   );
-  verifier('un ordre mélangé donne le même résultat', moyenneCycles(['2026-08-10', '2026-10-05', '2026-09-07']) === 28);
+  verifier(
+    'un ordre mélangé donne le même résultat',
+    moyenneCycles(['2026-08-10', '2026-10-05', '2026-07-13', '2026-09-07']) === 28
+  );
 }
 
 titre("Les segments de l'anneau");
@@ -149,7 +165,7 @@ titre("Les segments de l'anneau");
   const s = segmentsAnneau(5, 28);
   verifier('un segment par jour', s.length === 28);
   verifier('les cinq premiers sont des règles', s.slice(0, 5).every((x) => x.type === 'regles'));
-  verifier('le jour 15 est l’ovulation', s[14].type === 'ovulation');
+  verifier('le jour 14 est l’ovulation', s[13].type === 'ovulation');
   verifier('le jour 10 est fertile', s[9].type === 'fertile');
   verifier('le jour 28 est à risque faible', s[27].type === 'faible');
   const nbFertiles = s.filter((x) => x.type === 'fertile' || x.type === 'ovulation').length;

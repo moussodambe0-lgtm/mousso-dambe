@@ -1,0 +1,75 @@
+---
+/**
+ * Mise à jour.
+ *
+ * Demande d'Arthur du 13 octobre 2026 : un écran « Mousso Dambé A1, A2, A3...
+ * application à jour / mettre l'application à jour ».
+ *
+ * HONNÊTETÉ NÉCESSAIRE : il n'existe aucun mécanisme réel qui vérifie une
+ * version plus récente quelque part. L'application est une PWA servie
+ * directement depuis le site ; une visiteuse a TOUJOURS la dernière version
+ * dès qu'elle recharge la page (pas d'app store, pas de fichier binaire à
+ * télécharger). Cet écran affiche donc un numéro de version écrit à la main
+ * ici (`VERSION`), à changer par Arthur ou par moi à chaque nouvelle mise en
+ * ligne importante, et dit toujours « à jour » : ce n'est pas un mensonge,
+ * c'est vrai pour une PWA, mais ça mérite d'être su avant de s'y fier pour
+ * autre chose qu'une vitrine.
+ */
+import Base from '../../layouts/Base.astro';
+import Entete from '../../components/Entete.astro';
+import Icone from '../../components/Icone.astro';
+import { visiteuse, lirePanier, comptePanier } from '../../lib/session';
+import { baseConfiguree } from '../../lib/supabase';
+
+if (!baseConfiguree()) return Astro.redirect('/', 302);
+const moi = await visiteuse(Astro);
+if (!moi) return Astro.redirect('/connexion', 302);
+
+const VERSION = 'A1';
+const panier = comptePanier(lirePanier(Astro));
+---
+
+<Base titre="Mise à jour" nav="compte" panier={panier}>
+  <main class="page">
+    <Entete titre="Mise à jour" retour="/parametres" />
+
+    <div class="etat apparait">
+      <span class="etat-rond"><Icone nom="coche" taille={30} /></span>
+      <h2>Mousso Dambé {VERSION}</h2>
+      <p>Application à jour.</p>
+    </div>
+
+    <div class="espace"></div>
+  </main>
+</Base>
+
+<style>
+  .etat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: var(--e2);
+    margin-top: var(--e6);
+  }
+
+  .etat-rond {
+    display: grid;
+    place-items: center;
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: var(--rose-tres-clair, var(--surface-douce));
+    color: var(--rose);
+  }
+
+  h2 {
+    font-family: var(--titre);
+    font-size: 19px;
+  }
+
+  p {
+    color: var(--texte-2);
+    font-size: 14px;
+  }
+</style>

@@ -1,0 +1,201 @@
+---
+/**
+ * LA MASCOTTE EN ENTIER, QUI BOUGE SANS ARRÊT.
+ *
+ * Arthur, le 13 octobre 2026 : « quand je clique sur Commencer, la première
+ * image, ça doit être notre mascotte, entière, et qui fait continuellement des
+ * mouvements diversifiés ». Elle est donc montrée de la tête aux pieds (les
+ * autres écrans la coupent au buste, dans un disque), et elle enchaîne en
+ * boucle des mouvements DIFFÉRENTS : elle respire, saute, se balance, se
+ * penche, se tortille, fait un tour sur elle-même, saute deux fois.
+ *
+ * C'est l'image d'Arthur recolorée (voir `outils/mascotte-depuis-image.py`) :
+ * un seul dessin, sans bras séparés. Les mouvements sont donc ceux d'un
+ * personnage entier qu'on anime comme une figurine : sauts, balancements,
+ * écrasement à l'atterrissage, demi-tour. Ils ne touchent que `transform` et
+ * `opacity`, et l'ombre au sol suit les sauts pour qu'elle ait du poids.
+ *
+ * Mouvement réduit : elle ne fait plus que respirer, très doucement.
+ */
+interface Props {
+  /** La hauteur, en unité CSS (« 34dvh », « 280px »). */
+  hauteur?: string;
+}
+
+// La hauteur vient d'une variable CSS posée par une classe, pas d'un `style=`
+// (la politique de sécurité du contenu les refuse).
+const { hauteur = 'normale' } = Astro.props;
+---
+
+<span class:list={['me', `me-${hauteur}`]} aria-hidden="true">
+  <span class="me-etincelle me-e1"></span>
+  <span class="me-etincelle me-e2"></span>
+  <span class="me-etincelle me-e3"></span>
+  <span class="me-etincelle me-e4"></span>
+
+  <span class="me-ombre"></span>
+  <span class="me-corps">
+    <img src="/mascotte/infirmiere.webp" alt="" width="400" height="788" decoding="async" />
+  </span>
+</span>
+
+<style>
+  .me {
+    --me-h: 30dvh;
+    position: relative;
+    display: inline-flex;
+    justify-content: center;
+    align-items: flex-end;
+    height: var(--me-h);
+    aspect-ratio: 400 / 860;
+  }
+
+  .me-grande {
+    --me-h: 36dvh;
+  }
+
+  .me-petite {
+    --me-h: 22dvh;
+  }
+
+  /* Elle ne dépasse jamais l'écran, même sur un téléphone très court. */
+  .me {
+    max-height: 340px;
+  }
+
+  .me-corps {
+    position: relative;
+    z-index: 2;
+    display: block;
+    height: 94%;
+    transform-origin: 50% 100%;
+    animation: me-vie 15s ease-in-out infinite;
+    will-change: transform;
+  }
+
+  .me-corps img {
+    display: block;
+    height: 100%;
+    width: auto;
+    /* Le détourage a un bord très fin : l'ombre portée d'un sol la pose. */
+    filter: drop-shadow(0 6px 8px rgba(27, 17, 22, 0.22));
+  }
+
+  /* L'ombre au sol : elle rétrécit quand elle saute, s'élargit quand elle
+     retombe. C'est elle qui donne du poids aux sauts. */
+  .me-ombre {
+    position: absolute;
+    left: 50%;
+    bottom: 0;
+    z-index: 1;
+    width: 62%;
+    height: 7%;
+    margin-left: -31%;
+    border-radius: 50%;
+    background: rgba(27, 17, 22, 0.2);
+    filter: blur(3px);
+    animation: me-ombre 15s ease-in-out infinite;
+  }
+
+  /* Un cycle de 15 secondes, onze mouvements, jamais deux pareils d'affilée. */
+  @keyframes me-vie {
+    0%, 6% { transform: none; }
+    /* 1. Elle respire. */
+    3% { transform: scale(1.02, 0.985); }
+
+    /* 2. Un saut. */
+    8% { transform: scale(1.04, 0.93) translateY(0); }
+    11% { transform: scale(0.97, 1.05) translateY(-9%); }
+    14% { transform: scale(1.05, 0.92) translateY(0); }
+    16% { transform: none; }
+
+    /* 3. Elle se balance de gauche à droite. */
+    20% { transform: rotate(-7deg); }
+    24% { transform: rotate(7deg); }
+    28% { transform: rotate(-4deg); }
+    30% { transform: none; }
+
+    /* 4. Un double saut. */
+    33% { transform: scale(0.97, 1.05) translateY(-7%); }
+    35% { transform: scale(1.04, 0.94) translateY(0); }
+    38% { transform: scale(0.97, 1.05) translateY(-9%); }
+    40% { transform: scale(1.05, 0.92) translateY(0); }
+    42% { transform: none; }
+
+    /* 5. Elle se penche, comme si elle écoutait. */
+    46% { transform: rotate(-11deg) translateX(-3%); }
+    52% { transform: rotate(-11deg) translateX(-3%); }
+    55% { transform: none; }
+
+    /* 6. Elle se tortille, vite. */
+    57% { transform: rotate(4deg); }
+    59% { transform: rotate(-4deg); }
+    61% { transform: rotate(4deg); }
+    63% { transform: rotate(-3deg); }
+    65% { transform: none; }
+
+    /* 7. Un tour sur elle-même : elle tourne comme une figurine. */
+    70% { transform: scaleX(0.05); }
+    75% { transform: scaleX(-1); }
+    80% { transform: scaleX(0.05); }
+    85% { transform: scaleX(1); }
+
+    /* 8. Un dernier petit saut, puis elle se pose. */
+    89% { transform: scale(0.97, 1.05) translateY(-8%); }
+    92% { transform: scale(1.04, 0.94) translateY(0); }
+    95% { transform: scale(1.01, 0.99); }
+    100% { transform: none; }
+  }
+
+  @keyframes me-ombre {
+    0%, 6%, 16%, 30%, 42%, 55%, 65%, 85%, 100% { transform: scale(1); opacity: 1; }
+    11% { transform: scale(0.72); opacity: 0.55; }
+    38% { transform: scale(0.72); opacity: 0.55; }
+    89% { transform: scale(0.75); opacity: 0.55; }
+    8%, 14%, 35%, 40%, 92% { transform: scale(1.1); opacity: 1; }
+  }
+
+  /* Les étincelles : des petits points de lumière qui montent et s'éteignent,
+     autour d'elle, sans rythme commun. */
+  .me-etincelle {
+    position: absolute;
+    z-index: 3;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--rose);
+    opacity: 0;
+    animation: me-etincelle 4.6s ease-in-out infinite;
+  }
+
+  .me-e1 { left: 6%; top: 34%; animation-delay: 0s; }
+  .me-e2 { right: 4%; top: 26%; width: 7px; height: 7px; background: #f5b534; animation-delay: 1.3s; }
+  .me-e3 { left: 2%; top: 60%; width: 6px; height: 6px; background: #ffb4c8; animation-delay: 2.4s; }
+  .me-e4 { right: 8%; top: 52%; animation-delay: 3.5s; }
+
+  @keyframes me-etincelle {
+    0% { transform: translateY(8px) scale(0.4); opacity: 0; }
+    30% { opacity: 0.95; }
+    100% { transform: translateY(-34px) scale(1); opacity: 0; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .me-corps {
+      animation: me-respire 5s ease-in-out infinite;
+    }
+
+    .me-ombre,
+    .me-etincelle {
+      animation: none;
+    }
+
+    .me-etincelle {
+      display: none;
+    }
+  }
+
+  @keyframes me-respire {
+    0%, 100% { transform: none; }
+    50% { transform: scale(1.015, 0.99); }
+  }
+</style>

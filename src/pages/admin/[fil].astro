@@ -12,6 +12,7 @@
  */
 import Base from '../../layouts/Base.astro';
 import Icone from '../../components/Icone.astro';
+import VocalSaisie from '../../components/VocalSaisie.astro';
 import Avatar from '../../components/Avatar.astro';
 import Alerte from '../../components/Alerte.astro';
 import { clientSession, baseConfiguree } from '../../lib/supabase';
@@ -44,7 +45,7 @@ const ouvert = data?.ok === true;
 const tete = (data?.tete ?? null) as {
   prenom: string;
   telephone: string;
-  avatar_graine: string;
+  avatar_fichier: string | null;
   commandes: number;
 } | null;
 const messages = (data?.messages ?? []) as {
@@ -88,7 +89,7 @@ const lignes = messages.map((m) => {
           <a class="retour" href="/admin" aria-label="Retour à la boîte de réception">
             <Icone nom="retour" taille={22} />
           </a>
-          <Avatar graine={tete.avatar_graine} prenom={tete.prenom} identifiant={fil ?? ''} taille={38} />
+          <Avatar fichier={tete.avatar_fichier} prenom={tete.prenom} taille={38} />
           <span class="qui">
             <b>{tete.prenom}</b>
             <span>
@@ -138,7 +139,10 @@ const lignes = messages.map((m) => {
                     ) : (
                       <p class="texte">{m.texte}</p>
                     )}
-                    <span class="pied">{heureCourte(m.quand)}</span>
+                    <span class="pied">
+                      {heureCourte(m.quand)}
+                      {m.de === 'boutique' && <span class="statut-lu">{m.lu ? ' · Lu' : ' · Non lu'}</span>}
+                    </span>
                   </div>
                 </div>
               </>
@@ -159,6 +163,9 @@ const lignes = messages.map((m) => {
               required
               placeholder={`Répondre à ${tete.prenom}...`}
               autocomplete="off"></textarea>
+            {/* Répondre par un vocal (Arthur, 13 octobre 2026 : « Mousso Dambé
+                aussi doit pouvoir en envoyer »). */}
+            <VocalSaisie fil={fil ?? undefined} />
             <button class="envoyer" type="submit" aria-label="Envoyer">
               <Icone nom="envoyer" taille={20} />
             </button>
@@ -171,6 +178,7 @@ const lignes = messages.map((m) => {
 
 <script>
   import '../../scripts/conversation';
+  import '../../scripts/vocal';
 </script>
 
 <style>
@@ -326,6 +334,10 @@ const lignes = messages.map((m) => {
   .texte {
     white-space: pre-wrap;
     overflow-wrap: anywhere;
+  }
+
+  .statut-lu {
+    font-weight: 600;
   }
 
   .pied {

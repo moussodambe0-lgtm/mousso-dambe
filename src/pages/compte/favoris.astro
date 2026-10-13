@@ -1,0 +1,79 @@
+---
+/**
+ * Mes favoris, en entier.
+ *
+ * Avant le 13 octobre 2026, la grille complète vivait directement dans
+ * `/compte`. Arthur a demandé que « favoris » y devienne un petit rectangle,
+ * à côté d'un petit rectangle « panier » — donc la grille déménage ici, et
+ * `/compte` n'en garde qu'une tuile qui y mène.
+ */
+import Base from '../../layouts/Base.astro';
+import Entete from '../../components/Entete.astro';
+import Icone from '../../components/Icone.astro';
+import CarteProduit from '../../components/CarteProduit.astro';
+import { visiteuse, lirePanier, comptePanier } from '../../lib/session';
+import { clientSession, baseConfiguree } from '../../lib/supabase';
+
+if (!baseConfiguree()) return Astro.redirect('/', 302);
+const moi = await visiteuse(Astro);
+if (!moi) return Astro.redirect('/connexion', 302);
+
+const client = clientSession(Astro)!;
+const panier = comptePanier(lirePanier(Astro));
+
+const { data: favorisData } = await client.rpc('mes_favoris');
+const favoris = (favorisData?.ok ? favorisData.favoris : []) as {
+  slug: string;
+  nom: string;
+  prix_cfa: number;
+  image: string | null;
+  rayon: string;
+  etiquette: string | null;
+  stock: number;
+}[];
+---
+
+<Base titre="Mes favoris" nav="compte" panier={panier}>
+  <main class="page">
+    <Entete titre="Mes favoris" retour="/compte" />
+
+    {
+      favoris.length === 0 ? (
+        <div class="etat-vide apparait">
+          <Icone nom="coeur" taille={38} />
+          <h2>Aucun favori</h2>
+          <p>Touche le cœur sur une fiche produit pour la garder ici.</p>
+          <a class="btn btn-rose" href="/boutique">Voir la boutique</a>
+        </div>
+      ) : (
+        <div class="grille apparait">
+          {favoris.map((p) => (
+            <CarteProduit
+              slug={p.slug}
+              nom={p.nom}
+              prixCfa={p.prix_cfa}
+              rayon={p.rayon}
+              image={p.image}
+              etiquette={p.etiquette}
+              stock={p.stock}
+            />
+          ))}
+        </div>
+      )
+    }
+
+    <div class="espace"></div>
+  </main>
+</Base>
+
+<style>
+  .grille {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--e3);
+  }
+
+  .etat-vide :global(svg) {
+    color: var(--texte-3);
+  }
+</style>

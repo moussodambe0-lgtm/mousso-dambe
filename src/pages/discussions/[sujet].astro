@@ -35,6 +35,7 @@
 import Base from '../../layouts/Base.astro';
 import Icone from '../../components/Icone.astro';
 import Symbole from '../../components/Symbole.astro';
+import VocalSaisie from '../../components/VocalSaisie.astro';
 import Alerte from '../../components/Alerte.astro';
 import { clientSession, baseConfiguree } from '../../lib/supabase';
 import { visiteuse, lirePanier, comptePanier } from '../../lib/session';
@@ -142,7 +143,9 @@ const brouillon = produit ? 'Bonjour, je suis intéressée par ce produit.' : ''
 const QUI = {
   boutique: {
     titre: 'Boutique Mousso Dambé',
-    sous: 'On répond nous-mêmes, pas un robot',
+    // Retiré le 13 octobre 2026 à la demande d'Arthur (« on répond nous-mêmes,
+    // pas un robot »).
+    sous: '',
     icone: 'boutique',
     videTitre: 'Écris-nous',
     videTexte:
@@ -173,7 +176,7 @@ const dit = QUI[sujet];
       </span>
       <span class="qui">
         <b>{dit.titre}</b>
-        <span>{dit.sous}</span>
+        {dit.sous && <span>{dit.sous}</span>}
       </span>
     </header>
 
@@ -187,11 +190,29 @@ const dit = QUI[sujet];
 
     <div class="fil-messages">
       {
-        lignes.length === 0 && (
+        // Chez la boutique, l'ancien texte d'accueil est retiré (Arthur, 13
+        // octobre 2026). À la place, voir le logo qui flotte, juste dessous.
+        estMedecin && lignes.length === 0 && (
           <div class="vide">
             <span class="vide-rond"><Icone nom={estMedecin ? 'coeur' : 'bulles'} taille={26} /></span>
             <h2>{dit.videTitre}</h2>
             <p>{dit.videTexte}</p>
+          </div>
+        )
+      }
+
+      {
+        // La toute première fois qu'elle entre chez la boutique : le logo de
+        // Mousso Dambé flotte au milieu de la conversation, et un petit mot
+        // juste dessous (demande d'Arthur, 13 octobre 2026). Il disparaît
+        // dès qu'il y a un message : une conversation en cours n'a pas besoin
+        // de se présenter.
+        !estMedecin && lignes.length === 0 && (
+          <div class="logo-flotte">
+            <span class="logo-flotte-rond">
+              <Symbole forme="nom" taille={120} titre="Mousso Dambé" />
+            </span>
+            <p>Bienvenue chez Mousso Dambé. Écris-nous juste en dessous.</p>
           </div>
         )
       }
@@ -239,10 +260,18 @@ const dit = QUI[sujet];
                 <span class="pied">
                   {heureCourte(m.quand)}
                   {m.de === 'elle' && (
-                    <span class:list={['coches', m.lu && 'coches-lues']} aria-label={m.lu ? 'Lu' : 'Envoyé'}>
-                      <Icone nom="coche" taille={13} epaisseur={2.6} />
-                      {m.lu && <Icone nom="coche" taille={13} epaisseur={2.6} />}
-                    </span>
+                    <>
+                      {/* Écrit en toutes lettres (Arthur, 13 octobre 2026) : « Lu »
+                          quand celle qui l'a reçu l'a vu, « Non lu » sinon. Les
+                          coches restent, mais on ne devine plus leur sens. */}
+                      <span class={['statut-lu', m.lu && 'statut-lu-vu'].filter(Boolean).join(' ')}>
+                        {m.lu ? 'Lu' : 'Non lu'}
+                      </span>
+                      <span class:list={['coches', m.lu && 'coches-lues']} aria-hidden="true">
+                        <Icone nom="coche" taille={13} epaisseur={2.6} />
+                        {m.lu && <Icone nom="coche" taille={13} epaisseur={2.6} />}
+                      </span>
+                    </>
                   )}
                 </span>
               </div>
@@ -275,14 +304,8 @@ const dit = QUI[sujet];
         )
       }
 
-      {
-        !moi.telephone && (
-          <label class="tel">
-            <span>Ton numéro, pour qu'on puisse te rappeler (facultatif)</span>
-            <input type="tel" name="telephone" inputmode="tel" autocomplete="tel" placeholder="70 00 00 00" />
-          </label>
-        )
-      }
+      {/* Le champ « Ton numéro, pour qu'on puisse te rappeler » a été retiré le
+          13 octobre 2026, à la demande d'Arthur. */}
 
       <div class="zone-ecriture">
         <label class="lecture-seule" for="texte">Ton message</label>
@@ -295,40 +318,10 @@ const dit = QUI[sujet];
           placeholder={dit.champ}
           autocomplete="off">{brouillon}</textarea>
 
-        {
-          estMedecin && (
-            <>
-              {/* Le vocal, chez le médecin seulement (décision d'Arthur du 13
-                  octobre 2026). Un humain écoute : le moré et le dioula
-                  passent, et aucun son ne sort vers un service extérieur.
-                  Il arrive caché : `vocal.ts` ne le montre que si le
-                  navigateur sait enregistrer. */}
-              <button class="vocal-micro" type="button" aria-pressed="false" aria-label="Envoyer un vocal" hidden>
-                <Icone nom="micro" taille={20} />
-              </button>
-
-              <div class="vocal-panneau" hidden>
-                <span class="vocal-point" aria-hidden="true"></span>
-                <span class="vocal-temps">0:00</span>
-                <span class="vocal-message" aria-live="polite"></span>
-                <span class="vocal-boutons">
-                  <button class="vocal-annuler" type="button" aria-label="Annuler le vocal">
-                    <Icone nom="croix" taille={18} />
-                  </button>
-                  <button class="vocal-ecouter" type="button" hidden>
-                    Réécouter
-                  </button>
-                  <button class="vocal-stop" type="button" aria-label="Arrêter l'enregistrement" hidden>
-                    <span class="vocal-carre" aria-hidden="true"></span>
-                  </button>
-                  <button class="vocal-envoyer" type="button" aria-label="Envoyer le vocal" hidden>
-                    <Icone nom="envoyer" taille={20} />
-                  </button>
-                </span>
-              </div>
-            </>
-          )
-        }
+        {/* Le vocal, chez la boutique comme chez le médecin (Arthur, 13 octobre
+            2026). Un humain écoute : le moré et le dioula passent, et aucun son
+            ne sort vers un service extérieur. */}
+        <VocalSaisie sujet={sujet} />
 
         <button class="envoyer" type="submit" aria-label="Envoyer">
           <Icone nom="envoyer" taille={20} />
@@ -471,6 +464,14 @@ const dit = QUI[sujet];
     opacity: 0.7;
   }
 
+  .statut-lu {
+    font-weight: 600;
+  }
+
+  .statut-lu-vu {
+    opacity: 1;
+  }
+
   .coches {
     display: flex;
   }
@@ -527,6 +528,45 @@ const dit = QUI[sujet];
   .carte-prix {
     font-size: 12px;
     opacity: 0.85;
+  }
+
+  /* --- Le logo qui flotte, au premier passage chez la boutique --- */
+  .logo-flotte {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--e3);
+    margin: auto 0;
+    padding: var(--e6) var(--e4);
+    text-align: center;
+  }
+
+  .logo-flotte-rond {
+    display: grid;
+    place-items: center;
+    padding: var(--e4);
+    border-radius: 50%;
+    background: #fff;
+    border: 1px solid var(--bordure);
+    animation: logo-flotte 3.6s ease-in-out infinite;
+  }
+
+  .logo-flotte p {
+    max-width: 260px;
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--texte-2);
+  }
+
+  @keyframes logo-flotte {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-9px); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .logo-flotte-rond {
+      animation: none;
+    }
   }
 
   /* --- Le vide --- */
@@ -667,134 +707,6 @@ const dit = QUI[sujet];
     display: block;
     width: 100%;
     height: 38px;
-  }
-
-  /* Dans la zone d'écriture : le micro, puis le panneau qui prend sa place. */
-  .vocal-micro,
-  .vocal-annuler,
-  .vocal-stop,
-  .vocal-envoyer {
-    display: grid;
-    place-items: center;
-    width: 46px;
-    height: 46px;
-    flex: none;
-    border: 1px solid var(--bordure);
-    border-radius: 50%;
-    background: var(--surface);
-    color: var(--encre);
-    cursor: pointer;
-  }
-
-  .vocal-micro[hidden],
-  .vocal-ecouter[hidden],
-  .vocal-stop[hidden],
-  .vocal-envoyer[hidden],
-  .vocal-annuler[hidden],
-  .vocal-panneau[hidden] {
-    display: none;
-  }
-
-  .vocal-micro:active,
-  .vocal-stop:active,
-  .vocal-envoyer:active {
-    transform: scale(0.93);
-  }
-
-  .vocal-panneau {
-    flex: 1;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--e2);
-    min-height: 46px;
-  }
-
-  /* Le point rouge qui bat : elle doit voir de loin que le téléphone
-     l'enregistre. Il ne bat que pendant l'enregistrement. */
-  .vocal-point {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    background: var(--rose);
-  }
-
-  .vocal-panneau[data-etat='enregistre'] .vocal-point {
-    animation: vocal-bat 1s ease-in-out infinite;
-  }
-
-  .vocal-panneau:not([data-etat='enregistre']) .vocal-point {
-    background: var(--texte-3);
-  }
-
-  .vocal-temps {
-    min-width: 38px;
-    font-variant-numeric: tabular-nums;
-    font-weight: 700;
-    font-size: 15px;
-  }
-
-  .vocal-message {
-    flex: 1 1 100%;
-    order: 3;
-    font-size: 12.5px;
-    line-height: 1.35;
-    color: var(--texte-2);
-  }
-
-  .vocal-boutons {
-    display: flex;
-    align-items: center;
-    gap: var(--e2);
-    margin-left: auto;
-  }
-
-  .vocal-ecouter {
-    height: 46px;
-    padding: 0 16px;
-    border: 1px solid var(--bordure);
-    border-radius: 23px;
-    background: var(--surface);
-    color: var(--encre);
-    font-family: var(--texte);
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-  }
-
-  .vocal-stop {
-    background: var(--rose);
-    border-color: var(--rose);
-  }
-
-  .vocal-carre {
-    width: 15px;
-    height: 15px;
-    border-radius: 3px;
-    background: #fff;
-  }
-
-  .vocal-envoyer {
-    background: var(--rose);
-    border-color: var(--rose);
-    color: #fff;
-  }
-
-  .vocal-envoyer:disabled {
-    opacity: 0.55;
-  }
-
-  /* Pendant un vocal, la case de texte et son bouton s'effacent : on ne
-     tape pas et on ne parle pas en même temps. */
-  .zone-ecriture.vocal-actif textarea,
-  .zone-ecriture.vocal-actif > .envoyer,
-  .zone-ecriture.vocal-actif > .vocal-micro {
-    display: none;
-  }
-
-  @keyframes vocal-bat {
-    0%, 100% { transform: scale(1); opacity: 1; }
-    50% { transform: scale(1.5); opacity: 0.55; }
   }
 
   @keyframes bulle-arrive {

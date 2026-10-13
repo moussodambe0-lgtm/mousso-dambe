@@ -1,0 +1,75 @@
+---
+/**
+ * Commande confirmée.
+ *
+ * Demande d'Arthur du 13 octobre 2026 (il cite Jia comme référence) : un
+ * écran à part entière après la commande, avec la mascotte qui bouge en
+ * haut, puis deux chemins : voir ses commandes, ou continuer ses achats.
+ *
+ * Avant ce jour, la confirmation n'était qu'une phrase en haut de la liste
+ * des commandes (`/commandes?nouvelle=…`). Cet écran la remplace ; la phrase
+ * dans la liste est retirée, elle ne servirait plus à rien.
+ */
+import Base from '../layouts/Base.astro';
+import MascotteEntiere from '../components/MascotteEntiere.astro';
+import { visiteuse } from '../lib/session';
+import { baseConfiguree } from '../lib/supabase';
+
+if (!baseConfiguree()) return Astro.redirect('/', 302);
+const moi = await visiteuse(Astro);
+if (!moi) return Astro.redirect('/connexion', 302);
+
+const numero = Astro.url.searchParams.get('numero') ?? '';
+---
+
+<Base titre="Commande confirmée" pleinEcran>
+  <main class="confirmee">
+    <MascotteEntiere hauteur="petite" />
+
+    <h1>Commande confirmée</h1>
+    <p>
+      {numero && <>Ta commande <b>{numero}</b> est enregistrée. </>}
+      On t'appelle pour confirmer, et le colis part aujourd'hui ou demain.
+    </p>
+
+    <div class="boutons">
+      <a class="btn btn-rose btn-plein" href="/commandes">Voir mes commandes</a>
+      <a class="btn btn-contour btn-plein" href="/boutique">Continuer mes achats</a>
+    </div>
+  </main>
+</Base>
+
+<style>
+  .confirmee {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100dvh;
+    padding: calc(var(--e6) + env(safe-area-inset-top, 0px)) var(--e4) calc(var(--e6) + env(safe-area-inset-bottom, 0px));
+    text-align: center;
+  }
+
+  h1 {
+    margin-top: var(--e4);
+    font-family: var(--titre);
+    font-size: 24px;
+    font-weight: 800;
+  }
+
+  p {
+    margin-top: var(--e2);
+    max-width: 320px;
+    font-size: 14.5px;
+    line-height: 1.5;
+    color: var(--texte-2);
+  }
+
+  .boutons {
+    display: flex;
+    flex-direction: column;
+    gap: var(--e2);
+    width: 100%;
+    max-width: 340px;
+    margin-top: var(--e6);
+  }
+</style>

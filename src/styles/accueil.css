@@ -58,6 +58,75 @@
   flex: none;
 }
 
+/* --- La barre de recherche, avec son micro -------------------------------- */
+.acc-recherche {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.acc-recherche-champ {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 46px;
+  padding: 0 14px;
+  border: 1px solid var(--acc-line);
+  border-radius: 23px;
+  background: var(--acc-surface);
+  color: var(--acc-muted);
+}
+
+.acc-recherche-champ:focus-within {
+  border-color: var(--rose);
+}
+
+.acc-recherche-champ input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 15px;
+  color: var(--acc-ink);
+}
+
+.acc-micro {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  flex: none;
+  border: 1px solid var(--acc-line);
+  border-radius: 50%;
+  background: var(--acc-surface);
+  color: var(--acc-ink);
+  cursor: pointer;
+}
+
+.acc-micro[hidden] {
+  display: none;
+}
+
+.acc-micro.dictee-ecoute {
+  border-color: var(--rose);
+  background: var(--rose);
+  color: #fff;
+}
+
+.acc-recherche-dit {
+  margin: 4px 0 8px;
+  font-size: 13px;
+  color: var(--acc-muted);
+}
+
+.acc-recherche-dit[hidden] {
+  display: none;
+}
+
 /* --- Les cartes vedettes ------------------------------------------------- */
 .acc-vedettes {
   display: flex;

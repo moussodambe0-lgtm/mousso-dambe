@@ -10,7 +10,6 @@
 import Base from '../layouts/Base.astro';
 import Entete from '../components/Entete.astro';
 import Icone from '../components/Icone.astro';
-import Anim from '../components/Anim.astro';
 import Alerte from '../components/Alerte.astro';
 import { clientSession, baseConfiguree } from '../lib/supabase';
 import { visiteuse, lirePanier, comptePanier } from '../lib/session';
@@ -33,7 +32,6 @@ if (Astro.request.method === 'POST') {
 }
 
 if (Astro.url.searchParams.get('ok') === 'annule') message = 'Ta commande est annulée.';
-const nouvelle = Astro.url.searchParams.get('nouvelle') ?? '';
 
 const { data: brutes } = await client.rpc('mes_commandes');
 const commandes = (brutes ?? []) as {
@@ -59,18 +57,6 @@ const panier = comptePanier(lirePanier(Astro));
 <Base titre="Mes commandes" nav="compte" panier={panier}>
   <main class="page">
     <Entete titre="Mes commandes" retour="/compte" />
-
-    {
-      nouvelle && (
-        <section class="carte bloc confirmee pose">
-          <Anim nom="etat-commande-ok" classe="dessin-ok" />
-          <h2>C'est commandé</h2>
-          <p class="doux">
-            Ta commande {nouvelle} est enregistrée. On t'appelle pour confirmer, et le colis part aujourd'hui ou demain.
-          </p>
-        </section>
-      )
-    }
 
     {message && <div class="marge-bas"><Alerte type="reussite" texte={message} /></div>}
     {erreur && <div class="marge-bas"><Alerte type="erreur" texte={erreur} /></div>}
@@ -135,30 +121,6 @@ const panier = comptePanier(lirePanier(Astro));
 </Base>
 
 <style>
-  .confirmee {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    gap: var(--e2);
-    margin-bottom: var(--e4);
-  }
-
-  .confirmee h2 {
-    font-size: 21px;
-  }
-
-  .dessin-ok {
-    width: 170px;
-  }
-
-  .doux {
-    font-size: 14px;
-    color: var(--texte-2);
-    line-height: 1.5;
-    max-width: 320px;
-  }
-
   .liste {
     display: flex;
     flex-direction: column;

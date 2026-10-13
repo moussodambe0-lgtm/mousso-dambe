@@ -26,11 +26,10 @@ import Avatar from './Avatar.astro';
 
 interface Props {
   prenom: string;
-  identifiant: string;
-  avatarGraine: string;
+  avatarFichier: string | null;
 }
 
-const { prenom, identifiant, avatarGraine } = Astro.props;
+const { prenom, avatarFichier } = Astro.props;
 
 // Les trois choses qu'on vient faire dans Mousso Dambé, dites avec les mots
 // d'Arthur. Pas une liste de pages : une liste d'intentions.
@@ -55,7 +54,7 @@ const ENTREES = [
 
   <div class="menu-panneau">
     <a class="menu-compte" href="/compte">
-      <Avatar graine={avatarGraine} prenom={prenom} identifiant={identifiant} taille={48} />
+      <Avatar fichier={avatarFichier} prenom={prenom} taille={48} />
       <span class="menu-compte-mots">
         <b>{prenom || 'Mon compte'}</b>
         <span>Voir mon compte</span>

@@ -140,10 +140,10 @@ const demande = Astro.url.searchParams.get('jour') ?? '';
 const choisi = semaine.find((j) => j.iso === demande) ?? semaine.find((j) => j.aujourdhui) ?? semaine[0];
 
 const DIT: Record<TypeJour, { quoi: string; sous: string; marque: string }> = {
-  regles: { quoi: 'Jour de règles', sous: 'Risque de grossesse faible', marque: 'marque-regles' },
+  regles: { quoi: 'Jour de règles', sous: 'Faible fertilité', marque: 'marque-regles' },
   fertile: { quoi: 'Jour fertile', sous: 'Risque de grossesse élevé', marque: 'marque-fertile' },
   ovulation: { quoi: 'Ovulation estimée', sous: 'Risque de grossesse très élevé', marque: 'marque-fertile' },
-  faible: { quoi: 'Risque plus faible', sous: `Jour ${choisi?.jourDuCycle ?? 0} du cycle`, marque: 'marque-faible' },
+  faible: { quoi: 'Faible fertilité', sous: `Jour ${choisi?.jourDuCycle ?? 0} du cycle`, marque: 'marque-faible' },
 };
 
 // --- La carte vedette, dont la couleur suit la phase ------------------------
@@ -286,8 +286,43 @@ const photoDe = (i: number) => photos[i] ?? photos[photos.length - 1] ?? null;
             accessible, c'est de l'encombrement, pas un service. */}
         <header class="acc-entete acc-marges">
           <Symbole forme="nom" taille={88} classe="acc-marque" titre="Mousso Dambé" />
-          <MenuAccueil prenom={moi.prenom} identifiant={moi.id} avatarGraine={moi.avatarGraine} />
+          <MenuAccueil prenom={moi.prenom} avatarFichier={moi.avatarFichier} />
         </header>
+
+        {/* La barre de recherche, avec son micro (Arthur, 13 octobre 2026) : on
+            cherche un produit ou une fonction, en écrivant ou en parlant. Le
+            micro n'apparaît que si le navigateur sait écouter ; sans lui, la
+            barre marche comme un formulaire ordinaire. Une recherche vocale
+            part toute seule dès que la phrase est finie. */}
+        <form class="acc-recherche acc-marges" method="GET" action="/recherche" role="search">
+          <label class="lecture-seule" for="q-accueil">Chercher un produit ou une fonction</label>
+          <span class="acc-recherche-champ">
+            <Icone nom="recherche" taille={19} />
+            <input
+              id="q-accueil"
+              name="q"
+              type="search"
+              maxlength="60"
+              placeholder="Un produit, une fonction…"
+              autocomplete="off"
+              enterkeyhint="search"
+            />
+          </span>
+          <button
+            class="acc-micro dictee"
+            type="button"
+            aria-pressed="false"
+            aria-label="Chercher à la voix"
+            data-dictee
+            data-cible="#q-accueil"
+            data-dit="#dit-accueil"
+            data-envoyer="oui"
+            hidden
+          >
+            <Icone nom="micro" taille={20} />
+          </button>
+        </form>
+        <p class="acc-recherche-dit acc-marges" id="dit-accueil" aria-live="polite" hidden></p>
 
         {/* --- La carte du cycle : elle ne défile pas.
              C'est l'information pour laquelle elle a ouvert l'application.
@@ -511,6 +546,7 @@ const photoDe = (i: number) => photos[i] ?? photos[photos.length - 1] ?? null;
 
 <script>
   import '../scripts/accueil';
+  import '../scripts/dictee';
 </script>
 
 <style>

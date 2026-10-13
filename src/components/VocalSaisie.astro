@@ -1,0 +1,208 @@
+---
+/**
+ * LE VOCAL, DANS LA ZONE D'ÉCRITURE.
+ *
+ * Un micro, et le panneau qui prend sa place pendant l'enregistrement : stop,
+ * réécouter, annuler, envoyer. Il se pose DANS une `.zone-ecriture`, à côté de
+ * la case de texte et du bouton d'envoi, et c'est `src/scripts/vocal.ts` qui le
+ * fait vivre.
+ *
+ * Il sert trois endroits, et c'est pour ça qu'il est un composant :
+ *   - chez le médecin (`sujet="medecin"`) ;
+ *   - chez la boutique (`sujet="boutique"`), demande d'Arthur du 13 octobre 2026
+ *     (« je veux aussi la possibilité d'envoyer des audio à Mousso Dambé, et
+ *     Mousso Dambé aussi doit pouvoir en envoyer ») ;
+ *   - côté administratrice (`fil="…"`), pour RÉPONDRE par un vocal dans le fil
+ *     qu'elle a ouvert.
+ *
+ * Il arrive CACHÉ (`hidden`) : le serveur ne sait pas si le navigateur sait
+ * enregistrer. Seul `vocal.ts` le montre, une fois sûr. Un micro qui ne marche
+ * pas est pire que pas de micro.
+ *
+ * Aucun son ne sort vers un service extérieur, et rien n'est transcrit : le
+ * vocal est écouté par un humain.
+ */
+import Icone from './Icone.astro';
+
+interface Props {
+  /** Chez qui elle écrit : la boutique ou le médecin. */
+  sujet?: 'boutique' | 'medecin';
+  /** Côté administratrice : l'identifiant du fil dans lequel on répond. */
+  fil?: string;
+}
+
+const { sujet = 'medecin', fil } = Astro.props;
+---
+
+<button
+  class="vocal-micro"
+  type="button"
+  aria-pressed="false"
+  aria-label="Envoyer un vocal"
+  data-sujet={sujet}
+  data-fil={fil}
+  hidden
+>
+  <Icone nom="micro" taille={20} />
+</button>
+
+<div class="vocal-panneau" hidden>
+  <span class="vocal-point" aria-hidden="true"></span>
+  <span class="vocal-temps">0:00</span>
+  <span class="vocal-message" aria-live="polite"></span>
+  <span class="vocal-boutons">
+    <button class="vocal-annuler" type="button" aria-label="Annuler le vocal">
+      <Icone nom="croix" taille={18} />
+    </button>
+    <button class="vocal-ecouter" type="button" hidden>Réécouter</button>
+    <button class="vocal-stop" type="button" aria-label="Arrêter l'enregistrement" hidden>
+      <span class="vocal-carre" aria-hidden="true"></span>
+    </button>
+    <button class="vocal-envoyer" type="button" aria-label="Envoyer le vocal" hidden>
+      <Icone nom="envoyer" taille={20} />
+    </button>
+  </span>
+</div>
+
+<style>
+  .vocal-micro,
+  .vocal-annuler,
+  .vocal-stop,
+  .vocal-envoyer {
+    display: grid;
+    place-items: center;
+    width: 46px;
+    height: 46px;
+    flex: none;
+    border: 1px solid var(--bordure);
+    border-radius: 50%;
+    background: var(--surface);
+    color: var(--encre);
+    cursor: pointer;
+  }
+
+  .vocal-micro[hidden],
+  .vocal-ecouter[hidden],
+  .vocal-stop[hidden],
+  .vocal-envoyer[hidden],
+  .vocal-annuler[hidden],
+  .vocal-panneau[hidden] {
+    display: none;
+  }
+
+  .vocal-micro:active,
+  .vocal-stop:active,
+  .vocal-envoyer:active {
+    transform: scale(0.93);
+  }
+
+  .vocal-panneau {
+    flex: 1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--e2);
+    min-height: 46px;
+  }
+
+  /* Le point qui bat : elle doit voir de loin que le téléphone l'enregistre.
+     Il ne bat que pendant l'enregistrement. */
+  .vocal-point {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--rose);
+  }
+
+  .vocal-panneau[data-etat='enregistre'] .vocal-point {
+    animation: vocal-bat 1s ease-in-out infinite;
+  }
+
+  .vocal-panneau:not([data-etat='enregistre']) .vocal-point {
+    background: var(--texte-3);
+  }
+
+  .vocal-temps {
+    min-width: 38px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    font-size: 15px;
+  }
+
+  .vocal-message {
+    flex: 1 1 100%;
+    order: 3;
+    font-size: 12.5px;
+    line-height: 1.35;
+    color: var(--texte-2);
+  }
+
+  .vocal-boutons {
+    display: flex;
+    align-items: center;
+    gap: var(--e2);
+    margin-left: auto;
+  }
+
+  .vocal-ecouter {
+    height: 46px;
+    padding: 0 16px;
+    border: 1px solid var(--bordure);
+    border-radius: 23px;
+    background: var(--surface);
+    color: var(--encre);
+    font-family: var(--texte);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .vocal-stop {
+    background: var(--rose);
+    border-color: var(--rose);
+  }
+
+  .vocal-carre {
+    width: 15px;
+    height: 15px;
+    border-radius: 3px;
+    background: #fff;
+  }
+
+  .vocal-envoyer {
+    background: var(--rose);
+    border-color: var(--rose);
+    color: #fff;
+  }
+
+  .vocal-envoyer:disabled {
+    opacity: 0.55;
+  }
+
+  /* Pendant un vocal, la case de texte et son bouton s'effacent : on ne tape
+     pas et on ne parle pas en même temps. Ces éléments sont dans la page, pas
+     dans ce composant : d'où `:global`. */
+  :global(.zone-ecriture.vocal-actif textarea),
+  :global(.zone-ecriture.vocal-actif > .envoyer),
+  :global(.zone-ecriture.vocal-actif > .vocal-micro) {
+    display: none;
+  }
+
+  @keyframes vocal-bat {
+    0%,
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+    50% {
+      transform: scale(1.5);
+      opacity: 0.55;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .vocal-panneau[data-etat='enregistre'] .vocal-point {
+      animation: none;
+    }
+  }
+</style>

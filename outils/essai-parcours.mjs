@@ -136,25 +136,10 @@ const DATE_REGLES = ilYAJours(JOURS_AVANT);
   verifier('ce qu’elle a déjà dit est rappelé', r.html.includes('Fatoumata') && r.html.includes('règles 6 j'));
   verifier('et le cycle qu’elle a donné aussi', r.html.includes('cycle 31 j'));
 
-  // Écran 5 : la régularité.
-  r = await envoyer('/bienvenue', { ...champsCaches(r.html), regularite: 'parfois' });
-  verifier("la régularité fait passer à l'écran 6", etapeAffichee(r.html) === 6, `écran ${etapeAffichee(r.html)}`);
-
-  // Écran 6 : les ressentis, plusieurs réponses d'un coup.
-  r = await envoyer('/bienvenue', [
-    ...Object.entries(champsCaches(r.html)),
-    ['ressentis', 'ventre'],
-    ['ressentis', 'fatigue'],
-  ]);
-  verifier("les ressentis font passer à l'écran 7", etapeAffichee(r.html) === 7, `écran ${etapeAffichee(r.html)}`);
-  verifier('les deux ressentis sont retenus', (r.html.match(/name="ressentis"/g) ?? []).length >= 2);
-
-  // Écran 7 : ce qu'elle cherche.
-  r = await envoyer('/bienvenue', { ...champsCaches(r.html), objectif: 'eviter' });
-  verifier("l'objectif fait passer à l'écran 8", etapeAffichee(r.html) === 8, `écran ${etapeAffichee(r.html)}`);
-
-  // Écran 8 : la protection, qui enregistre tout.
-  const fin = await envoyer('/bienvenue', { ...champsCaches(r.html), protection: 'lavables' });
+  // Écran 5 : la régularité, qui enregistre tout. Le questionnaire s'arrête
+  // ici depuis le 13 octobre 2026 (trois écrans retirés à la demande
+  // d'Arthur : ressentis, objectif, protection).
+  const fin = await envoyer('/bienvenue', { ...champsCaches(r.html), regularite: 'parfois' });
   verifier(
     "l'enregistrement mène à l'écran de fin",
     fin.statut === 303 && (fin.vers ?? '').includes('fini=1'),
@@ -169,16 +154,13 @@ console.log('\nCe qui est vraiment enregistré');
 {
   const compte = await ouvrir('/compte');
   verifier('le prénom saisi est enregistré', compte.html.includes('Fatoumata'), 'le prénom a été perdu');
-  verifier(
-    'la durée du cycle saisie est enregistrée',
-    /<option value="31" selected/.test(compte.html),
-    'le cycle est resté à sa valeur par défaut'
-  );
-  verifier(
-    'la durée des règles saisie est enregistrée',
-    /<option value="6" selected/.test(compte.html),
-    'la durée est restée à sa valeur par défaut'
-  );
+  // La durée du cycle et celle des règles n'ont plus de menu déroulant nulle
+  // part dans l'application depuis que « Mon cycle » a été retiré de
+  // `/compte` (demande d'Arthur, 13 octobre 2026) : il n'y a donc plus rien à
+  // lire à l'écran pour les deux vérifications qui vivaient ici. Leur
+  // enregistrement reste couvert, lui, par `supabase/tests/cycle.test.mjs`
+  // (`enregistrer_questionnaire`) et par la vérification suivante, qui prouve
+  // que le jour du cycle affiché à l'accueil dépend bien de la durée saisie.
 
   const accueil = await ouvrir('/');
   verifier('le cycle est calculé depuis la date donnée', accueil.html.includes('Jour'), "l'accueil ne montre pas de cycle");
@@ -218,6 +200,7 @@ console.log('\nCommander');
     telephone: '70112233',
     quartier: 'Zogona',
     repere: 'Derrière le lycée',
+    garder: 'oui',
   });
   // Le plafond est de cinq commandes par heure et par compte. Quand on relance
   // cet essai plusieurs fois de suite, c'est LUI qui répond, et il a raison de
@@ -227,11 +210,19 @@ console.log('\nCommander');
   if (plafondAtteint) {
     console.log('  --   la commande est refusée par le plafond horaire (essai relancé trop souvent)');
   } else {
-    verifier('la commande part', r.statut === 303 && (r.vers ?? '').includes('nouvelle=MD-'), `${r.statut} ${r.vers}`);
+    verifier(
+      'la commande part',
+      r.statut === 303 && (r.vers ?? '').includes('/commande-confirmee?numero=MD-'),
+      `${r.statut} ${r.vers}`
+    );
+    if (r.statut === 303 && r.vers) {
+      const confirmee = await ouvrir(r.vers);
+      verifier('la page de confirmation s’affiche', confirmee.statut === 200, `${confirmee.statut}`);
+    }
   }
 }
 
-console.log('\nEntrer sans compte, et garder son compte ensuite');
+console.log('\nEntrer sans compte');
 {
   // Un deuxième jeu de cookies : c'est une autre personne, sur un autre
   // téléphone, qui n'a jamais rien créé.
@@ -251,51 +242,30 @@ console.log('\nEntrer sans compte, et garder son compte ensuite');
 
   // On remplit d'un coup : ce parcours-ci vérifie l'entrée, pas les écrans.
   r = await envoyer('/bienvenue', {
-    etape: '8',
+    etape: '5',
     prenom: 'Salimata',
     dernieres: ilYAJours(2),
     sait: 'oui',
     duree: '5',
     cycle: '29',
     regularite: 'oui',
-    objectif: 'suivre',
-    protection: 'jetables',
   });
   verifier('le questionnaire s’enregistre sans compte', r.statut === 303, `${r.statut}`);
 
+  // « Garde ton compte » (email + mot de passe, pour retrouver son compte
+  // anonyme sur un autre téléphone) a été retiré de cette page le 13 octobre
+  // 2026, à la demande d'Arthur. Ce parcours ne vérifie donc plus que
+  // l'entrée et l'enregistrement sans compte : la récupération sur un autre
+  // téléphone n'a plus d'écran qui y mène.
   const compte = await ouvrir('/compte');
-  verifier('la page Compte propose de garder son compte', compte.html.includes('Garde ton compte'));
-  verifier('et dit qu’elle n’en a pas', compte.html.includes('Sans compte, sans mot de passe'));
-
-  const adresse = `salimata-${Date.now()}@essai.bf`;
-  r = await envoyer('/compte', { geste: 'garder', email: adresse, motdepasse: 'motdepasse123' });
-  verifier(
-    'une adresse s’attache à l’identité déjà là',
-    r.statut === 303 && (r.vers ?? '').includes('ok=garde'),
-    `${r.statut} ${r.vers}`
-  );
-
-  // Un troisième téléphone : elle se connecte avec l'adresse qu'elle vient
-  // d'attacher, et doit retrouver EXACTEMENT ce qu'elle avait.
-  cookies = new Map();
-  r = await envoyer('/connexion', { email: adresse, motdepasse: 'motdepasse123' });
-  verifier('elle se reconnecte avec cette adresse', r.statut === 303, `${r.statut}`);
-
-  // Le prénom se lit sur la page Compte, et non plus sur l'accueil : depuis le
-  // 13 octobre 2026, l'en-tête de l'accueil porte le logo à la place du
-  // « Bonjour » et de la date (demande d'Arthur).
-  const sonCompte = await ouvrir('/compte');
-  verifier(
-    'elle retrouve son prénom sur un autre téléphone',
-    sonCompte.html.includes('Salimata'),
-    'le compte anonyme n’a pas été récupéré'
-  );
+  verifier('la page Compte montre son prénom', compte.html.includes('Salimata'));
+  verifier('et dit qu’elle n’a pas d’adresse', compte.html.includes('Sans compte, sans mot de passe'));
 
   const accueil = await ouvrir('/');
   verifier(
-    'et son cycle, calculé depuis la date qu’elle avait donnée',
+    'et son cycle est calculé depuis la date qu’elle avait donnée',
     /Jour 3\s+de (tes règles|ton cycle)/.test(accueil.html),
-    'les données du compte anonyme sont perdues'
+    'le cycle du compte anonyme n’a pas été calculé'
   );
 
   cookies = avant;

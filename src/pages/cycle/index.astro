@@ -65,6 +65,25 @@ if (Astro.request.method === 'POST') {
     const { data, error } = await client.rpc('declarer_regles', { p_debut: hui });
     if (error || !data?.ok) erreur = messageErreur(data?.erreur);
     else return Astro.redirect('/cycle?ok=commencent', 303);
+  } else if (geste === 'adopter') {
+    // « Mettre à jour la durée de mon cycle » : la moyenne de ses cycles
+    // réels devient la durée de son profil. Elle est relue côté serveur et
+    // bornée : un nombre venu du formulaire n'est jamais cru sur parole.
+    const demande = Number(f.get('cycle'));
+    const cycleDemande = Number.isInteger(demande) ? demande : NaN;
+    if (!(cycleDemande >= 21 && cycleDemande <= 45)) {
+      erreur = messageErreur('cycle_invalide');
+    } else {
+      const { data, error } = await client.rpc('enregistrer_reglages', {
+        p_rappel: null,
+        p_discretes: null,
+        p_code: null,
+        p_cycle: cycleDemande,
+        p_duree: null,
+      });
+      if (error || !data?.ok) erreur = messageErreur(data?.erreur);
+      else return Astro.redirect('/cycle?ok=moyenne', 303);
+    }
   } else if (geste === 'finies') {
     // « Mes règles sont terminées » : on note la journée d'hier comme la
     // dernière, en marquant aujourd'hui sans flux. C'est le geste le plus
@@ -83,6 +102,7 @@ if (Astro.request.method === 'POST') {
 
 if (Astro.url.searchParams.get('ok') === 'commencent') message = 'Tes règles sont notées. Les prévisions sont à jour.';
 if (Astro.url.searchParams.get('ok') === 'finies') message = "C'est noté, bonne fin de journée.";
+if (Astro.url.searchParams.get('ok') === 'moyenne') message = 'La durée de ton cycle est mise à jour. Les dates sont recalculées.';
 
 // --- Ce que la base sait de son cycle ---------------------------------------
 const { data: cyclesBase } = await client
@@ -108,7 +128,13 @@ for (const c of (cyclesBase ?? []) as { debut: string; fin: string | null }[]) {
 }
 for (const n of notes) if (n.flux !== 'rien') confirmes.add(n.jour);
 
-const dureeCycle = (aDesDonnees ? moyenneCycles(debuts) : null) ?? moi.cycleMoyen;
+// La durée du cycle est CELLE DU PROFIL (prompt d'Arthur, 13 octobre 2026) :
+// celle qu'elle a donnée, ou qu'elle a acceptée. La moyenne de ses cycles
+// réels est seulement PROPOSÉE, plus bas ; avant, elle remplaçait la
+// durée du profil sans rien dire.
+const dureeCycle = moi.cycleMoyen;
+const moyenneObservee = aDesDonnees ? moyenneCycles(debuts) : null;
+const moyenneProposee = moyenneObservee !== null && moyenneObservee !== dureeCycle ? moyenneObservee : null;
 const reglages: ReglagesCycle = { debuts, dureeRegles: moi.dureeRegles, dureeCycle };
 
 const info = aDesDonnees ? infoDuJour(hui, reglages, confirmes, hui) : null;
@@ -271,7 +297,7 @@ const enRegles = info?.type === 'regles';
               <li><span class="pion pion-regles"></span>Règles</li>
               <li><span class="pion pion-fertile"></span>Fenêtre fertile</li>
               <li><span class="pion pion-ovulation"></span>Ovulation</li>
-              <li><span class="pion pion-faible"></span>Risque plus faible</li>
+              <li><span class="pion pion-faible"></span>Faible fertilité</li>
             </ul>
           </section>
 
@@ -306,6 +332,27 @@ const enRegles = info?.type === 'regles';
               )}
             </div>
           </section>
+
+          {/* La proposition de moyenne (prompt d'Arthur, 13 octobre 2026) : à
+              partir de trois cycles complets, on PROPOSE de mettre la durée du
+              cycle à la moyenne observée. Elle ne s'applique jamais toute seule. */}
+          {
+            moyenneProposee !== null && (
+              <section class="proposition" aria-label="Mettre à jour la durée de ton cycle">
+                <p>
+                  Tes derniers cycles durent en moyenne <b>{moyenneProposee} jours</b>, et ton profil dit{' '}
+                  <b>{dureeCycle} jours</b>. Veux-tu mettre à jour la durée de ton cycle ?
+                </p>
+                <form method="POST">
+                  <input type="hidden" name="geste" value="adopter" />
+                  <input type="hidden" name="cycle" value={moyenneProposee} />
+                  <button class="btn btn-rose" type="submit">
+                    Mettre à {moyenneProposee} jours
+                  </button>
+                </form>
+              </section>
+            )
+          }
 
           {/* --- 4.2 Les cartes d'information --- */}
           <section class="cartes" aria-label="Les dates de ton cycle">
@@ -413,6 +460,10 @@ const enRegles = info?.type === 'regles';
         « risque plus faible » comme « sans risque », c'est ici que ça se
         paie : `AVERTISSEMENT_CONTRACEPTION` est toujours dans
         `cycle-calcul.ts`, il suffit de le réafficher. */}
+
+    {/* La mention d'estimation a été retirée le 13 octobre 2026, à la demande
+        d'Arthur sur l'écran du calendrier ; retirée ici aussi par cohérence,
+        les deux écrans ayant reçu et perdu la même mention le même jour. */}
 
     <div class="espace"></div>
   </main>
@@ -811,6 +862,26 @@ const enRegles = info?.type === 'regles';
     font-size: 13px;
     color: var(--texte-2);
     line-height: 1.45;
+  }
+
+  /* --- La proposition de moyenne --- */
+  .proposition {
+    margin-bottom: var(--e4);
+    padding: var(--e3) var(--e4);
+    border: 1px solid var(--bordure);
+    border-radius: var(--r-carte);
+    background: var(--surface);
+  }
+
+  .proposition p {
+    margin-bottom: var(--e3);
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--texte-2);
+  }
+
+  .proposition b {
+    color: var(--encre);
   }
 
   /* --- Le vide --- */

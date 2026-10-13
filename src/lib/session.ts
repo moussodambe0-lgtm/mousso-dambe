@@ -29,8 +29,16 @@ export interface Visiteuse {
   telephone: string | null;
   quartier: string | null;
   repere: string | null;
-  /** Graine du générateur d'avatar. Vide tant qu'elle n'en a pas choisi un. */
-  avatarGraine: string;
+  /** Le nom donné au livreur, distinct du prénom utilisé dans l'application. */
+  nomLivraison: string | null;
+  positionLat: number | null;
+  positionLng: number | null;
+  /**
+   * Le fichier choisi dans la galerie de photos de profil (public/avatars/),
+   * ou null tant qu'elle n'en a pas choisi une (décision d'Arthur du
+   * 13 octobre 2026 : plus d'avatar automatique).
+   */
+  avatarFichier: string | null;
 }
 
 export async function visiteuse(astro: ContexteAstro): Promise<Visiteuse | null> {
@@ -75,7 +83,7 @@ export async function visiteuse(astro: ContexteAstro): Promise<Visiteuse | null>
 
   const { data: profil } = await client
     .from('profils')
-    .select('prenom, questionnaire_fini, rappel_regles, notifications_discretes, code_ouverture, cycle_moyen, duree_regles, telephone, quartier, repere, avatar_graine')
+    .select('prenom, questionnaire_fini, rappel_regles, notifications_discretes, code_ouverture, cycle_moyen, duree_regles, telephone, quartier, repere, nom_livraison, position_lat, position_lng, avatar_fichier')
     .eq('id', compte.user.id)
     .maybeSingle();
 
@@ -92,7 +100,10 @@ export async function visiteuse(astro: ContexteAstro): Promise<Visiteuse | null>
     telephone: profil?.telephone ?? null,
     quartier: profil?.quartier ?? null,
     repere: profil?.repere ?? null,
-    avatarGraine: profil?.avatar_graine ?? '',
+    nomLivraison: profil?.nom_livraison ?? null,
+    positionLat: profil?.position_lat ?? null,
+    positionLng: profil?.position_lng ?? null,
+    avatarFichier: profil?.avatar_fichier ?? null,
   };
 }
 

@@ -182,7 +182,7 @@ const ETATS = [
                 {fils.map((f) => (
                   <li>
                     <a class:list={['ligne', f.sujet === 'medecin' && 'ligne-medecin']} href={`/admin/${f.fil}`}>
-                      <Avatar graine={f.avatar_graine} prenom={f.prenom} identifiant={f.fil} taille={44} />
+                      <Avatar fichier={f.avatar_fichier} prenom={f.prenom} taille={44} />
                       <span class="ligne-corps">
                         <span class="ligne-haut">
                           <b>{f.prenom}</b>

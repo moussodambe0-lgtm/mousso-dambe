@@ -9,10 +9,9 @@
 import Base from '../../layouts/Base.astro';
 import Icone from '../../components/Icone.astro';
 import Alerte from '../../components/Alerte.astro';
-import { clientPublic, baseConfiguree, jetonDeSession } from '../../lib/supabase';
+import { clientPublic, clientSession, baseConfiguree, jetonDeSession } from '../../lib/supabase';
 import { visiteuse, lirePanier, comptePanier } from '../../lib/session';
-import { prix, prixComplet } from '../../lib/format';
-import { prixLivraison } from '../../lib/boutique';
+import { prix } from '../../lib/format';
 
 const { slug } = Astro.params;
 
@@ -31,7 +30,6 @@ if (!produit) {
 
 // Lu en base, par la seule valeur des réglages ouverte en lecture. Le reste
 // de la table, dont l'empreinte de la clé du serveur, reste fermé.
-const LIVRAISON = await prixLivraison(clientPublic(Astro));
 
 // Relevé AVANT de lire la session : si le cookie était périmé, `visiteuse()`
 // demande au navigateur de l'effacer, et une réponse qui pose un cookie ne doit
@@ -40,6 +38,21 @@ const avaitUnCookie = !!jetonDeSession(Astro);
 const moi = await visiteuse(Astro);
 const panier = comptePanier(lirePanier(Astro));
 const rupture = produit.stock <= 0;
+
+// Le cœur : rouge si ce produit est déjà dans SES favoris. Lu avec sa session,
+// donc seulement les siens (la base ferme la table aux autres).
+let favori = false;
+if (moi) {
+  const client = clientSession(Astro);
+  if (client) {
+    const { data } = await client
+      .from('favoris')
+      .select('produit_slug')
+      .eq('produit_slug', produit.slug)
+      .maybeSingle();
+    favori = !!data;
+  }
+}
 const tailles: string[] = produit.tailles ?? [];
 const erreur = Astro.url.searchParams.get('erreur');
 
@@ -99,7 +112,9 @@ if (!moi && !avaitUnCookie) {
         </span>
       </div>
 
-      <p class="description">{produit.description || produit.resume}</p>
+      {/* La description longue a été retirée de la fiche le 13 octobre 2026, à
+          la demande d'Arthur (« quand je clique pour commander un produit, je
+          vois ce genre de texte, supprime »). Le texte reste en base. */}
 
       {erreur && <div class="marge"><Alerte type="erreur" texte={erreur === 'taille' ? 'Choisis ta taille avant de continuer.' : 'Ce produit ne peut pas être ajouté.'} /></div>}
 
@@ -121,31 +136,9 @@ if (!moi && !avaitUnCookie) {
           )
         }
 
-        <div class="garanties carte">
-          <div class="garantie">
-            <Icone nom="camion" taille={19} classe="i-vert" />
-            <p>
-              <strong>Livrée à Ouaga en 24 h</strong>, {prixComplet(LIVRAISON)} de livraison. Tu paies à la remise du
-              colis, en espèces.
-            </p>
-          </div>
-          <div class="garantie">
-            <Icone nom="colis" taille={19} classe="i-encre" />
-            <p>
-              <strong>Colis neutre</strong> : un emballage sans marque ni dessin. Personne ne sait ce qu'il y a dedans.
-            </p>
-          </div>
-          {
-            produit.reutilisable && (
-              <div class="garantie">
-                <Icone nom="bouclier" taille={19} classe="i-violet" />
-                <p>
-                  <strong>Réutilisable deux ans</strong> si tu la laves à la main, à l'eau froide puis au savon.
-                </p>
-              </div>
-            )
-          }
-        </div>
+        {/* Les trois encadrés (livraison à 1 000 FCFA, emballage, réutilisable
+            deux ans) ont été retirés de la fiche le 13 octobre 2026, à la
+            demande d'Arthur. */}
 
         <a class="aide-dambe" href="/dambe">
           <span class="rond-sombre"><Icone nom="dambe" taille={20} /></span>
@@ -155,22 +148,32 @@ if (!moi && !avaitUnCookie) {
         <div class="place-barre"></div>
 
         <div class="barre-action">
-          {/* Deux actions, et une seule qui remplit la largeur. « Écrire au
-              vendeur » (section 8 du cahier d'Arthur) est à côté du panier et
-              non à sa place : la plupart achètent sans écrire, mais celle qui
-              hésite sur une taille ou un quartier de livraison ne doit pas
-              aller chercher ailleurs. Le lien emporte le produit, qui sera
-              attaché en haut de son message. */}
-          <a
-            class="btn btn-contour ecrire-vendeur"
-            href={`/discussions/boutique?produit=${produit.slug}`}
-            aria-label="Écrire au vendeur à propos de ce produit"
-          >
-            <Icone nom="bulles" taille={19} />
-            <span class="lecture-seule">Écrire au vendeur</span>
-          </a>
+          {/* « Écrire à la boutique », JUSTE AU-DESSUS de « Commander » (demande
+              d'Arthur, 13 octobre 2026). Avant, c'était un petit carré à côté
+              du bouton, sans un mot : on ne savait pas ce qu'il faisait. Celle
+              qui hésite sur une taille ou un quartier de livraison doit voir
+              tout de suite qu'elle peut écrire. Le lien emporte le produit,
+              qui sera attaché en haut de son message. */}
+          <div class="rangee-ecrire">
+            <a class="btn btn-contour ecrire-vendeur" href={`/discussions/boutique?produit=${produit.slug}`}>
+              <Icone nom="bulles" taille={18} />
+              Écrire à la boutique
+            </a>
+            {/* Le cœur des favoris (Arthur, 13 octobre 2026) : un petit carré, sur
+                la même ligne. Touché, il devient rouge. `type="button"` : il ne
+                doit pas envoyer le formulaire de commande. */}
+            <button
+              class:list={['favori', favori && 'favori-actif']}
+              type="button"
+              data-slug={produit.slug}
+              aria-pressed={favori ? 'true' : 'false'}
+              aria-label={favori ? 'Retirer des favoris' : 'Mettre en favori'}
+            >
+              <Icone nom="coeur" taille={22} epaisseur={2} />
+            </button>
+          </div>
           <button class="btn btn-rose btn-plein" type="submit" name="quantite" value="1" disabled={rupture}>
-            {rupture ? 'Bientôt de retour' : `Mettre au panier · ${prix(produit.prix_cfa)} F`}
+            {rupture ? 'Bientôt de retour' : `Commander · ${prix(produit.prix_cfa)} F`}
           </button>
         </div>
       </form>
@@ -178,17 +181,79 @@ if (!moi && !avaitUnCookie) {
   </main>
 </Base>
 
+<script>
+  import '../../scripts/favori';
+</script>
+
 <style>
-  /* Le bouton « Écrire au vendeur » : un carré à côté du grand bouton, pour
-     que « Mettre au panier » garde toute la place qu'il peut. */
+  /* Les deux boutons d'action, l'un au-dessus de l'autre : « Écrire à la
+     boutique », puis « Commander ». */
+  .barre-action {
+    display: flex;
+    flex-direction: column;
+    gap: var(--e2);
+    margin-top: var(--e4);
+  }
+
+  .rangee-ecrire {
+    display: flex;
+    gap: var(--e2);
+  }
+
+  /* Plus petit qu'avant (« réduis un peu le rectangle ») : 44 px de haut, un
+     texte de 14 px, et il laisse sa place au cœur sur la même ligne. */
   .ecrire-vendeur {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 44px;
+    height: 44px;
+    padding: 0 14px;
+    border-radius: 14px;
+    font-size: 14px;
+  }
+
+  /* Le cœur : un carré de la même hauteur. Au repos, un contour ; touché, il se
+     remplit de rouge. */
+  .favori {
     display: grid;
     place-items: center;
-    width: 52px;
-    height: 52px;
+    width: 44px;
+    height: 44px;
     flex: none;
-    padding: 0;
-    border-radius: 16px;
+    border: 1px solid var(--bordure);
+    border-radius: 14px;
+    background: var(--surface);
+    color: var(--encre);
+    cursor: pointer;
+    transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .favori:active {
+    transform: scale(0.9);
+  }
+
+  .favori :global(svg) {
+    fill: none;
+    transition: fill 0.15s, stroke 0.15s;
+  }
+
+  .favori-actif {
+    border-color: #e11d48;
+  }
+
+  .favori-actif :global(svg) {
+    fill: #e11d48;
+    stroke: #e11d48;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .favori,
+    .favori :global(svg) {
+      transition: none;
+    }
   }
 
   .visuel-haut {
@@ -253,13 +318,6 @@ if (!moi && !avaitUnCookie) {
     color: var(--texte-2);
   }
 
-  .description {
-    margin-top: var(--e3);
-    font-size: 14.5px;
-    color: var(--texte-2);
-    line-height: 1.55;
-  }
-
   .tailles {
     display: flex;
     flex-wrap: wrap;
@@ -308,45 +366,8 @@ if (!moi && !avaitUnCookie) {
     outline-offset: 2px;
   }
 
-  .garanties {
-    margin-top: var(--e5);
-    padding: var(--e4);
-    display: flex;
-    flex-direction: column;
-    gap: var(--e3);
-  }
-
-  .garantie {
-    display: flex;
-    gap: var(--e3);
-    align-items: flex-start;
-    font-size: 13.5px;
-    color: var(--texte-2);
-    line-height: 1.45;
-  }
-
-  .garantie :global(svg) {
-    flex: none;
-    margin-top: 2px;
-  }
-
-  .garantie strong {
-    color: var(--encre);
-    font-weight: 600;
-  }
-
-  :global(.i-vert) {
-    color: var(--vert);
-  }
-
-  :global(.i-violet) {
-    color: var(--violet);
-  }
-
-  :global(.i-encre) {
-    color: var(--encre);
-  }
-
+  /* L'aide d'IA Dambé garde son espace au-dessus (les encadrés de livraison
+     qui le précédaient ont été retirés). */
   .aide-dambe {
     display: flex;
     align-items: center;
@@ -375,6 +396,6 @@ if (!moi && !avaitUnCookie) {
   /* La barre d'action flotte au-dessus du contenu : on lui réserve sa hauteur
      entière, sinon la dernière ligne du texte finit cachée derrière. */
   .place-barre {
-    height: 112px;
+    height: 8px;
   }
 </style>

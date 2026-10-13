@@ -1,51 +1,58 @@
 ---
 /**
- * L'avatar d'une utilisatrice.
+ * La photo de profil d'une utilisatrice.
  *
- * Dessiné sur le serveur à partir d'une graine : zéro octet de JavaScript, et
- * le même visage sur l'accueil, dans le compte, dans les discussions et dans
- * l'administration.
+ * Décision d'Arthur du 13 octobre 2026, par message vocal : « je ne veux pas
+ * des dessins bizarres comme ce qui est ici, je veux des vrais avatars comme
+ * ma mascotte. [...] La personne n'aura pas automatiquement une image ».
+ *
+ * AVANT ce jour, ce composant dessinait un visage en SVG à partir d'une
+ * graine de texte (`src/lib/avatar.ts`) : chacune en avait un, qu'elle le
+ * veuille ou non. Ce n'est plus le cas. Tant qu'elle n'a rien choisi dans la
+ * galerie (`/compte/avatar`, `public/avatars/`), ce composant montre un rond
+ * NEUTRE, sans visage inventé. `src/lib/avatar.ts` reste dans le dépôt
+ * (sa propre suite de tests passe toujours), mais plus aucune page ne
+ * l'appelle : il est à retirer pour de bon si personne n'y revient.
  *
  * `morph` pose un nom de transition partagé entre deux pages : le navigateur
  * fait alors grandir l'avatar de l'en-tête vers le grand avatar du compte,
- * sans une ligne de script. C'est la transition demandée par Arthur, obtenue
- * gratuitement.
+ * sans une ligne de script.
  */
-import { avatar, graineDe } from '../lib/avatar';
+import Icone from './Icone.astro';
 
 interface Props {
-  graine?: string;
+  /** Le fichier choisi dans `avatars_disponibles` (sans le dossier), ou vide
+   * tant qu'elle n'a rien choisi. */
+  fichier?: string | null;
   prenom?: string;
-  identifiant?: string;
   taille?: number;
   contour?: boolean;
   morph?: boolean;
   titre?: string;
 }
 
-const {
-  graine,
-  prenom = '',
-  identifiant = '',
-  taille = 48,
-  contour = true,
-  morph = false,
-  titre,
-} = Astro.props;
+const { fichier, prenom = '', taille = 48, contour = true, morph = false, titre } = Astro.props;
 
-const vraieGraine = graine && graine.length >= 3 ? graine : graineDe(prenom || 'amie', identifiant || 'sansnom');
-const dessin = avatar(vraieGraine, titre ?? (prenom ? `Avatar de ${prenom}` : 'Avatar'));
+const etiquette = titre ?? (prenom ? `Photo de profil de ${prenom}` : 'Photo de profil');
 ---
 
 <span
-  class:list={['avatar', contour && 'avatar-contour', morph && 'avatar-morph']}
+  class:list={['avatar', contour && 'avatar-contour', morph && 'avatar-morph', !fichier && 'avatar-neutre']}
   data-taille={taille}
-  set:html={dessin}
-/>
+>
+  {
+    fichier ? (
+      <img src={`/avatars/${fichier}`} alt={etiquette} width={taille} height={taille} />
+    ) : (
+      <Icone nom="compte" taille={Math.round(taille * 0.56)} titre={etiquette} />
+    )
+  }
+</span>
 
 <style>
   .avatar {
-    display: block;
+    display: grid;
+    place-items: center;
     width: var(--taille, 48px);
     height: var(--taille, 48px);
     flex: none;
@@ -57,10 +64,17 @@ const dessin = avatar(vraieGraine, titre ?? (prenom ? `Avatar de ${prenom}` : 'A
     box-shadow: 0 0 0 2px #fff, 0 0 0 3.5px var(--bordure);
   }
 
-  .avatar :global(svg) {
+  .avatar img {
     display: block;
     width: 100%;
     height: 100%;
+    object-fit: cover;
+  }
+
+  /* Le rond neutre : tant qu'elle n'a rien choisi, pas de visage inventé. */
+  .avatar-neutre {
+    background: var(--surface-douce);
+    color: var(--texte-3);
   }
 
   /* La transition d'une page à l'autre : le navigateur relie les deux

@@ -1,0 +1,128 @@
+---
+/**
+ * Choisir sa photo de profil.
+ *
+ * Décision d'Arthur du 13 octobre 2026, par message vocal : « je ne veux pas
+ * des dessins bizarres [...], je veux des vrais avatars comme ma mascotte »,
+ * « la personne n'aura pas automatiquement une image. Si la personne veut
+ * une photo de profil, elle clique dessus, et on lui propose des avatars ».
+ *
+ * La galerie vient de la base (`avatars_disponibles`), pas d'une liste écrite
+ * ici : Arthur ajoute une ligne et un fichier dans `public/avatars/` le jour
+ * où une nouvelle photo est prête, sans qu'une seule ligne de code ne change.
+ *
+ * AUJOURD'HUI, LA GALERIE EST TOUTE PETITE : un seul visage (celui de la
+ * mascotte). Arthur veut « quelques mascottes hommes » et « des femmes de la
+ * vingtaine » en plus : ce sont de vraies photos qui restent à produire, et
+ * l'outil de génération d'images est à court de crédit depuis le 13 octobre
+ * 2026 (Motion l'a signalé deux fois). Cette page fonctionne déjà pour de
+ * vrai ; elle s'enrichira quand la galerie s'enrichira.
+ */
+import Base from '../../layouts/Base.astro';
+import Entete from '../../components/Entete.astro';
+import Avatar from '../../components/Avatar.astro';
+import Alerte from '../../components/Alerte.astro';
+import { clientSession, baseConfiguree } from '../../lib/supabase';
+import { visiteuse, lirePanier, comptePanier } from '../../lib/session';
+import { messageErreur } from '../../lib/format';
+
+if (!baseConfiguree()) return Astro.redirect('/', 302);
+const moi = await visiteuse(Astro);
+if (!moi) return Astro.redirect('/connexion', 302);
+
+const client = clientSession(Astro)!;
+let erreur = '';
+
+if (Astro.request.method === 'POST') {
+  const f = await Astro.request.formData();
+  const choix = String(f.get('fichier') ?? '').trim();
+  const { data, error } = await client.rpc('choisir_avatar', { p_fichier: choix || null });
+  if (error || !data?.ok) erreur = messageErreur(data?.erreur);
+  else return Astro.redirect('/compte', 303);
+}
+
+const { data: galerieData } = await client.rpc('galerie_avatars');
+const galerie = (galerieData ?? []) as { fichier: string; genre: string }[];
+const panier = comptePanier(lirePanier(Astro));
+---
+
+<Base titre="Ma photo de profil" nav="compte" panier={panier}>
+  <main class="page">
+    <Entete titre="Ma photo de profil" retour="/compte" />
+
+    {erreur && <div class="marge-bas"><Alerte type="erreur" texte={erreur} /></div>}
+
+    <p class="aide">Choisis une photo, ou n'en garde aucune.</p>
+
+    <form method="POST" class="grille">
+      <button
+        class:list={['case', 'case-vide', !moi.avatarFichier && 'case-actuelle']}
+        type="submit"
+        name="fichier"
+        value=""
+      >
+        <Avatar fichier={null} taille={72} contour={false} titre="Aucune photo" />
+        <span>Aucune</span>
+      </button>
+      {
+        galerie.map((a) => (
+          <button
+            class:list={['case', a.fichier === moi.avatarFichier && 'case-actuelle']}
+            type="submit"
+            name="fichier"
+            value={a.fichier}
+          >
+            <Avatar fichier={a.fichier} taille={72} contour={false} titre={`Choisir cette photo`} />
+            <span>{a.genre === 'homme' ? 'Homme' : a.genre === 'femme' ? 'Femme' : 'Mascotte'}</span>
+          </button>
+        ))
+      }
+    </form>
+
+    <div class="espace"></div>
+  </main>
+</Base>
+
+<style>
+  .aide {
+    margin: var(--e2) 0 var(--e4);
+    font-size: 13.5px;
+    color: var(--texte-2);
+  }
+
+  .grille {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--e3);
+  }
+
+  .case {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: var(--e3) var(--e2);
+    border: 2px solid transparent;
+    border-radius: var(--r-carte);
+    background: var(--surface);
+    font-family: var(--texte);
+    font-size: 12px;
+    color: var(--texte-2);
+    cursor: pointer;
+  }
+
+  .case:active {
+    transform: scale(0.96);
+  }
+
+  .case-actuelle {
+    border-color: var(--rose);
+    color: var(--rose);
+    font-weight: 600;
+  }
+
+  .case-vide {
+    border-style: dashed;
+    border-color: var(--bordure);
+  }
+</style>

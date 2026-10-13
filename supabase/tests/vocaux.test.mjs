@@ -268,5 +268,72 @@ verifier("le vocal de Bintou est intact : on n_efface que le sien", r.rows[0].j.
 r = await commeServeur(db, `select count(*)::int as n from public.vocaux`);
 verifier('il reste exactement un son dans toute la base', r.rows[0].n === 1, `restent ${r.rows[0].n}`);
 
+// ---------------------------------------------------------------------------
+titre('Les vocaux avec la boutique, dans les deux sens');
+
+const cleo = await nouveauCompte(db, 'cleo', 'Cléo');
+const SON_B = Buffer.alloc(900, 3).toString('base64');
+
+r = await commeApi(db, elle(cleo), `select public.envoyer_vocal($1, $2, $3, 'boutique') as j`, [SON_B, 'audio/webm', 7]);
+verifier('Cléo envoie un vocal à la boutique', r.rows[0].j.ok === true, JSON.stringify(r.rows[0].j));
+verifier('il est dans le fil de la boutique', r.rows[0].j.sujet === 'boutique');
+const idCleo = r.rows[0].j.message;
+
+r = await commeServeur(db, `select count(*)::int as n from public.fils where profil_id = $1 and sujet = 'medecin'`, [cleo]);
+verifier("et n'ouvre aucun fil chez le médecin", r.rows[0].n === 0);
+
+r = await commeServeur(db, `select id from public.fils where profil_id = $1 and sujet = 'boutique'`, [cleo]);
+const filCleo = r.rows[0].id;
+
+// L'administratrice répond par un vocal
+const REPONSE = Buffer.alloc(900, 9).toString('base64');
+r = await commeApi(db, elle(patronne), `select public.repondre_vocal($1, $2, $3, $4) as j`, [filCleo, REPONSE, 'audio/webm', 5]);
+verifier("l'administratrice répond par un vocal", r.rows[0].j.ok === true, JSON.stringify(r.rows[0].j));
+const idReponse = r.rows[0].j.message;
+
+r = await commeServeur(
+  db,
+  `select m.de, m.vocal_secondes, f.apercu, f.apercu_de, f.non_lus_elle
+     from public.messages m join public.fils f on f.id = m.fil_id where m.id = $1`,
+  [idReponse]
+);
+verifier('le message vient de la boutique', r.rows[0].de === 'boutique' && r.rows[0].vocal_secondes === 5);
+verifier("l'aperçu le dit, et elle a un message non lu", r.rows[0].apercu === 'Message vocal · 5 s' && r.rows[0].apercu_de === 'boutique' && r.rows[0].non_lus_elle === 1);
+
+r = await commeApi(db, elle(cleo), `select public.lire_vocal($1) as j`, [idReponse]);
+verifier('Cléo écoute la réponse de la boutique', r.rows[0].j.ok === true && r.rows[0].j.base64 === REPONSE);
+
+r = await commeApi(db, elle(bintou), `select public.lire_vocal($1) as j`, [idReponse]);
+verifier("Bintou n'entend pas la réponse faite à Cléo", r.rows[0].j.erreur === 'vocal_inconnu');
+
+r = await commeApi(db, elle(cleo), `select public.repondre_vocal($1, $2, $3, $4) as j`, [filCleo, REPONSE, 'audio/webm', 5]);
+verifier("une utilisatrice ordinaire ne peut pas répondre à la place de la boutique", r.rows[0].j.erreur === 'acces_refuse');
+
+r = await commeApi(db, elle(patronne), `select public.repondre_vocal($1, $2, $3, $4) as j`, [filCleo, REPONSE, 'audio/x-evil', 5]);
+verifier('la réponse a les mêmes bornes de format', r.rows[0].j.erreur === 'format_refuse');
+r = await commeApi(db, elle(patronne), `select public.repondre_vocal($1, $2, $3, $4) as j`, [filCleo, REPONSE, 'audio/webm', 91]);
+verifier('et les mêmes bornes de durée', r.rows[0].j.erreur === 'duree_refusee');
+r = await commeApi(db, elle(patronne), `select public.repondre_vocal($1, $2, $3, $4) as j`, ['00000000-0000-0000-0000-000000000000', REPONSE, 'audio/webm', 5]);
+verifier('un fil inconnu est refusé', r.rows[0].j.erreur === 'fil_inconnu');
+
+// Un message écrit de Cléo à la boutique, puis « effacer mes données »
+await commeApi(db, elle(cleo), `select public.ecrire_a_la_boutique($1) as j`, ['Bonjour, une question.']);
+r = await commeApi(db, elle(cleo), `select public.effacer_mes_donnees() as j`);
+verifier("l'effacement passe", r.rows[0].j.ok === true);
+
+r = await commeServeur(
+  db,
+  `select count(*)::int as n from public.messages m join public.fils f on f.id = m.fil_id
+    where f.profil_id = $1 and m.vocal_secondes is not null`,
+  [cleo]
+);
+verifier("toutes ses voix sont effacées, aussi celles de la boutique", r.rows[0].n === 0, `restent ${r.rows[0].n}`);
+
+r = await commeApi(db, elle(cleo), `select public.lire_vocal($1) as j`, [idCleo]);
+verifier('un vocal effacé ne s_écoute plus', r.rows[0].j.erreur === 'vocal_inconnu');
+
+r = await commeServeur(db, `select count(*)::int as n from public.messages m join public.fils f on f.id = m.fil_id where f.profil_id = $1 and m.texte <> ''`, [cleo]);
+verifier('ses messages écrits à la boutique restent', r.rows[0].n === 1, `${r.rows[0].n}`);
+
 bilan('Messages vocaux');
 await db.close();

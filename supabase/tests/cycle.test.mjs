@@ -77,8 +77,11 @@ titre('Les phases, une par une');
   verifier("l'ovulation d'un cycle de 32 jours tombe au jour 18, pas au jour 14", p.ovu32 === 18);
 }
 
-titre('La moyenne observée remplace la valeur déclarée');
+titre('La moyenne observée est PROPOSÉE, jamais imposée');
 {
+  // Prompt d'Arthur du 13 octobre 2026 : « quand il y a au moins 3 cycles dans
+  // l'historique, propose de mettre à jour cycleLength avec la moyenne ». Avant,
+  // la base remplaçait en silence la durée du profil par la moyenne observée.
   const fati = await nouveauCompte(db, 'fati', 'Fatimata');
   const s = { role: 'authenticated', sub: fati };
   await rpc(`select public.enregistrer_questionnaire('Fatimata', 28, 4, null) as x`, [], s);
@@ -87,9 +90,47 @@ titre('La moyenne observée remplace la valeur déclarée');
     await rpc(`select public.declarer_regles(current_date - ${jours}) as x`, [], s);
   }
   const c = (await rpc(`select public.mon_cycle() as c`, [], s)).c;
-  verifier('le cycle mesuré est de 31 jours', c.cycle_moyen === 31, `mesuré ${c.cycle_moyen}`);
+  verifier('la durée du cycle reste celle du profil', c.cycle_moyen === 28, `${c.cycle_moyen}`);
   verifier('trois écarts ont été mesurés', c.cycles_mesures === 3, `${c.cycles_mesures} écarts`);
-  verifier('la prévision suit la mesure, pas la déclaration', c.jours_restants === 31, `${c.jours_restants}`);
+  verifier('la moyenne observée est proposée', c.moyenne_proposee === 31, `${c.moyenne_proposee}`);
+  verifier('la prévision suit le PROFIL, pas la mesure', c.jours_restants === 28, `${c.jours_restants}`);
+
+  // Elle accepte la proposition : la durée du profil devient la moyenne.
+  await rpc(`select public.enregistrer_reglages(null, null, null, 31, null) as x`, [], s);
+  const apres = (await rpc(`select public.mon_cycle() as c`, [], s)).c;
+  verifier('une fois acceptée, la durée du profil est 31', apres.cycle_moyen === 31, `${apres.cycle_moyen}`);
+  verifier('et plus rien n est proposé', apres.moyenne_proposee === null, `${apres.moyenne_proposee}`);
+  verifier('la prévision suit maintenant 31 jours', apres.jours_restants === 31, `${apres.jours_restants}`);
+}
+
+titre('Deux cycles ne suffisent pas pour proposer une moyenne');
+{
+  const awi = await nouveauCompte(db, 'awi', 'Awi');
+  const s = { role: 'authenticated', sub: awi };
+  await rpc(`select public.enregistrer_questionnaire('Awi', 28, 4, null) as x`, [], s);
+  for (const jours of [62, 31, 0]) {
+    await rpc(`select public.declarer_regles(current_date - ${jours}) as x`, [], s);
+  }
+  const c = (await rpc(`select public.mon_cycle() as c`, [], s)).c;
+  verifier('deux écarts : aucune proposition', c.moyenne_proposee === null, `${c.moyenne_proposee}`);
+}
+
+titre('Les bornes du moteur : cycle 21 à 45, règles 2 à 10');
+{
+  const ba = await nouveauCompte(db, 'ba', 'Ba');
+  const s = { role: 'authenticated', sub: ba };
+  const q = (cycle, duree) =>
+    rpc(`select public.enregistrer_questionnaire('Ba', ${cycle}, ${duree}, null) as x`, [], s);
+  verifier('un cycle de 20 jours est refusé', (await q(20, 5)).x.erreur === 'cycle_invalide');
+  verifier('un cycle de 21 jours passe', (await q(21, 5)).x.ok === true);
+  verifier('un cycle de 45 jours passe', (await q(45, 5)).x.ok === true);
+  verifier('un cycle de 46 jours est refusé', (await q(46, 5)).x.erreur === 'cycle_invalide');
+  verifier('des règles de 1 jour sont refusées', (await q(28, 1)).x.erreur === 'duree_invalide');
+  verifier('des règles de 2 jours passent', (await q(28, 2)).x.ok === true);
+  verifier('des règles de 10 jours passent', (await q(28, 10)).x.ok === true);
+  verifier('des règles de 11 jours sont refusées', (await q(28, 11)).x.erreur === 'duree_invalide');
+  const r = await rpc(`select public.declarer_regles(current_date + 1) as x`, [], s);
+  verifier('des règles dans le futur sont refusées', r.x.erreur === 'date_invalide');
 }
 
 titre('Un retard long ne fabrique pas un faux jour de cycle');

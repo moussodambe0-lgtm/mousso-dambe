@@ -25,6 +25,7 @@ import Base from '../layouts/Base.astro';
 import Icone from '../components/Icone.astro';
 import Anim from '../components/Anim.astro';
 import Mascotte from '../components/Mascotte.astro';
+import MascotteEntiere from '../components/MascotteEntiere.astro';
 import Alerte from '../components/Alerte.astro';
 // Les huit illustrations de Motion (12 octobre 2026) et leurs animations.
 import '../styles/questions-huit.css';
@@ -36,7 +37,7 @@ if (!baseConfiguree()) return Astro.redirect('/', 302);
 const moi = await visiteuse(Astro);
 if (!moi) return Astro.redirect('/connexion', 302);
 
-const TOTAL = 8;
+const TOTAL = 5;
 let etape = Number(Astro.url.searchParams.get('etape') ?? '1');
 let erreur = '';
 
@@ -180,11 +181,8 @@ const TITRES: Record<number, string> = {
   1: 'Comment tu t’appelles ?',
   2: 'Quand ont commencé tes dernières règles ?',
   3: 'Combien de jours durent tes règles, d’habitude ?',
-  4: 'Combien de jours entre deux règles ?',
+  4: 'Durée du cycle : combien de jours entre chaque règles ?',
   5: 'Tes règles sont-elles régulières ?',
-  6: 'Qu’est-ce que tu ressens souvent pendant tes règles ?',
-  7: 'Qu’est-ce que tu veux avec Mousso Dambé ?',
-  8: 'Quelle protection tu utilises ?',
 };
 
 const AIDES: Record<number, string> = {
@@ -193,9 +191,6 @@ const AIDES: Record<number, string> = {
   3: 'Du premier jour de saignement au dernier. Si ça change d’un mois à l’autre, donne une moyenne.',
   4: 'Du premier jour de tes règles au premier jour des suivantes. Chez beaucoup de femmes c’est entre 25 et 32 jours.',
   5: 'Il n’y a pas de bonne réponse. Si tes cycles bougent, l’application te le dira autrement, c’est tout.',
-  6: 'Tu peux en choisir plusieurs, ou aucun. Ça sert à te donner les bons conseils, et ça ne sort jamais d’ici.',
-  7: 'Ça décide de ce que l’application te montre en premier. Tu pourras le changer.',
-  8: 'Pour te proposer ce qui te va dans la boutique. Rien d’autre.',
 };
 
 const REGULARITES = [
@@ -205,30 +200,11 @@ const REGULARITES = [
   { id: 'inconnue', libelle: 'Je ne sais pas', sous: 'Je n’ai jamais compté', icone: 'info' },
 ];
 
-const RESSENTIS = [
-  { id: 'ventre', libelle: 'Douleurs au ventre', icone: 'coeur' },
-  { id: 'fatigue', libelle: 'Fatigue', icone: 'lune' },
-  { id: 'tete', libelle: 'Maux de tête', icone: 'soleil' },
-  { id: 'humeur', libelle: 'Humeur changeante', icone: 'tissu' },
-  { id: 'abondant', libelle: 'Règles abondantes', icone: 'goutte' },
-  { id: 'rien', libelle: 'Rien de particulier', icone: 'coche' },
-];
-
-const OBJECTIFS = [
-  { id: 'suivre', libelle: 'Suivre mes règles', sous: 'Savoir quand elles arrivent', icone: 'cycle' },
-  { id: 'eviter', libelle: 'Éviter une grossesse', sous: 'Connaître mes jours à risque', icone: 'bouclier' },
-  { id: 'bebe', libelle: 'Avoir un bébé', sous: 'Repérer mes jours fertiles', icone: 'coeur' },
-  { id: 'comprendre', libelle: 'Mieux comprendre mon corps', sous: 'Savoir ce qui se passe, et pourquoi', icone: 'pousse' },
-];
-
-const PROTECTIONS = [
-  { id: 'jetables', libelle: 'Serviettes jetables', icone: 'paquet' },
-  { id: 'lavables', libelle: 'Serviettes lavables', icone: 'tissu' },
-  { id: 'tampons', libelle: 'Tampons', icone: 'goutte' },
-  { id: 'coupe', libelle: 'Coupe menstruelle', icone: 'colis' },
-  { id: 'tissu', libelle: 'Du tissu', icone: 'culotte' },
-  { id: 'autre', libelle: 'Autre chose', icone: 'info' },
-];
+// Le questionnaire s'arrête à la régularité (13 octobre 2026, trois demandes
+// successives d'Arthur : « supprime cette page » pour les ressentis, ce
+// qu'elle cherche, et la protection utilisée). Ces trois questions ne sont
+// plus posées ; la base garde leurs colonnes avec leurs valeurs par défaut
+// ('suivre', 'jetables', aucun ressenti), pour le jour où elles reviendraient.
 
 const DUREES_REGLES = [3, 4, 5, 6, 7];
 const DUREES_CYCLE = [26, 28, 30, 32];
@@ -267,15 +243,15 @@ const prenomFini = Astro.url.searchParams.get('prenom') ?? moi.prenom;
         </header>
 
         {/* --- La moitié haute : l'illustration --- */}
-        <div class="tableau">
-          {etape === 1 && <Anim nom="q1-prenom" repli="q-bienvenue" classe="dessin" />}
+        <div class:list={['tableau', etape === 1 && 'tableau-mascotte']}>
+          {/* La toute première image, quand on touche « Commencer » : la
+              mascotte EN ENTIER, qui enchaîne des mouvements différents (Arthur,
+              13 octobre 2026). Les sept autres écrans gardent leur dessin. */}
+          {etape === 1 && <MascotteEntiere hauteur="grande" />}
           {etape === 2 && <Anim nom="q2-date" repli="phase-regles" classe="dessin" />}
           {etape === 3 && <Anim nom="q3-duree-regles" repli="phase-regles" classe="dessin" />}
           {etape === 4 && <Anim nom="q4-duree-cycle" repli="q-cycle" classe="dessin" />}
           {etape === 5 && <Anim nom="q5-regularite" repli="phase-lune" classe="dessin" />}
-          {etape === 6 && <Anim nom="q6-ressentis" repli="phase-elan" classe="dessin" />}
-          {etape === 7 && <Anim nom="q7-objectif" repli="q-cycle" classe="dessin" />}
-          {etape === 8 && <Anim nom="q8-protection" repli="etat-panier-vide" classe="dessin" />}
         </div>
 
         {/* --- La moitié basse : la question --- */}
@@ -290,10 +266,6 @@ const prenomFini = Astro.url.searchParams.get('prenom') ?? moi.prenom;
           {etape !== 2 && <input type="hidden" name="sait" value={reponses.sait} />}
           {etape !== 3 && <input type="hidden" name="duree" value={reponses.duree} />}
           {etape !== 4 && <input type="hidden" name="cycle" value={reponses.cycle} />}
-          {etape !== 5 && <input type="hidden" name="regularite" value={reponses.regularite} />}
-          {etape !== 6 && reponses.ressentis.map((r) => <input type="hidden" name="ressentis" value={r} />)}
-          {etape !== 7 && <input type="hidden" name="objectif" value={reponses.objectif} />}
-          {etape !== 8 && <input type="hidden" name="protection" value={reponses.protection} />}
 
           {dejaDit.length > 0 && (
             <div class="deja" aria-label="Ce que tu as déjà répondu">
@@ -384,7 +356,7 @@ const prenomFini = Astro.url.searchParams.get('prenom') ?? moi.prenom;
                   name="duree"
                   type="number"
                   inputmode="numeric"
-                  min="1"
+                  min="2"
                   max="10"
                   placeholder="5"
                 />
@@ -407,8 +379,12 @@ const prenomFini = Astro.url.searchParams.get('prenom') ?? moi.prenom;
                 ))}
               </div>
 
-              <button class="btn btn-texte btn-plein" type="submit" name="duree" value="5">
-                Je ne sais pas (on partira sur 5 jours)
+              {/* Un petit rectangle, bien visible (Arthur, 13 octobre 2026) : c'était
+                  une ligne de texte grise qu'on ne reconnaissait pas comme un
+                  bouton. */}
+              <button class="je-sais-pas" type="submit" name="duree" value="5">
+                <b>Je ne sais pas</b>
+                <span>on partira sur 5 jours</span>
               </button>
             </div>
           )}
@@ -426,7 +402,7 @@ const prenomFini = Astro.url.searchParams.get('prenom') ?? moi.prenom;
                   name="cycle"
                   type="number"
                   inputmode="numeric"
-                  min="20"
+                  min="21"
                   max="45"
                   placeholder="28"
                 />
@@ -444,8 +420,9 @@ const prenomFini = Astro.url.searchParams.get('prenom') ?? moi.prenom;
                 ))}
               </div>
 
-              <button class="btn btn-texte btn-plein" type="submit" name="cycle" value="28">
-                Je ne sais pas (on partira sur 28 jours)
+              <button class="je-sais-pas" type="submit" name="cycle" value="28">
+                <b>Je ne sais pas</b>
+                <span>on partira sur 28 jours</span>
               </button>
             </div>
           )}
@@ -470,64 +447,10 @@ const prenomFini = Astro.url.searchParams.get('prenom') ?? moi.prenom;
             </div>
           )}
 
-          {/* --- 6. Les ressentis, plusieurs réponses --- */}
-          {etape === 6 && (
-            <div class="corps">
-              <div class="cartes-deux">
-                {RESSENTIS.map((r) => (
-                  <label class="carte-coche">
-                    <input type="checkbox" name="ressentis" value={r.id} checked={reponses.ressentis.includes(r.id)} />
-                    <span class="carte-icone">
-                      <Icone nom={r.icone} taille={19} />
-                    </span>
-                    <span class="carte-coche-mot">{r.libelle}</span>
-                    <span class="carte-marque" aria-hidden="true">
-                      <Icone nom="coche" taille={13} epaisseur={2.8} />
-                    </span>
-                  </label>
-                ))}
-              </div>
-              <button class="btn btn-rose btn-plein marge" type="submit">
-                Continuer
-              </button>
-            </div>
-          )}
-
-          {/* --- 7. Ce qu'elle cherche --- */}
-          {etape === 7 && (
-            <div class="corps">
-              <div class="cartes">
-                {OBJECTIFS.map((o) => (
-                  <button class="carte-choix" type="submit" name="objectif" value={o.id}>
-                    <span class="carte-icone">
-                      <Icone nom={o.icone} taille={20} />
-                    </span>
-                    <span class="carte-texte">
-                      <b>{o.libelle}</b>
-                      <span>{o.sous}</span>
-                    </span>
-                    <Icone nom="avant" taille={17} classe="carte-fleche" />
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* --- 8. La protection --- */}
-          {etape === 8 && (
-            <div class="corps">
-              <div class="cartes-deux">
-                {PROTECTIONS.map((p) => (
-                  <button class="carte-carree" type="submit" name="protection" value={p.id}>
-                    <span class="carte-icone">
-                      <Icone nom={p.icone} taille={22} />
-                    </span>
-                    <span class="carte-carree-mot">{p.libelle}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
+          {/* Le questionnaire s'arrête ici : les trois pages qui suivaient
+              (ressentis, objectif, protection) ont été retirées le 13 octobre
+              2026, à la demande d'Arthur. Toucher une carte ci-dessus envoie
+              directement le formulaire, qui l'enregistre et termine. */}
         </form>
       </main>
     </Base>
@@ -588,14 +511,11 @@ const prenomFini = Astro.url.searchParams.get('prenom') ?? moi.prenom;
     background: var(--rose);
   }
 
-  .part-1 { width: 12.5%; }
-  .part-2 { width: 25%; }
-  .part-3 { width: 37.5%; }
-  .part-4 { width: 50%; }
-  .part-5 { width: 62.5%; }
-  .part-6 { width: 75%; }
-  .part-7 { width: 87.5%; }
-  .part-8 { width: 100%; }
+  .part-1 { width: 20%; }
+  .part-2 { width: 40%; }
+  .part-3 { width: 60%; }
+  .part-4 { width: 80%; }
+  .part-5 { width: 100%; }
 
   /* --- La moitié haute : l'illustration --- */
   .tableau {
@@ -609,6 +529,17 @@ const prenomFini = Astro.url.searchParams.get('prenom') ?? moi.prenom;
     /* Le glissement horizontal d'une question à l'autre, demandé dans le
        cahier. Il se joue à l'arrivée de la page, donc sans script. */
     animation: glisse-dessin 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  /* La première étape : la mascotte entière a besoin de plus de place que les
+     dessins carrés des autres, et elle ne doit pas être rognée. */
+  .tableau-mascotte {
+    min-height: 40dvh;
+    max-height: none;
+    overflow: visible;
+    align-items: flex-end;
+    padding-top: var(--e4);
+    padding-bottom: var(--e3);
   }
 
   .tableau :global(.dessin) {
@@ -745,24 +676,37 @@ const prenomFini = Astro.url.searchParams.get('prenom') ?? moi.prenom;
     align-items: center;
     gap: 2px;
     padding: var(--e2) 2px;
-    border: 1px solid var(--bordure);
+    /* Un bouton doit SE VOIR comme un bouton (Arthur, 13 octobre 2026 : « on ne
+       sent pas que ce sont des boutons sur lesquels on peut cliquer »). Un
+       contour rose franc, et un bord épais dessous qui s'écrase au toucher,
+       comme une touche de clavier. */
+    border: 2px solid var(--rose);
+    border-bottom-width: 5px;
     border-radius: 16px;
     background: var(--surface);
     font-family: var(--texte);
     color: var(--encre);
+    cursor: pointer;
   }
 
   .goutte-choix:active {
-    transform: scale(0.95);
+    transform: translateY(3px);
+    border-bottom-width: 2px;
   }
 
+  /* Les gouttes sont ROUGES, et pleines (« les gouttes là-bas doivent être
+     rouges »). Elles étaient roses et en contour. */
   .goutte-pile {
     display: flex;
     flex-direction: column;
     align-items: center;
     height: 36px;
-    color: var(--rose);
+    color: #e11d48;
     overflow: hidden;
+  }
+
+  .goutte-pile :global(svg) {
+    fill: currentColor;
   }
 
   .goutte-n {
@@ -789,15 +733,49 @@ const prenomFini = Astro.url.searchParams.get('prenom') ?? moi.prenom;
     flex-direction: column;
     align-items: center;
     padding: var(--e3) 2px;
-    border: 1px solid var(--bordure);
+    border: 2px solid var(--rose);
+    border-bottom-width: 5px;
     border-radius: 16px;
     background: var(--surface);
     font-family: var(--texte);
     color: var(--encre);
+    cursor: pointer;
   }
 
   .carte-courte:active {
-    transform: scale(0.95);
+    transform: translateY(3px);
+    border-bottom-width: 2px;
+  }
+
+  /* --- « Je ne sais pas » : un petit rectangle, sous les choix --- */
+  .je-sais-pas {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1px;
+    align-self: center;
+    margin-top: var(--e1);
+    padding: 8px 22px;
+    border: 1.5px solid var(--bordure);
+    border-radius: 12px;
+    background: var(--surface-douce);
+    font-family: var(--texte);
+    color: var(--encre);
+    cursor: pointer;
+  }
+
+  .je-sais-pas b {
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  .je-sais-pas span {
+    font-size: 11.5px;
+    color: var(--texte-3);
+  }
+
+  .je-sais-pas:active {
+    transform: scale(0.97);
   }
 
   .carte-courte-n {
@@ -824,6 +802,10 @@ const prenomFini = Astro.url.searchParams.get('prenom') ?? moi.prenom;
     gap: var(--e2);
   }
 
+  /* Un contour rose franc et un bord épais dessous, qui s'écrase au toucher,
+     comme une touche de clavier : on doit SENTIR que c'est un bouton (Arthur,
+     13 octobre 2026, à propos de cet écran : « on doit savoir que les options
+     proposées, on peut cliquer sur ça »). */
   .carte-choix {
     display: flex;
     align-items: center;
@@ -831,18 +813,20 @@ const prenomFini = Astro.url.searchParams.get('prenom') ?? moi.prenom;
     width: 100%;
     min-height: 68px;
     padding: var(--e3);
-    border: 1px solid var(--bordure);
+    border: 2px solid var(--rose);
+    border-bottom-width: 5px;
     border-radius: 18px;
     background: var(--surface);
     font-family: var(--texte);
     color: var(--encre);
     text-align: left;
-    transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.18s;
+    cursor: pointer;
+    transition: transform 0.12s cubic-bezier(0.34, 1.56, 0.64, 1), border-bottom-width 0.12s;
   }
 
   .carte-choix:active {
-    transform: scale(0.98);
-    border-color: var(--rose);
+    transform: translateY(3px);
+    border-bottom-width: 2px;
   }
 
   .carte-icone {

@@ -2,281 +2,143 @@
 /**
  * Mon compte.
  *
- * Les réglages de vie privée sont en haut, pas enterrés : sur ce sujet, ce
- * sont eux qui décident si elle garde l'application ou si elle la supprime.
+ * Deux séries de demandes d'Arthur, le 13 octobre 2026.
  *
- * Les interrupteurs sont des formulaires qui s'envoient : pas de JavaScript,
- * donc ils marchent partout. Chacun est un bouton, pas une case cochée qui
- * attendrait un bouton « enregistrer » qu'on oublie de toucher.
+ * LA PREMIÈRE, par écrit : il a recopié tout le contenu de cette page, sauf
+ * la carte de profil et le bouton de déconnexion, en disant « supprime tous
+ * ces éléments dans le menu compte ». C'était « Garde ton compte » (Google,
+ * email, mot de passe), « Ma vie privée » (notifications, code à l'ouverture,
+ * le lien vers la confidentialité), « Mon cycle » (les durées, le rappel) et
+ * « Mes achats » (commandes, panier).
+ *
+ * CE QUE ÇA VEUT DIRE, et qu'il faut savoir : un compte anonyme n'a plus,
+ * depuis cette page, aucun moyen de se rattacher une adresse email. Si elle
+ * perd son téléphone ou en change, ce qu'elle a noté part avec lui, sans
+ * recours. Rien n'est supprimé côté serveur (`enregistrer_reglages`,
+ * `updateUser`), seul l'écran qui y menait l'est.
+ *
+ * LA SECONDE, par message vocal, juste après : « enlève le rectangle »
+ * autour de la photo, du nom et de l'adresse ; « pas automatiquement une
+ * image » (voir `src/components/Avatar.astro` et `/compte/avatar`) ; « un
+ * petit logo de localisation » sous le nom ; « un endroit où on peut voir
+ * les favoris » sous la photo et le nom ; une option paramètre en haut à
+ * droite (`/parametres`) ; favoris ET panier côte à côte, en petits
+ * rectangles, inspirés de l'écran compte de Jia ; une adresse de livraison en
+ * dessous ; un bandeau de l'état des commandes, dans l'esprit de Jia mais
+ * adapté à ce qui existe vraiment ici (pas de paiement en ligne, pas de
+ * remboursement, pas d'avis : les états réels sont ceux de `/commandes`).
+ *
+ * Note honnête : je n'ai pas le code ni les captures exactes de Jia dans ce
+ * projet, le bandeau ci-dessous est une adaptation à ce que Mousso Dambé sait
+ * vraiment faire, pas une copie fidèle.
+ *
+ * Le cycle et ses durées se changent depuis « Mon cycle » (la carte de
+ * proposition de moyenne y vit déjà), et « Ce que l'application sait de moi »
+ * reste à `/confidentialite` pour qui en connaît l'adresse.
  */
 import Base from '../layouts/Base.astro';
 import Entete from '../components/Entete.astro';
 import Avatar from '../components/Avatar.astro';
 import Icone from '../components/Icone.astro';
-import Alerte from '../components/Alerte.astro';
-import BoutonGoogle from '../components/BoutonGoogle.astro';
-import { clientSession, jetonDeSession, poserSession, baseConfiguree } from '../lib/supabase';
-import { visiteuse, monCycle, lirePanier, comptePanier } from '../lib/session';
-import { messageErreur, pluriel } from '../lib/format';
+import { visiteuse, lirePanier, comptePanier } from '../lib/session';
+import { clientSession, baseConfiguree } from '../lib/supabase';
 
 if (!baseConfiguree()) return Astro.redirect('/', 302);
 const moi = await visiteuse(Astro);
 if (!moi) return Astro.redirect('/connexion', 302);
 
 const client = clientSession(Astro)!;
-let erreur = '';
-let message = '';
-
-if (Astro.request.method === 'POST') {
-  const f = await Astro.request.formData();
-  const geste = String(f.get('geste') ?? '');
-
-  const valeurs = {
-    p_rappel: moi.rappelRegles,
-    p_discretes: moi.notificationsDiscretes,
-    p_code: moi.codeOuverture,
-    p_cycle: null as number | null,
-    p_duree: null as number | null,
-  };
-
-  if (geste === 'rappel') valeurs.p_rappel = !moi.rappelRegles;
-  else if (geste === 'discretes') valeurs.p_discretes = !moi.notificationsDiscretes;
-  else if (geste === 'code') valeurs.p_code = !moi.codeOuverture;
-  else if (geste === 'cycle') {
-    valeurs.p_cycle = Number(f.get('cycle') ?? moi.cycleMoyen);
-    valeurs.p_duree = Number(f.get('duree') ?? moi.dureeRegles);
-  }
-
-  if (geste === 'garder') {
-    // Attacher une adresse à l'identité anonyme déjà là. L'identifiant ne
-    // change pas, donc rien n'est perdu : ni ses cycles, ni son journal, ni
-    // ses commandes. C'est la décision d'Arthur du 12 octobre 2026 : anonyme,
-    // mais récupérable.
-    const email = String(f.get('email') ?? '').trim().toLowerCase();
-    const motDePasse = String(f.get('motdepasse') ?? '');
-
-    if (!/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(email)) {
-      erreur = 'Cette adresse email ne ressemble pas à une adresse.';
-    } else if (motDePasse.length < 8) {
-      erreur = 'Choisis un mot de passe de 8 caractères au moins.';
-    } else {
-      // `updateUser` ne lit pas l'en-tête Authorization du client : il lui
-      // faut une session en mémoire, qui n'existe pas côté serveur. On la lui
-      // pose à partir du cookie, sinon il répond « session manquante » et on
-      // afficherait « réessaie plus tard » pour une raison qui n'a rien à
-      // voir. Même famille de défaut que `getUser()` le 12 octobre 2026.
-      const jeton = jetonDeSession(Astro)!;
-      await client.auth.setSession({
-        access_token: jeton.access_token,
-        refresh_token: jeton.refresh_token ?? '',
-      });
-
-      const { error: errLien } = await client.auth.updateUser({ email, password: motDePasse });
-      if (errLien) {
-        // On ne dit jamais « cette adresse a déjà un compte » : ce serait dire
-        // à n'importe qui si une personne utilise l'application.
-        erreur = /already|registered|exists/i.test(errLien.message)
-          ? "Impossible d'utiliser cette adresse. Si tu as déjà un compte, déconnecte-toi et connecte-toi avec."
-          : "L'enregistrement n'a pas marché. Réessaie dans un moment.";
-      } else {
-        // Le jeton change quand l'identité change : si on garde l'ancien dans
-        // le cookie, la page suivante la croit déconnectée.
-        const { data: neuve } = await client.auth.getSession();
-        if (neuve?.session) {
-          poserSession(Astro, {
-            access_token: neuve.session.access_token,
-            refresh_token: neuve.session.refresh_token,
-          });
-        }
-        return Astro.redirect('/compte?ok=garde', 303);
-      }
-    }
-  }
-
-  if (!erreur) {
-    const { data, error } = await client.rpc('enregistrer_reglages', valeurs);
-    if (error || !data?.ok) erreur = messageErreur(data?.erreur);
-    else return Astro.redirect('/compte?ok=1', 303);
-  }
-}
-
-if (Astro.url.searchParams.get('ok') === 'garde') {
-  message = 'C’est gardé. Avec cette adresse, tu retrouveras tout sur un autre téléphone.';
-} else if (Astro.url.searchParams.get('ok')) {
-  message = 'C’est enregistré.';
-}
-
-const cycle = await monCycle(Astro);
 const panier = comptePanier(lirePanier(Astro));
+
+const { data: favorisData } = await client.rpc('mes_favoris');
+const nombreFavoris = (favorisData?.ok ? favorisData.favoris.length : 0) as number;
+
+const { data: commandesData } = await client.rpc('mes_commandes');
+const commandes = (commandesData ?? []) as { etat: string }[];
+const nombreEtat = (etats: string[]) => commandes.filter((c) => etats.includes(c.etat)).length;
+
+const ETATS_COMPTE = [
+  { cle: 'preparation', mot: 'En préparation', icone: 'colis', nombre: nombreEtat(['nouvelle', 'preparee']) },
+  { cle: 'livraison', mot: 'En livraison', icone: 'camion', nombre: nombreEtat(['envoyee']) },
+  { cle: 'livree', mot: 'Livrées', icone: 'coche', nombre: nombreEtat(['livree']) },
+  { cle: 'annulee', mot: 'Annulées', icone: 'croix', nombre: nombreEtat(['annulee']) },
+];
+
+const adresseResume = [moi.quartier, moi.repere].filter(Boolean).join(' · ');
 ---
 
 <Base titre="Mon compte" nav="compte" panier={panier}>
   <main class="page">
-    <Entete titre="Mon compte" retour="/" />
+    <Entete titre="Mon compte" retour="/">
+      <a class="rond" href="/parametres" aria-label="Paramètres">
+        <Icone nom="reglages" taille={20} />
+      </a>
+    </Entete>
 
-    {message && <div class="marge-bas"><Alerte type="reussite" texte={message} /></div>}
-    {erreur && <div class="marge-bas"><Alerte type="erreur" texte={erreur} /></div>}
-
-    <section class="carte bloc identite apparait">
-      {/* Sa photo de profil : un visage à elle, tiré de sa graine, toujours le
-          même, jamais le même qu'une autre (demande d'Arthur, 13 octobre 2026).
-          Elle remplace les deux initiales. */}
-      <Avatar graine={moi.avatarGraine} prenom={moi.prenom} identifiant={moi.id} taille={88} morph />
+    {/* Sans rectangle (Arthur, 13 octobre 2026 : « il faut enlever le
+        rectangle là »). Juste le rond, le nom, l'adresse ou son absence. */}
+    <section class="identite apparait">
+      {/* La photo se choisit, elle ne s'invente plus : touche le rond pour
+          ouvrir la galerie (`/compte/avatar`). Tant qu'elle n'a rien choisi,
+          `Avatar` montre un rond neutre, jamais un dessin généré. */}
+      <a class="rond-photo" href="/compte/avatar" aria-label="Changer ma photo de profil">
+        <Avatar fichier={moi.avatarFichier} prenom={moi.prenom} taille={88} morph />
+        <span class="rond-photo-crayon"><Icone nom="crayon" taille={14} /></span>
+      </a>
       <div class="qui">
         <div class="prenom">{moi.prenom || 'Toi'}</div>
         <div class="gris">{moi.email ?? 'Sans compte, sans mot de passe'}</div>
+        {/* Le petit logo de localisation, demandé juste sous le nom. Lecture
+            seule : le quartier se donne à la commande, pas ici. */}
+        <div class="lieu">
+          <Icone nom="lieu" taille={14} />
+          <span>{moi.quartier || 'Quartier non renseigné'}</span>
+        </div>
       </div>
     </section>
 
-    {
-      !moi.email && (
-        <section class="garder apparait" data-ordre="2">
-          <div class="garder-tete">
-            <span class="garder-rond"><Icone nom="bouclier-coche" taille={20} /></span>
-            <div>
-              <h2>Garde ton compte</h2>
-              <p>
-                Tu es entrée sans compte, et c'est bien ainsi. Mais si tu changes de téléphone, ou si tu le perds, ce
-                que tu as noté part avec lui. Une adresse email suffit à le retrouver, et personne ne la voit.
-              </p>
-            </div>
-          </div>
-
-          <BoutonGoogle texte="Garder avec Google" />
-
-          <div class="garder-ou"><span>ou</span></div>
-
-          <form method="POST" class="garder-form">
-            <input type="hidden" name="geste" value="garder" />
-            <label class="libelle-petit" for="g-email">Ton adresse email</label>
-            <input class="champ" id="g-email" type="email" name="email" autocomplete="email" required placeholder="toi@exemple.com" />
-            <label class="libelle-petit" for="g-mdp">Un mot de passe</label>
-            <input
-              class="champ"
-              id="g-mdp"
-              type="password"
-              name="motdepasse"
-              autocomplete="new-password"
-              minlength="8"
-              required
-              placeholder="8 caractères au moins"
-            />
-            <button class="btn btn-rose btn-plein" type="submit">Garder mon compte</button>
-          </form>
-
-          <p class="garder-note">
-            Ton adresse sert à retrouver ton compte, et à rien d'autre. Aucun email de publicité, et elle n'est jamais
-            montrée à personne.
-          </p>
-        </section>
-      )
-    }
-
-    <h2 class="rangee-titre">Ma vie privée</h2>
-    <div class="rangees apparait" data-ordre="2">
-      <form method="POST" class="rangee">
-        <input type="hidden" name="geste" value="discretes" />
-        <Icone nom="oeil-barre" taille={20} classe="i-encre" />
-        <span class="pousse-droite">Notifications sans détail</span>
-        <button
-          class="bascule pousse"
-          type="submit"
-          role="switch"
-          aria-checked={moi.notificationsDiscretes}
-          aria-label="Notifications sans détail"
-        >
-          <span></span>
-        </button>
-      </form>
-      {/* Pas d'interrupteur tant que le verrou n'existe pas : un réglage de
-          vie privée qui ne protège rien est pire que pas de réglage. */}
-      <div class="rangee inactive">
-        <Icone nom="cadenas" taille={20} classe="i-encre" />
-        <span class="pousse-droite">Code à l'ouverture</span>
-        <span class="pastille pastille-neutre pousse">Bientôt</span>
-      </div>
-      <a class="rangee" href="/confidentialite">
-        <Icone nom="bouclier-coche" taille={20} classe="i-vert" />
-        <span class="pousse-droite">Ce que l'application sait de moi</span>
-        <Icone nom="avant" taille={18} classe="pousse i-gris" />
-      </a>
-    </div>
-    <p class="note-sous">
-      Avec les notifications sans détail, ton téléphone affiche « Mousso Dambé » et rien de plus. Le code à
-      l'ouverture, lui, n'existe pas encore : tant qu'il n'est pas construit, on ne te le propose pas.
-    </p>
-
-    <h2 class="rangee-titre">Mon cycle</h2>
-    <form method="POST" class="carte bloc apparait" data-ordre="3">
-      <input type="hidden" name="geste" value="cycle" />
-      <div class="deux-champs">
-        <div>
-          <label class="libelle" for="cycle">Durée du cycle</label>
-          <select class="champ" id="cycle" name="cycle">
-            {
-              Array.from({ length: 26 }, (_, i) => i + 20).map((n) => (
-                <option value={String(n)} selected={n === moi.cycleMoyen}>{n} jours</option>
-              ))
-            }
-          </select>
-        </div>
-        <div>
-          <label class="libelle" for="duree">Durée des règles</label>
-          <select class="champ" id="duree" name="duree">
-            {
-              Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
-                <option value={String(n)} selected={n === moi.dureeRegles}>{n} {n === 1 ? 'jour' : 'jours'}</option>
-              ))
-            }
-          </select>
-        </div>
-      </div>
+    {/* Le bandeau des commandes, dans l'esprit de Jia : un coup d'œil sur où
+        en sont ses commandes, sans ouvrir la liste. */}
+    <section class="etats apparait" aria-label="Mes commandes">
       {
-        cycle && cycle.cyclesMesures > 0 && (
-          <p class="aide">
-            Mesuré sur tes {pluriel(cycle.cyclesMesures, 'dernier cycle', 'derniers cycles')} : {cycle.cycleMoyen} jours.
-            C'est cette mesure qui sert aux prévisions, pas la valeur ci-dessus.
-          </p>
-        )
+        ETATS_COMPTE.map((e) => (
+          <a class="etat" href="/commandes">
+            <span class="etat-rond"><Icone nom={e.icone} taille={20} /></span>
+            {e.nombre > 0 && <span class="etat-nombre">{e.nombre}</span>}
+            <span class="etat-mot">{e.mot}</span>
+          </a>
+        ))
       }
-      <button class="btn btn-contour btn-plein marge" type="submit">Enregistrer</button>
-    </form>
+    </section>
 
-    <div class="rangees apparait" data-ordre="4">
-      <form method="POST" class="rangee">
-        <input type="hidden" name="geste" value="rappel" />
-        <Icone nom="cloche" taille={20} classe="i-rose" />
-        <span class="pousse-droite">Me prévenir 2 jours avant</span>
-        <button
-          class="bascule pousse"
-          type="submit"
-          role="switch"
-          aria-checked={moi.rappelRegles}
-          aria-label="Me prévenir deux jours avant mes règles"
-        >
-          <span></span>
-        </button>
-      </form>
-    </div>
-    <p class="note-sous">
-      Le rappel est enregistré. L'envoi des notifications arrive avec la prochaine version : il demande une
-      configuration qu'Arthur doit faire une fois.
-    </p>
+    {/* Favoris et panier, côte à côte, en petits rectangles (Arthur, 13
+        octobre 2026 : « il doit pas être écrit comme ça, il doit être dans un
+        petit rectangle »). La grille complète des favoris déménage à
+        `/favoris`, le panier garde le sien à `/panier`. */}
+    <section class="tuiles apparait" aria-label="Favoris et panier">
+      <a class="tuile" href="/compte/favoris">
+        <Icone nom="coeur" taille={22} classe="tuile-icone" />
+        <span class="tuile-mot">Mes favoris</span>
+        {nombreFavoris > 0 && <span class="tuile-nombre">{nombreFavoris}</span>}
+      </a>
+      <a class="tuile" href="/panier">
+        <Icone nom="panier" taille={22} classe="tuile-icone" />
+        <span class="tuile-mot">Panier</span>
+        {panier > 0 && <span class="tuile-nombre">{panier}</span>}
+      </a>
+    </section>
 
-    <h2 class="rangee-titre">Mes achats</h2>
-    <div class="rangees apparait" data-ordre="5">
-      <a class="rangee" href="/commandes">
-        <Icone nom="colis" taille={20} classe="i-encre" />
-        <span class="pousse-droite">Mes commandes</span>
-        <Icone nom="avant" taille={18} classe="pousse i-gris" />
-      </a>
-      <a class="rangee" href="/panier">
-        <Icone nom="panier" taille={20} classe="i-encre" />
-        <span class="pousse-droite">Mon panier</span>
-        {panier > 0 && <span class="pastille pastille-rose pousse">{panier}</span>}
-        {panier === 0 && <Icone nom="avant" taille={18} classe="pousse i-gris" />}
-      </a>
-    </div>
+    {/* L'adresse de livraison : ce que `passer_commande` enregistrait déjà en
+        silence depuis le premier jour a maintenant un endroit pour se voir et
+        se changer, sans passer par une commande. */}
+    <a class="adresse apparait" href="/compte/adresse">
+      <span class="adresse-rond"><Icone nom="lieu" taille={20} /></span>
+      <div class="adresse-texte">
+        <div class="adresse-titre">Adresse de livraison</div>
+        <div class="adresse-detail">{adresseResume || 'Ajouter une adresse de livraison'}</div>
+      </div>
+      <Icone nom="avant" taille={18} classe="adresse-fleche" />
+    </a>
 
     <form method="POST" action="/deconnexion" class="deconnexion">
       <button class="btn btn-contour btn-plein" type="submit">
@@ -294,6 +156,27 @@ const panier = comptePanier(lirePanier(Astro));
     display: flex;
     align-items: center;
     gap: var(--e4);
+    padding: var(--e2) 0;
+  }
+
+  .rond-photo {
+    position: relative;
+    flex: none;
+    border-radius: 50%;
+  }
+
+  .rond-photo-crayon {
+    position: absolute;
+    right: -2px;
+    bottom: -2px;
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 2px solid var(--fond);
+    background: var(--rose);
+    color: #fff;
   }
 
   .qui {
@@ -313,117 +196,160 @@ const panier = comptePanier(lirePanier(Astro));
     overflow-wrap: anywhere;
   }
 
-  .pousse-droite {
-    flex: 1;
-  }
-
-  .note-sous {
-    margin: var(--e2) var(--e1) 0;
-    font-size: 12.5px;
-    color: var(--texte-3);
-    line-height: 1.5;
-  }
-
-  .deux-champs {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--e3);
-  }
-
-  .marge {
-    margin-top: var(--e3);
-  }
-
-  .garder {
-    margin-bottom: var(--e5);
-    padding: var(--e4);
-    border: 1px solid var(--rose-clair);
-    border-radius: var(--r-carte);
-    background: var(--poudre);
-  }
-
-  .garder-tete {
+  .lieu {
     display: flex;
-    gap: var(--e3);
-    margin-bottom: var(--e3);
+    align-items: center;
+    gap: 4px;
+    margin-top: 5px;
+    color: var(--texte-3);
+    font-size: 12.5px;
   }
 
-  .garder-rond {
+  .etats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--e2);
+    margin-top: var(--e5);
+  }
+
+  .etat {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: var(--e3) 4px;
+    border: 1px solid var(--bordure);
+    border-radius: var(--r-carte);
+    background: var(--surface);
+    text-align: center;
+  }
+
+  .etat:active {
+    transform: scale(0.96);
+  }
+
+  .etat-rond {
     display: grid;
     place-items: center;
-    width: 40px;
-    height: 40px;
-    flex: none;
-    border-radius: 13px;
-    background: var(--surface);
     color: var(--rose);
   }
 
-  .garder h2 {
-    font-size: 16px;
+  .etat-nombre {
+    position: absolute;
+    top: 6px;
+    right: 10px;
+    display: grid;
+    place-items: center;
+    min-width: 17px;
+    height: 17px;
+    padding: 0 4px;
+    border-radius: 999px;
+    background: var(--rose);
+    color: #fff;
+    font-size: 10.5px;
     font-weight: 700;
   }
 
-  .garder-tete p {
-    margin-top: 4px;
-    font-size: 13px;
+  .etat-mot {
+    font-size: 11px;
     color: var(--texte-2);
-    line-height: 1.45;
+    line-height: 1.2;
   }
 
-  .garder-ou {
+  .tuiles {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--e3);
+    margin-top: var(--e4);
+  }
+
+  .tuile {
+    position: relative;
     display: flex;
     align-items: center;
     gap: var(--e2);
-    margin: var(--e3) 0;
-    color: var(--texte-3);
-    font-size: 12px;
+    padding: var(--e3) var(--e4);
+    border: 1px solid var(--bordure);
+    border-radius: var(--r-carte);
+    background: var(--surface);
   }
 
-  .garder-ou::before,
-  .garder-ou::after {
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: var(--bordure);
+  .tuile:active {
+    transform: scale(0.98);
   }
 
-  .garder-form {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
+  .tuile :global(.tuile-icone) {
+    color: var(--rose);
+    flex: none;
   }
 
-  .garder-form .btn {
-    margin-top: var(--e2);
-  }
-
-  .libelle-petit {
-    font-size: 12px;
+  .tuile-mot {
+    font-size: 13.5px;
     font-weight: 600;
-    color: var(--texte-2);
   }
 
-  .garder-note {
+  .tuile-nombre {
+    margin-left: auto;
+    display: grid;
+    place-items: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: var(--rose);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  .adresse {
+    display: flex;
+    align-items: center;
+    gap: var(--e3);
     margin-top: var(--e3);
-    font-size: 11.5px;
+    padding: var(--e3) var(--e4);
+    border: 1px solid var(--bordure);
+    border-radius: var(--r-carte);
+    background: var(--surface);
+  }
+
+  .adresse:active {
+    transform: scale(0.99);
+  }
+
+  .adresse-rond {
+    display: grid;
+    place-items: center;
+    flex: none;
+    color: var(--rose);
+  }
+
+  .adresse-texte {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .adresse-titre {
+    font-size: 13.5px;
+    font-weight: 600;
+  }
+
+  .adresse-detail {
+    margin-top: 2px;
+    font-size: 12.5px;
+    color: var(--texte-2);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .adresse :global(.adresse-fleche) {
+    flex: none;
     color: var(--texte-3);
-    line-height: 1.45;
   }
 
   .deconnexion {
     margin-top: var(--e6);
-  }
-
-  .marge-bas {
-    margin-bottom: var(--e3);
-  }
-
-  :global(.i-rose) {
-    color: var(--rose);
-  }
-
-  :global(.i-gris) {
-    color: var(--texte-3);
   }
 </style>

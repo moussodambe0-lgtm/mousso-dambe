@@ -68,15 +68,15 @@ const ECRANS = [
   { nom: '05c-questionnaire-3', url: '/bienvenue?etape=3', connectee: true },
   { nom: '05d-questionnaire-4', url: '/bienvenue?etape=4', connectee: true },
   { nom: '05e-questionnaire-5', url: '/bienvenue?etape=5', connectee: true },
-  { nom: '05f-questionnaire-6', url: '/bienvenue?etape=6', connectee: true },
-  { nom: '05g-questionnaire-7', url: '/bienvenue?etape=7', connectee: true },
-  { nom: '05h-questionnaire-8', url: '/bienvenue?etape=8', connectee: true },
+  // Le questionnaire s'arrête à l'étape 5 depuis le 13 octobre 2026 (trois
+  // pages retirées à la demande d'Arthur : ressentis, objectif, protection).
   { nom: '05i-questionnaire-fin', url: '/bienvenue?fini=1&prenom=Awa', connectee: true },
   { nom: '08-cycle', url: '/cycle', connectee: true },
   { nom: '08b-calendrier', url: '/cycle/calendrier', connectee: true },
   { nom: '09-journal', url: '/journal', connectee: true },
   { nom: '10-dambe', url: '/dambe', connectee: true },
   { nom: '11-boutique', url: '/boutique', connectee: true },
+  { nom: '11b-recherche', url: '/recherche?q=serviettes+lavables', connectee: true },
   { nom: '12-produit', url: '/boutique/culotte-flux-abondant', connectee: true },
   { nom: '13-panier', url: '/panier', connectee: true },
   { nom: '14-commande', url: '/commande', connectee: true },

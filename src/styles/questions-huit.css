@@ -171,3 +171,45 @@
 @media (prefers-reduced-motion: reduce) {
   .md-qh, .md-qh * { animation: none !important; }
 }
+
+/* 13 octobre 2026 : étapes 3 et 4 redessinées (sablier des jours de règles, roue du cycle).
+   Couleurs du cycle reprises de l'anneau du tableau de bord : grenat pour les
+   règles, rose clair pour la période fertile, rose soutenu pour l'ovulation. */
+.md-qh-or { fill: #F5B534; }
+.md-qh-fertile { fill: var(--fertile, #F58FB0); }
+.md-qh-s-orf { stroke: #D9952A; }
+.md-qh-s-grenat { stroke: var(--grenat, #9E1038); }
+.md-qh-s-fertile { stroke: var(--fertile, #F58FB0); }
+.md-qh-s-fertilef { stroke: var(--fertile-fort, #E2578B); }
+.md-qh-s-reste { stroke: #FBD3E0; }
+
+/* 3. Durée des règles : le sablier se pose, la bande des jours se trace, les
+   cinq jours de règles apparaissent du plus abondant au plus léger, puis les
+   deux jours sans ; ensuite le filet de sable respire et le sablier berce. */
+.md-qh-q3s-sablier { animation: md-qh-monte .5s .1s cubic-bezier(.2, .8, .2, 1) both; }
+.md-qh-q3s-berce { transform-box: view-box; transform-origin: 195px 194px; animation: md-qh-q3s-berce 5s 1.2s ease-in-out infinite; }
+.md-qh-q3s-filet { animation: md-qh-q3s-filet 1.6s 1.2s ease-in-out infinite; }
+.md-qh-q3s-bande { transform-box: fill-box; transform-origin: 0 50%; animation: md-qh-trace .5s .4s cubic-bezier(.2, .8, .2, 1) both; }
+.md-qh-q3s-jour { transform-box: fill-box; transform-origin: 50% 50%; animation: md-qh-pop .3s cubic-bezier(.34, 1.56, .64, 1) both; }
+.md-qh-q3s-j1 { animation-delay: .4s; }
+.md-qh-q3s-j2 { animation-delay: .48s; }
+.md-qh-q3s-j3 { animation-delay: .56s; }
+.md-qh-q3s-j4 { animation-delay: .64s; }
+.md-qh-q3s-j5 { animation-delay: .72s; }
+.md-qh-q3s-j6 { animation-delay: .8s; }
+.md-qh-q3s-j7 { animation-delay: .86s; }
+
+/* 4. La roue du cycle : elle arrive en tournant (entrée md-qh-q4-anneau),
+   puis tourne très lentement ; l'ovule doré luit doucement. */
+.md-qh-q4r-tourne { transform-box: view-box; transform-origin: 195px 150px; animation: md-qh-q4r-tourne 90s 1.2s linear infinite; }
+.md-qh-q4r-ovule { animation: md-qh-q4r-luit 3.2s 1.2s ease-in-out infinite; }
+
+@keyframes md-qh-q3s-berce { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(-3deg); } }
+@keyframes md-qh-q3s-filet { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
+@keyframes md-qh-q4r-tourne { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+@keyframes md-qh-q4r-luit { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .md-qh-q3s-sablier, .md-qh-q3s-berce, .md-qh-q3s-filet, .md-qh-q3s-bande, .md-qh-q3s-jour,
+  .md-qh-q4r-tourne, .md-qh-q4r-ovule { animation: none !important; }
+}

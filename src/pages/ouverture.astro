@@ -31,6 +31,10 @@ import Base from '../layouts/Base.astro';
 import Icone from '../components/Icone.astro';
 import Mascotte from '../components/Mascotte.astro';
 import Symbole from '../components/Symbole.astro';
+import '../styles/ouverture-fonds.css';
+import fond1 from '../assets/ouverture/fond-1.svg?raw';
+import fond2 from '../assets/ouverture/fond-2.svg?raw';
+import fond3 from '../assets/ouverture/fond-3.svg?raw';
 import { baseConfiguree } from '../lib/supabase';
 import { visiteuse } from '../lib/session';
 
@@ -38,6 +42,12 @@ import { visiteuse } from '../lib/session';
 if (baseConfiguree() && (await visiteuse(Astro))) {
   return Astro.redirect('/', 302);
 }
+
+// Les trois fonds dessinés par Motion (13 octobre 2026) : Arthur trouvait
+// l'aplat prune « trop simple et pas très esthétique » et voulait « des fonds
+// originaux avec des dessins ». Une famille : nuit prune, halo rose, bande
+// tissée façon faso dan fani, accents or et corail.
+const FONDS: Record<number, string> = { 1: fond1, 2: fond2, 3: fond3 };
 
 const SCENES = [
   {
@@ -53,7 +63,7 @@ const SCENES = [
   {
     id: 3,
     titre: 'Tes protections livrées chez toi',
-    sous: 'Colis neutre, livré à Ouagadougou. Tu paies à la remise.',
+    sous: 'Livré à Ouagadougou. Tu paies à la remise.',
   },
 ];
 
@@ -78,11 +88,24 @@ const CONFETTIS = [0, 1, 2, 3, 4, 5, 6, 7];
       ))}
     </div>
 
+    {/* Le logo, PETIT, en haut à gauche (demande d'Arthur, 13 octobre 2026).
+        Il était en grand au-dessus du bouton, au milieu des trois photos qui
+        défilent. Il porte déjà le nom : l'écrire à côté le dirait deux fois.
+        Il est posé sur une surface claire parce que le profil de la femme est
+        NOIR : sur ce fond sombre, il disparaîtrait, et il ne resterait qu'une
+        fleur. On ne touche pas aux couleurs d'un logo, on lui donne le fond
+        pour lequel il a été dessiné. */}
+    <span class="marque">
+      <Symbole taille={54} forme="nom" titre="Mousso Dambé" />
+    </span>
+
     {/* --- Les trois scènes --- */}
     <div class="scenes">
       {
         SCENES.map((s) => (
           <section class={`scene scene-${s.id}`} aria-label={s.titre}>
+            <div class="fond" aria-hidden="true" set:html={FONDS[s.id]} />
+
             {/* La vraie vidéo si elle existe, le dessin sinon. Le navigateur
                 ne télécharge la vidéo que si le fichier est là ; sinon il
                 passe au contenu de repli sans rien dire. */}
@@ -145,17 +168,8 @@ const CONFETTIS = [0, 1, 2, 3, 4, 5, 6, 7];
       }
     </div>
 
-    {/* --- Le bas : le nom, et le bouton --- */}
+    {/* --- Le bas : le bouton --- */}
     <div class="pied">
-      {/* Le logo porte déjà le nom : l'écrire à côté le dirait deux fois.
-          Il est posé sur une surface claire parce que le profil de la femme
-          est NOIR : sur ce fond sombre, il disparaîtrait, et il ne resterait
-          qu'une fleur. On ne touche pas aux couleurs d'un logo, on lui donne
-          le fond pour lequel il a été dessiné. */}
-      <span class="marque">
-        <Symbole taille={150} forme="nom" titre="Mousso Dambé" />
-      </span>
-
       <form class="forme" method="post" action="/commencer">
         <button class="commencer" type="submit">Commencer</button>
       </form>
@@ -174,8 +188,8 @@ const CONFETTIS = [0, 1, 2, 3, 4, 5, 6, 7];
     max-width: 480px;
     margin: 0 auto;
     overflow: hidden;
-    background: var(--encre);
-    color: #fff;
+    background: #FFEEF4;
+    color: var(--encre);
   }
 
   /* --- Les barres du haut --- */
@@ -193,7 +207,7 @@ const CONFETTIS = [0, 1, 2, 3, 4, 5, 6, 7];
     flex: 1;
     height: 3px;
     border-radius: var(--r-ronde);
-    background: rgba(255, 255, 255, 0.28);
+    background: rgba(27, 17, 22, 0.14);
     overflow: hidden;
   }
 
@@ -202,7 +216,7 @@ const CONFETTIS = [0, 1, 2, 3, 4, 5, 6, 7];
     width: 100%;
     height: 100%;
     border-radius: var(--r-ronde);
-    background: #fff;
+    background: var(--rose);
     transform-origin: left;
     animation: barre-remplit 15s linear infinite;
   }
@@ -234,9 +248,23 @@ const CONFETTIS = [0, 1, 2, 3, 4, 5, 6, 7];
     animation: scene-passe 15s ease-in-out infinite;
   }
 
-  .scene-1 { animation-delay: 0s; background: #2a0f1c; }
-  .scene-2 { animation-delay: -10s; background: #1d1430; }
-  .scene-3 { animation-delay: -5s; background: #2b1510; }
+  .scene-1 { animation-delay: 0s; background: #FFE4ED; }
+  .scene-2 { animation-delay: -10s; background: #FFEAF1; }
+  .scene-3 { animation-delay: -5s; background: #FFE9EF; }
+
+  /* Le fond dessiné, derrière tout le reste de la scène. */
+  .fond {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  .fond :global(svg) {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
 
   .film {
     position: absolute;
@@ -290,7 +318,7 @@ const CONFETTIS = [0, 1, 2, 3, 4, 5, 6, 7];
   .anneau-tourne {
     position: absolute;
     inset: 8%;
-    border: 2px dashed rgba(255, 255, 255, 0.3);
+    border: 2px dashed rgba(27, 17, 22, 0.22);
     border-radius: 50%;
     animation: tourne-lent 24s linear infinite;
   }
@@ -449,14 +477,17 @@ const CONFETTIS = [0, 1, 2, 3, 4, 5, 6, 7];
     padding: 20px 24px calc(26px + env(safe-area-inset-bottom, 0px));
     /* Le dégradé sombre demandé dans le cahier : le texte reste lisible même
        sur une vidéo claire. Il FAIT l'ombre, il n'est pas décoratif. */
-    background: linear-gradient(to top, rgba(0, 0, 0, 0.72), rgba(0, 0, 0, 0));
+    background: linear-gradient(to top, rgba(255, 238, 244, 0.95) 55%, rgba(255, 238, 244, 0));
   }
 
   .marque {
+    position: absolute;
+    top: calc(28px + env(safe-area-inset-top, 0px));
+    left: 16px;
+    z-index: 5;
     display: block;
-    padding: 12px 20px 10px;
-    border-radius: 20px;
-    background: #fff;
+    /* Sans fond (Arthur, 13 octobre 2026 : « enlève le fond blanc »), et sans
+       halo : la scène est claire maintenant, le logo s'y lit tout seul. */
   }
 
   .forme {
@@ -495,7 +526,7 @@ const CONFETTIS = [0, 1, 2, 3, 4, 5, 6, 7];
   }
 
   .deja {
-    color: rgba(255, 255, 255, 0.75);
+    color: var(--texte-2);
     font-size: 13.5px;
     font-weight: 600;
   }

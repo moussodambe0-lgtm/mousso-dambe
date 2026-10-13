@@ -241,6 +241,62 @@ const etranger = await fetch(`${SITE}/vocal`, {
 });
 verifier("un envoi venu d'un autre site est refusé", etranger.status === 403, String(etranger.status));
 
+// ---------------------------------------------------------------------------
+// Chez la boutique, puis la réponse de l'administratrice (le compte de la
+// démonstration est les deux à la fois).
+// ---------------------------------------------------------------------------
+console.log('\nLes vocaux avec la boutique');
+
+const enregistrerEtEnvoyer = async () => {
+  await evaluer(`document.querySelector('.vocal-micro').click(); 'ok'`);
+  const en = await jusqua(`document.querySelector('.vocal-panneau')?.dataset.etat === 'enregistre'`, 20);
+  if (!en) return false;
+  await attendre(1800);
+  await evaluer(`document.querySelector('.vocal-stop').click(); 'ok'`);
+  const pret2 = await jusqua(`document.querySelector('.vocal-panneau')?.dataset.etat === 'pret'`, 20);
+  if (!pret2) return false;
+  await evaluer(`document.querySelector('.vocal-envoyer').click(); 'ok'`);
+  return true;
+};
+
+await cmd('Page.navigate', { url: `${SITE}/discussions/boutique` });
+const microBoutique = await jusqua(
+  `!!document.querySelector('.vocal-micro') && !document.querySelector('.vocal-micro').hidden`,
+  60,
+);
+verifier('chez la boutique, le micro est là aussi', microBoutique);
+const sujet = await evaluer(`document.querySelector('.vocal-micro')?.dataset.sujet ?? null`);
+verifier('et il parle à la boutique, pas au médecin', sujet === 'boutique', String(sujet));
+
+const avantB = await evaluer(`document.querySelectorAll('.vocal-lecteur').length`);
+const envoyeB = await enregistrerEtEnvoyer();
+verifier('elle enregistre et envoie à la boutique', envoyeB);
+const partiB = await jusqua(`document.querySelectorAll('.vocal-lecteur').length > ${avantB}`, 60);
+verifier('le vocal apparaît dans la conversation de la boutique', partiB);
+
+// L'administratrice ouvre le fil et répond par un vocal.
+await cmd('Page.navigate', { url: `${SITE}/admin` });
+const lien = await jusqua(`!!document.querySelector('a[href^="/admin/"]')`, 60);
+verifier("l'administratrice voit des conversations", lien);
+const href = await evaluer(`document.querySelector('a[href^="/admin/"]')?.getAttribute('href') ?? ''`);
+await cmd('Page.navigate', { url: `${SITE}${href}` });
+const microAdmin = await jusqua(
+  `!!document.querySelector('.vocal-micro') && !document.querySelector('.vocal-micro').hidden`,
+  60,
+);
+verifier('côté administratrice, le micro est là pour répondre', microAdmin);
+const filCible = await evaluer(`document.querySelector('.vocal-micro')?.dataset.fil ?? ''`);
+verifier('et il sait dans quel fil il répond', /^[0-9a-f-]{36}$/i.test(String(filCible)), String(filCible));
+
+const avantA = await evaluer(`document.querySelectorAll('.vocal-lecteur').length`);
+const envoyeA = await enregistrerEtEnvoyer();
+verifier('elle enregistre et envoie sa réponse', envoyeA);
+const partiA = await jusqua(`document.querySelectorAll('.vocal-lecteur').length > ${avantA}`, 60);
+verifier('la réponse vocale apparaît dans le fil', partiA);
+
+const deMoi = await evaluer(`!!document.querySelector('.de-moi .vocal-lecteur')`);
+verifier('elle est de son côté (boutique), pas du côté de la cliente', deMoi);
+
 console.log(`\nVocal : ${total - rates} sur ${total} vérifications passées.`);
 ws.close();
 nav.kill();

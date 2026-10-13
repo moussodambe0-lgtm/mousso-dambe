@@ -1,5 +1,5 @@
 /**
- * Recevoir un vocal pour le médecin.
+ * Recevoir un vocal : pour le médecin, pour la boutique, ou la réponse de l'administratrice.
  *
  * Le seul endroit du site qui reçoit du son. Il ne fait presque rien : il
  * vérifie d'où vient la requête, la passe à la base, et renvoie ce que la base
@@ -36,18 +36,35 @@ export const POST: APIRoute = async (contexte) => {
   const annonce = Number(contexte.request.headers.get('content-length') ?? 0);
   if (annonce > 1_800_000) return json({ ok: false, erreur: 'vocal_trop_long' }, 413);
 
-  let corps: { base64?: unknown; type?: unknown; secondes?: unknown };
+  let corps: { base64?: unknown; type?: unknown; secondes?: unknown; sujet?: unknown; fil?: unknown };
   try {
     corps = await contexte.request.json();
   } catch {
     return json({ ok: false, erreur: 'vocal_abime' }, 400);
   }
 
-  const { data, error } = await client.rpc('envoyer_vocal', {
-    p_base64: typeof corps.base64 === 'string' ? corps.base64 : '',
-    p_type: typeof corps.type === 'string' ? corps.type : '',
-    p_secondes: Number.isFinite(Number(corps.secondes)) ? Math.round(Number(corps.secondes)) : 0,
-  });
+  const base64 = typeof corps.base64 === 'string' ? corps.base64 : '';
+  const type = typeof corps.type === 'string' ? corps.type : '';
+  const secondes = Number.isFinite(Number(corps.secondes)) ? Math.round(Number(corps.secondes)) : 0;
+  const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+  // Un `fil` : c'est l'administratrice qui répond. La base vérifie qu'elle l'est ;
+  // ici on s'assure seulement que c'est bien un identifiant, pas un texte libre.
+  const reponse = typeof corps.fil === 'string' && UUID.test(corps.fil) ? corps.fil : null;
+
+  const { data, error } = reponse
+    ? await client.rpc('repondre_vocal', {
+        p_fil: reponse,
+        p_base64: base64,
+        p_type: type,
+        p_secondes: secondes,
+      })
+    : await client.rpc('envoyer_vocal', {
+        p_base64: base64,
+        p_type: type,
+        p_secondes: secondes,
+        p_sujet: corps.sujet === 'boutique' ? 'boutique' : 'medecin',
+      });
 
   if (error || !data?.ok) {
     return json({ ok: false, erreur: data?.erreur ?? 'erreur', message: messageErreur(data?.erreur) }, 400);

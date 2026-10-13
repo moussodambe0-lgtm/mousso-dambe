@@ -1,0 +1,316 @@
+---
+/**
+ * La recherche : un produit, ou une fonction de l'application.
+ *
+ * Demande d'Arthur du 13 octobre 2026 : une barre de recherche sur l'accueil,
+ * avec un micro pour chercher à la voix. Cette page montre ce que la barre a
+ * trouvé : d'abord les fonctions (« Suivre mon cycle », « Parler à un
+ * médecin »), puis les produits.
+ *
+ * Elle marche sans JavaScript : c'est un formulaire GET ordinaire. Le micro est
+ * un confort qui remplit la case et envoie le même formulaire.
+ *
+ * Rien n'est gardé : la recherche n'est pas enregistrée, ni dans la base ni
+ * dans les journaux. Ce qu'une femme cherche sur une application de règles ne
+ * regarde personne.
+ */
+import Base from '../layouts/Base.astro';
+import Icone from '../components/Icone.astro';
+import CarteProduit from '../components/CarteProduit.astro';
+import { clientPublic, baseConfiguree } from '../lib/supabase';
+import { visiteuse, lirePanier, comptePanier } from '../lib/session';
+import { chercherFonctions, motsUtiles, normaliser, FONCTIONS } from '../lib/fonctions';
+import { motCherche } from '../lib/recherche';
+
+if (!baseConfiguree()) return Astro.redirect('/', 302);
+
+const moi = await visiteuse(Astro);
+const panier = comptePanier(lirePanier(Astro));
+
+// Le mot cherché, nettoyé comme celui de la boutique, et plafonné.
+const q = motCherche(Astro.url.searchParams.get('q'));
+const mots = motsUtiles(q);
+
+const fonctions = q ? chercherFonctions(q) : [];
+
+// Les produits : le catalogue est petit (une dizaine de lignes), donc on le lit
+// en entier et on filtre ici, avec la même règle que pour les fonctions. Cela
+// permet de chercher « je veux des serviettes lavables » et pas seulement un
+// mot isolé.
+let produits: any[] = [];
+if (q && mots.length > 0) {
+  const { data } = await clientPublic(Astro)
+    .from('produits')
+    .select('slug, nom, resume, prix_cfa, rayon, image, etiquette, stock')
+    .eq('publie', true)
+    .order('ordre');
+
+  produits = (data ?? []).filter((p: any) => {
+    const texte = normaliser(`${p.nom} ${p.resume ?? ''} ${p.rayon ?? ''}`);
+    return mots.some((m) => texte.split(' ').some((t) => t.startsWith(m) || (m.length >= 4 && t.includes(m))));
+  });
+}
+
+const rienTrouve = q !== '' && fonctions.length === 0 && produits.length === 0;
+const suggestions = FONCTIONS.filter((f) =>
+  ['/cycle', '/discussions/medecin', '/boutique', '/dambe'].includes(f.lien)
+);
+
+Astro.response.headers.set('Cache-Control', 'private, no-store');
+---
+
+<Base titre="Rechercher" nav="accueil" panier={panier} prenom={moi?.prenom}>
+  <main class="page">
+    <form class="barre" method="GET" action="/recherche" role="search">
+      <label class="lecture-seule" for="q-recherche">Chercher un produit ou une fonction</label>
+      <span class="champ-rond">
+        <Icone nom="recherche" taille={20} />
+        <input
+          id="q-recherche"
+          name="q"
+          type="search"
+          value={q}
+          maxlength="60"
+          placeholder="Un produit, une fonction…"
+          autocomplete="off"
+          enterkeyhint="search"
+        />
+      </span>
+      <button class="micro dictee" type="button" aria-pressed="false" aria-label="Chercher à la voix" data-dictee data-cible="#q-recherche" data-dit="#dit-recherche" data-envoyer="oui" hidden>
+        <Icone nom="micro" taille={20} />
+      </button>
+    </form>
+    <p class="dit" id="dit-recherche" aria-live="polite" hidden></p>
+
+    {
+      q === '' && (
+        <section class="vide">
+          <h1>Que cherches-tu ?</h1>
+          <p>Écris ou dis un produit, ou ce que tu veux faire dans l'application.</p>
+          <ul class="liste">
+            {suggestions.map((f) => (
+              <li>
+                <a class="ligne" href={f.lien}>
+                  <span class="rond"><Icone nom={f.icone} taille={20} /></span>
+                  <span class="mots"><b>{f.titre}</b><span>{f.sous}</span></span>
+                  <Icone nom="avant" taille={16} />
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )
+    }
+
+    {
+      rienTrouve && (
+        <section class="vide">
+          <h1>Rien trouvé pour « {q} »</h1>
+          <p>Essaie un autre mot, ou va directement là où tu veux.</p>
+          <ul class="liste">
+            {suggestions.map((f) => (
+              <li>
+                <a class="ligne" href={f.lien}>
+                  <span class="rond"><Icone nom={f.icone} taille={20} /></span>
+                  <span class="mots"><b>{f.titre}</b><span>{f.sous}</span></span>
+                  <Icone nom="avant" taille={16} />
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )
+    }
+
+    {
+      fonctions.length > 0 && (
+        <section aria-label="Dans l'application">
+          <h2 class="titre-section">Dans l'application</h2>
+          <ul class="liste">
+            {fonctions.map((f) => (
+              <li>
+                <a class="ligne" href={f.lien}>
+                  <span class="rond"><Icone nom={f.icone} taille={20} /></span>
+                  <span class="mots"><b>{f.titre}</b><span>{f.sous}</span></span>
+                  <Icone nom="avant" taille={16} />
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )
+    }
+
+    {
+      produits.length > 0 && (
+        <section aria-label="Produits">
+          <h2 class="titre-section">Produits</h2>
+          <div class="grille">
+            {produits.map((p) => (
+              <CarteProduit
+                slug={p.slug}
+                nom={p.nom}
+                prixCfa={p.prix_cfa}
+                rayon={p.rayon}
+                image={p.image}
+                etiquette={p.etiquette}
+                stock={p.stock}
+              />
+            ))}
+          </div>
+        </section>
+      )
+    }
+
+    <div class="espace"></div>
+  </main>
+</Base>
+
+<script>
+  import '../scripts/dictee';
+</script>
+
+<style>
+  .barre {
+    display: flex;
+    align-items: center;
+    gap: var(--e2);
+    padding-top: var(--e4);
+  }
+
+  .champ-rond {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: var(--e2);
+    min-height: 48px;
+    padding: 0 var(--e3);
+    border: 1px solid var(--bordure);
+    border-radius: 24px;
+    background: var(--surface);
+    color: var(--texte-3);
+  }
+
+  .champ-rond input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-family: var(--texte);
+    font-size: 15px;
+    color: var(--encre);
+  }
+
+  .champ-rond:focus-within {
+    border-color: var(--rose);
+  }
+
+  .micro {
+    display: grid;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    flex: none;
+    border: 1px solid var(--bordure);
+    border-radius: 50%;
+    background: var(--surface);
+    color: var(--encre);
+    cursor: pointer;
+  }
+
+  .micro[hidden] {
+    display: none;
+  }
+
+  .micro.dictee-ecoute {
+    background: var(--rose);
+    border-color: var(--rose);
+    color: #fff;
+  }
+
+  .dit {
+    margin-top: var(--e2);
+    font-size: 13px;
+    color: var(--texte-2);
+  }
+
+  .dit[hidden] {
+    display: none;
+  }
+
+  .vide h1 {
+    margin-top: var(--e5);
+    font-size: 20px;
+  }
+
+  .vide p {
+    margin-top: var(--e1);
+    margin-bottom: var(--e3);
+    font-size: 14px;
+    color: var(--texte-2);
+  }
+
+  .titre-section {
+    margin: var(--e5) 0 var(--e2);
+    font-size: 16px;
+    font-weight: 700;
+  }
+
+  .liste {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--e2);
+  }
+
+  .ligne {
+    display: flex;
+    align-items: center;
+    gap: var(--e3);
+    padding: var(--e3);
+    border: 1px solid var(--bordure);
+    border-radius: 18px;
+    background: var(--surface);
+    color: var(--encre);
+  }
+
+  .ligne:active {
+    background: var(--surface-douce);
+  }
+
+  .rond {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    flex: none;
+    border-radius: 14px;
+    background: var(--surface-douce);
+    color: var(--rose);
+  }
+
+  .mots {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .mots b {
+    display: block;
+    font-size: 15px;
+    line-height: 1.25;
+  }
+
+  .mots span {
+    font-size: 12.5px;
+    color: var(--texte-2);
+  }
+
+  .grille {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--e3);
+  }
+</style>

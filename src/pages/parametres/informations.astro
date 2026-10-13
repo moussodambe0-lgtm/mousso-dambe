@@ -1,0 +1,196 @@
+---
+/**
+ * Mes informations : prénom, téléphone, email, mot de passe.
+ *
+ * Demande d'Arthur du 13 octobre 2026, par message vocal, dans Paramètres.
+ *
+ * ATTENTION, à savoir avant d'y toucher : le 13 octobre 2026, Arthur a aussi
+ * demandé de retirer de `/compte` tout ce qui parlait de « Garde ton compte »
+ * (attacher un email à un compte anonyme). Cette page n'y revient PAS : elle
+ * ne propose jamais d'ATTACHER un email à un compte anonyme. Elle ne montre
+ * les champs email et mot de passe QUE si le compte en a déjà un (Google),
+ * et se contente de les modifier.
+ *
+ * Prénom et téléphone passent par `enregistrer_informations` (nouvelle RPC).
+ * Email et mot de passe passent directement par Supabase Auth
+ * (`auth.updateUser`), avec le jeton de la visiteuse rétabli dans un client
+ * dédié : la base ne connaît que le profil, jamais les identifiants.
+ *
+ * NON VÉRIFIÉ EN CONDITIONS RÉELLES : le changement d'email envoie un lien de
+ * confirmation ; ça suppose l'envoi d'email configuré côté Supabase, jamais
+ * testé sur ce projet. Si ça ne part pas, Arthur doit vérifier la config SMTP
+ * de Supabase avant de blâmer cette page.
+ */
+import { createClient } from '@supabase/supabase-js';
+import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from 'astro:env/client';
+import Base from '../../layouts/Base.astro';
+import Entete from '../../components/Entete.astro';
+import Alerte from '../../components/Alerte.astro';
+import { clientSession, jetonDeSession, baseConfiguree } from '../../lib/supabase';
+import { visiteuse, lirePanier, comptePanier } from '../../lib/session';
+import { messageErreur } from '../../lib/format';
+
+if (!baseConfiguree()) return Astro.redirect('/', 302);
+const moi = await visiteuse(Astro);
+if (!moi) return Astro.redirect('/connexion', 302);
+
+let erreur = '';
+let message = '';
+let prenom = moi.prenom;
+let telephone = moi.telephone ?? '';
+
+if (Astro.request.method === 'POST') {
+  const f = await Astro.request.formData();
+  const action = String(f.get('action') ?? '');
+
+  if (action === 'informations') {
+    prenom = String(f.get('prenom') ?? '').trim();
+    telephone = String(f.get('telephone') ?? '').trim();
+    const client = clientSession(Astro)!;
+    const { data, error } = await client.rpc('enregistrer_informations', {
+      p_prenom: prenom,
+      p_telephone: telephone,
+    });
+    if (error || !data?.ok) erreur = messageErreur(data?.erreur ?? error?.message);
+    else message = 'Tes informations sont enregistrées.';
+  }
+
+  // Email et mot de passe ne passent jamais par une RPC : c'est Supabase Auth
+  // qui les gère. On rétablit la session de la visiteuse dans un client dédié
+  // (persistSession: false, comme partout ailleurs sur ce site) pour pouvoir
+  // appeler `updateUser` en son nom.
+  if (action === 'email' || action === 'mot-de-passe') {
+    const jeton = jetonDeSession(Astro);
+    if (!jeton) {
+      erreur = 'Il faut te connecter pour faire ça.';
+    } else {
+      const client = createClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY, {
+        auth: { persistSession: false, autoRefreshToken: false },
+      });
+      const { error: erreurSession } = await client.auth.setSession({
+        access_token: jeton.access_token,
+        refresh_token: jeton.refresh_token,
+      });
+      if (erreurSession) {
+        erreur = 'Ta session a expiré. Recharge la page et réessaie.';
+      } else if (action === 'email') {
+        const email = String(f.get('email') ?? '').trim();
+        if (!email || !email.includes('@')) {
+          erreur = 'Donne une adresse email valide.';
+        } else {
+          const { error: erreurMaj } = await client.auth.updateUser({ email });
+          if (erreurMaj) erreur = "L'email n'a pas pu être changé. Réessaie.";
+          else message = 'Un lien de confirmation part sur ta nouvelle adresse.';
+        }
+      } else {
+        const motDePasse = String(f.get('mot_de_passe') ?? '');
+        if (motDePasse.length < 6) {
+          erreur = 'Le mot de passe doit avoir au moins 6 caractères.';
+        } else {
+          const { error: erreurMaj } = await client.auth.updateUser({ password: motDePasse });
+          if (erreurMaj) erreur = "Le mot de passe n'a pas pu être changé. Réessaie.";
+          else message = 'Ton mot de passe est changé.';
+        }
+      }
+    }
+  }
+}
+
+const panier = comptePanier(lirePanier(Astro));
+const aUnEmail = !!moi.email;
+---
+
+<Base titre="Mes informations" nav="compte" panier={panier}>
+  <main class="page">
+    <Entete titre="Mes informations" retour="/parametres" />
+
+    {message && <div class="marge-bas"><Alerte type="reussite" texte={message} /></div>}
+    {erreur && <div class="marge-bas"><Alerte type="erreur" texte={erreur} /></div>}
+
+    <form method="POST" class="bloc apparait">
+      <input type="hidden" name="action" value="informations" />
+      <div class="champ-bloc">
+        <label class="libelle" for="prenom">Ton prénom</label>
+        <input class="champ" id="prenom" name="prenom" type="text" required maxlength="40" value={prenom} autocomplete="given-name" />
+      </div>
+      <div class="champ-bloc">
+        <label class="libelle" for="telephone">Ton numéro</label>
+        <input
+          class="champ"
+          id="telephone"
+          name="telephone"
+          type="tel"
+          inputmode="numeric"
+          value={telephone}
+          autocomplete="tel-national"
+          placeholder="70 12 34 56"
+        />
+      </div>
+      <button class="btn btn-rose btn-plein" type="submit">Enregistrer</button>
+    </form>
+
+    <h2 class="section-titre">Identifiants</h2>
+
+    {
+      aUnEmail ? (
+        <>
+          <form method="POST" class="bloc apparait">
+            <input type="hidden" name="action" value="email" />
+            <div class="champ-bloc">
+              <label class="libelle" for="email">Ton email</label>
+              <input class="champ" id="email" name="email" type="email" required value={moi.email ?? ''} autocomplete="email" />
+            </div>
+            <button class="btn btn-contour btn-plein" type="submit">Changer l'email</button>
+          </form>
+
+          <form method="POST" class="bloc apparait">
+            <input type="hidden" name="action" value="mot-de-passe" />
+            <div class="champ-bloc">
+              <label class="libelle" for="mot_de_passe">Nouveau mot de passe</label>
+              <input class="champ" id="mot_de_passe" name="mot_de_passe" type="password" required minlength="6" autocomplete="new-password" />
+            </div>
+            <button class="btn btn-contour btn-plein" type="submit">Changer le mot de passe</button>
+          </form>
+        </>
+      ) : (
+        <p class="aide">
+          Ce compte n'a pas d'email ni de mot de passe. Si tu perds ce téléphone, ce compte ne peut pas être retrouvé.
+        </p>
+      )
+    }
+
+    <div class="espace"></div>
+  </main>
+</Base>
+
+<style>
+  .bloc {
+    margin-bottom: var(--e4);
+  }
+
+  .champ-bloc {
+    margin-bottom: var(--e3);
+  }
+
+  .section-titre {
+    margin: var(--e5) 0 var(--e3);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--texte-3);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  .aide {
+    padding: var(--e4);
+    border: 1px dashed var(--bordure);
+    border-radius: var(--r-carte);
+    color: var(--texte-2);
+    font-size: 13.5px;
+    line-height: 1.5;
+  }
+
+  .marge-bas {
+    margin-bottom: var(--e3);
+  }
+</style>
