@@ -45,9 +45,15 @@ export const onRequest = defineMiddleware(async (contexte, suite) => {
   reponse.headers.set('X-Content-Type-Options', 'nosniff');
   // L'adresse d'une page de cycle ne doit pas partir vers un site extérieur.
   reponse.headers.set('Referrer-Policy', 'same-origin');
+  // Le micro est autorisé POUR CE SITE SEULEMENT, `(self)`. Il était fermé
+  // pour tout le monde, `microphone=()`, ce qui interdit au navigateur de
+  // l'ouvrir même quand elle l'autorise : la dictée dans la discussion avec
+  // Dambé et le vocal au médecin auraient affiché « micro refusé » sans
+  // qu'elle ait rien refusé. Un cadre venu d'ailleurs n'y a pas droit, et
+  // `frame-ancestors 'none'` empêche déjà qu'on en pose un.
   reponse.headers.set(
     'Permissions-Policy',
-    'camera=(), microphone=(), geolocation=(), payment=(), usb=()'
+    'camera=(), microphone=(self), geolocation=(), payment=(), usb=()'
   );
   // Un an d'HTTPS obligatoire, posé seulement en production : en local, le
   // site tourne en http et l'en-tête bloquerait le développement.

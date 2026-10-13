@@ -31,13 +31,6 @@
   overflow-x: hidden;
 }
 
-/* L'encoche de la barre basse doit avoir EXACTEMENT la couleur du fond
-   derrière elle, sinon on voit un halo d'une autre teinte autour du cercle.
-   L'accueil a son fond à lui, il le dit donc à la barre. */
-body:has(.accueil) .nav-basse {
-  --encoche: #f7f5f8;
-}
-
 .acc-marges {
   padding-left: 20px;
   padding-right: 20px;

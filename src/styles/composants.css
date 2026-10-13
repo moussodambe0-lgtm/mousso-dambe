@@ -437,33 +437,38 @@ button.rangee:hover {
 
 /* --- Barre basse -------------------------------------------------------- */
 /* --- LA BARRE BASSE, NAVIGATION LIQUIDE -------------------------------
- * D'après le code donné par Arthur le 12 octobre 2026. Un cercle creuse une
- * encoche dans la barre sous l'onglet actif : sa bordure a la couleur du fond
- * de la page, donc elle y disparaît. Deux pseudo-éléments arrondissent les
- * coins de l'encoche, c'est ce qui donne l'effet « liquide ».
+ * D'après le code donné par Arthur le 12 octobre 2026.
  *
- * `--encoche` doit valoir EXACTEMENT la couleur du fond derrière la barre,
- * sinon on voit un halo d'une autre teinte autour du cercle. Chaque page qui
- * change de fond la redéfinit (voir l'accueil).
+ * Depuis le 13 octobre 2026 elle FLOTTE : « je ne veux pas que le truc noir
+ * soit collé au bas, je veux que ce soit un truc circulaire, détaché du bas,
+ * et qui flotte ». Une pastille aux bouts ronds, décollée du bas et des
+ * côtés, avec une ombre pour qu'on voie qu'elle est au-dessus de la page.
+ *
+ * Le cercle de l'onglet actif dépasse par le haut. Sa bordure a la couleur de
+ * la barre (et non plus celle du fond de page, comme quand la barre était
+ * collée) : il fait une bosse qui prolonge la pastille. L'ancienne encoche
+ * creusée ne marche que sur un fond uni, et une barre qui flotte passe
+ * au-dessus d'un contenu qui défile, donc de n'importe quelle couleur.
  */
 .nav-basse {
-  --nav-h: 70px;
-  --nav-cercle: 64px;
-  --encoche: var(--fond);
+  --nav-h: 64px;
+  --nav-cercle: 60px;
 
   position: fixed;
   left: 0;
   right: 0;
-  bottom: 0;
+  /* Le vide sous la pastille : c'est lui qui la fait flotter. Le téléphone
+     à barre de gestes ajoute la sienne par-dessus. */
+  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
   z-index: 20;
   display: flex;
   justify-content: center;
-  max-width: 480px;
-  height: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px));
+  width: min(calc(100% - 32px), 420px);
+  height: var(--nav-h);
   margin: 0 auto;
-  padding-bottom: env(safe-area-inset-bottom, 0px);
   background: var(--encre);
-  border-radius: 22px 22px 0 0;
+  border-radius: 999px;
+  box-shadow: 0 14px 32px rgba(27, 17, 22, 0.32), 0 2px 6px rgba(27, 17, 22, 0.18);
 }
 
 .nav-liste {
@@ -535,7 +540,7 @@ button.rangee:hover {
   top: calc(var(--nav-cercle) / -2);
   width: var(--nav-cercle);
   height: var(--nav-cercle);
-  border: 6px solid var(--encoche);
+  border: 5px solid var(--encre);
   border-radius: 50%;
   background: var(--surface);
   view-transition-name: nav-cercle;
@@ -556,29 +561,6 @@ button.rangee:hover {
 .nav-basse[data-place='2'] .nav-cercle { left: calc(50% - var(--nav-cercle) / 2); }
 .nav-basse[data-place='3'] .nav-cercle { left: calc(70% - var(--nav-cercle) / 2); }
 .nav-basse[data-place='4'] .nav-cercle { left: calc(90% - var(--nav-cercle) / 2); }
-
-/* Les coins arrondis de l'encoche, à gauche et à droite du cercle. */
-.nav-cercle::before,
-.nav-cercle::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  width: 20px;
-  height: 20px;
-  background: transparent;
-}
-
-.nav-cercle::before {
-  left: -26px;
-  border-top-right-radius: 20px;
-  box-shadow: 1px -10px 0 0 var(--encoche);
-}
-
-.nav-cercle::after {
-  right: -26px;
-  border-top-left-radius: 20px;
-  box-shadow: -1px -10px 0 0 var(--encoche);
-}
 
 /* L'étirement pendant le déplacement, et le rebond de l'icône qui arrive. */
 .nav-cercle.liquide {

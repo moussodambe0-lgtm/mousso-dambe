@@ -94,6 +94,16 @@ const ERREURS: Record<string, string> = {
   trop_vite: 'Tu vas un peu vite. Attends quelques secondes.',
   quota_jour: "Tu as posé beaucoup de questions aujourd'hui. Reviens demain.",
   message_inconnu: "Cette question n'a pas été retrouvée.",
+  quota: 'Tu as écrit beaucoup de messages cette heure-ci. Reviens dans un moment.',
+  message_vide: 'Écris ton message.',
+  // Les vocaux au médecin.
+  vocal_trop_long: "Ce vocal est trop long pour partir. Redis-le plus court, en moins d'une minute et demie.",
+  duree_refusee: 'Un vocal dure entre 1 seconde et 1 minute 30. Recommence.',
+  format_refuse:
+    "Ton téléphone a enregistré dans un format que l'application ne sait pas lire. Écris ton message à la place.",
+  vocal_abime: "L'enregistrement est arrivé abîmé, souvent à cause de la connexion. Recommence.",
+  vocal_vide: "On n'a rien entendu dans cet enregistrement. Rapproche-toi du téléphone et recommence.",
+  vocal_inconnu: "Ce vocal n'est plus disponible.",
 };
 
 export function messageErreur(code: string | null | undefined): string {

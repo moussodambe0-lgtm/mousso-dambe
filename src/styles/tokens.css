@@ -131,7 +131,7 @@
   /* Hauteur de la barre basse, pour que rien ne passe dessous */
   /* 70 px de barre, plus les 32 px dont le cercle dépasse au-dessus : sans
      cette marge, le bas d'une page passe sous le cercle. */
-  --nav-hauteur: 102px;
+  --nav-hauteur: 112px; /* 14 de vide + 64 de barre + 30 de bosse, depuis la barre flottante */
 
   /* Mouvement */
   --vite: 150ms;

@@ -66,6 +66,10 @@ export default defineConfig({
         "default-src 'self'",
         "img-src 'self' data: https://*.supabase.co",
         "font-src 'self'",
+        // Les vocaux : ceux du médecin viennent de ce site, et celui qu'elle
+        // vient d'enregistrer, qu'elle réécoute avant d'envoyer, est un blob
+        // local. Rien d'autre ne peut jouer un son ici.
+        "media-src 'self' blob:",
         "connect-src 'self'",
         "object-src 'none'",
         "base-uri 'self'",

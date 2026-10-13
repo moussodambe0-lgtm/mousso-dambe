@@ -1,0 +1,58 @@
+---
+/**
+ * L'ovule, pour la carte « Ovulation estimée » du tableau de bord.
+ *
+ * Arthur, le 13 octobre 2026 : « ovulation, je ne veux pas un bébé comme
+ * image, choisis autre chose ». L'ovulation n'est pas une grossesse : c'est
+ * le moment où un ovule est libéré, et ce dessin dit exactement cela. Une
+ * cellule ronde, son noyau, la couronne de petites cellules qui l'entoure,
+ * et deux éclats pour dire « c'est le moment ».
+ *
+ * Il ne remplace PAS les têtes de bébé du calendrier (les jours fertiles et
+ * le jour d'ovulation y gardent leur visage, repris du code d'Arthur) : sa
+ * demande ne portait que sur la carte du tableau de bord.
+ *
+ * Aucune dépendance à des dégradés partagés : les couleurs sont posées ici,
+ * pour que l'icône ne devienne pas transparente le jour où `DefsCycle`
+ * change.
+ */
+interface Props {
+  taille?: number;
+  titre?: string;
+}
+
+const { taille = 44, titre } = Astro.props;
+
+// Les dix cellules de la couronne, posées sur un cercle de rayon 19.
+const couronne = Array.from({ length: 10 }, (_, i) => {
+  const a = (i / 10) * Math.PI * 2 - Math.PI / 2;
+  return { x: +(24 + 19 * Math.cos(a)).toFixed(2), y: +(24 + 19 * Math.sin(a)).toFixed(2) };
+});
+---
+
+<svg
+  class="ovule"
+  width={taille}
+  height={taille}
+  viewBox="0 0 48 48"
+  role={titre ? 'img' : undefined}
+  aria-label={titre}
+  aria-hidden={titre ? undefined : 'true'}
+>
+  <!-- La zone claire autour : l'ovule vient de partir -->
+  <circle cx="24" cy="24" r="22.5" fill="#EFE4FF" />
+
+  <!-- La couronne de cellules -->
+  {couronne.map((c) => <circle cx={c.x} cy={c.y} r="2.3" fill="#C9AEFF" />)}
+
+  <!-- L'ovule : un disque doré, son contour, et son noyau -->
+  <circle cx="24" cy="24" r="14.5" fill="#FFE3A3" stroke="#E9A93A" stroke-width="1.6" />
+  <circle cx="24" cy="24" r="6.2" fill="#FFB43C" stroke="#D98A12" stroke-width="1.3" />
+
+  <!-- Un reflet, pour qu'il ait du volume -->
+  <ellipse cx="18.6" cy="17.6" rx="3.4" ry="2" fill="#fff" opacity=".7" transform="rotate(-35 18.6 17.6)" />
+
+  <!-- Deux éclats -->
+  <path d="M40.5 7.5l1.2 3 3 1.2-3 1.2-1.2 3-1.2-3-3-1.2 3-1.2z" fill="#F5B534" />
+  <path d="M8.5 36l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z" fill="#F5B534" />
+</svg>

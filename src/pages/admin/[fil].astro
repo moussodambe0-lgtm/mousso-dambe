@@ -53,6 +53,7 @@ const messages = (data?.messages ?? []) as {
   texte: string;
   quand: string;
   lu: boolean;
+  vocal_secondes: number | null;
   produit: { slug: string; nom: string; prix_cfa: number; image: string | null } | null;
 }[];
 
@@ -124,7 +125,19 @@ const lignes = messages.map((m) => {
                         </span>
                       </a>
                     )}
-                    <p class="texte">{m.texte}</p>
+                    {m.vocal_secondes ? (
+                      <div class="vocal-bulle">
+                        <span class="vocal-etiquette">
+                          <Icone nom="micro" taille={15} />
+                          Message vocal · {Math.floor(m.vocal_secondes / 60)}:{String(m.vocal_secondes % 60).padStart(2, '0')}
+                        </span>
+                        {/* Le médecin écoute ici. Le son passe par /vocal/<id>,
+                            qui demande à la base si l'administratrice a le droit. */}
+                        <audio class="vocal-lecteur" controls preload="none" src={`/vocal/${m.id}`}></audio>
+                      </div>
+                    ) : (
+                      <p class="texte">{m.texte}</p>
+                    )}
                     <span class="pied">{heureCourte(m.quand)}</span>
                   </div>
                 </div>
@@ -289,6 +302,25 @@ const lignes = messages.map((m) => {
     border: 1px solid var(--bordure);
     border-bottom-left-radius: 6px;
     background: var(--surface);
+  }
+
+  .vocal-bulle {
+    min-width: 220px;
+  }
+
+  .vocal-etiquette {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
+    font-size: 12.5px;
+    font-weight: 600;
+  }
+
+  .vocal-lecteur {
+    display: block;
+    width: 100%;
+    height: 38px;
   }
 
   .texte {

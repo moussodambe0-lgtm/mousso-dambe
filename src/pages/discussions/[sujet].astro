@@ -117,6 +117,7 @@ const messages = (fil?.messages ?? []) as {
   texte: string;
   quand: string;
   lu: boolean;
+  vocal_secondes: number | null;
   produit: { slug: string; nom: string; prix_cfa: number; image: string | null } | null;
 }[];
 
@@ -217,7 +218,21 @@ const dit = QUI[sujet];
                     </span>
                   </a>
                 )}
-                <p class="texte">{m.texte}</p>
+                {m.vocal_secondes ? (
+                  <div class="vocal-bulle">
+                    <span class="vocal-etiquette">
+                      <Icone nom="micro" taille={15} />
+                      Message vocal · {Math.floor(m.vocal_secondes / 60)}:{String(m.vocal_secondes % 60).padStart(2, '0')}
+                    </span>
+                    {/* `preload="none"` : une conversation de dix vocaux ne
+                        télécharge rien tant qu'on n'en écoute pas un. Le son
+                        passe par /vocal/<id>, qui demande à la base si elle a
+                        le droit de l'entendre. */}
+                    <audio class="vocal-lecteur" controls preload="none" src={`/vocal/${m.id}`}></audio>
+                  </div>
+                ) : (
+                  <p class="texte">{m.texte}</p>
+                )}
                 <span class="pied">
                   {heureCourte(m.quand)}
                   {m.de === 'elle' && (
@@ -276,6 +291,42 @@ const dit = QUI[sujet];
           required
           placeholder={dit.champ}
           autocomplete="off">{brouillon}</textarea>
+
+        {
+          estMedecin && (
+            <>
+              {/* Le vocal, chez le médecin seulement (décision d'Arthur du 13
+                  octobre 2026). Un humain écoute : le moré et le dioula
+                  passent, et aucun son ne sort vers un service extérieur.
+                  Il arrive caché : `vocal.ts` ne le montre que si le
+                  navigateur sait enregistrer. */}
+              <button class="vocal-micro" type="button" aria-pressed="false" aria-label="Envoyer un vocal" hidden>
+                <Icone nom="micro" taille={20} />
+              </button>
+
+              <div class="vocal-panneau" hidden>
+                <span class="vocal-point" aria-hidden="true"></span>
+                <span class="vocal-temps">0:00</span>
+                <span class="vocal-message" aria-live="polite"></span>
+                <span class="vocal-boutons">
+                  <button class="vocal-annuler" type="button" aria-label="Annuler le vocal">
+                    <Icone nom="croix" taille={18} />
+                  </button>
+                  <button class="vocal-ecouter" type="button" hidden>
+                    Réécouter
+                  </button>
+                  <button class="vocal-stop" type="button" aria-label="Arrêter l'enregistrement" hidden>
+                    <span class="vocal-carre" aria-hidden="true"></span>
+                  </button>
+                  <button class="vocal-envoyer" type="button" aria-label="Envoyer le vocal" hidden>
+                    <Icone nom="envoyer" taille={20} />
+                  </button>
+                </span>
+              </div>
+            </>
+          )
+        }
+
         <button class="envoyer" type="submit" aria-label="Envoyer">
           <Icone nom="envoyer" taille={20} />
         </button>
@@ -286,6 +337,7 @@ const dit = QUI[sujet];
 
 <script>
   import '../../scripts/conversation';
+  import '../../scripts/vocal';
 </script>
 
 <style>
@@ -293,7 +345,8 @@ const dit = QUI[sujet];
     display: flex;
     flex-direction: column;
     min-height: 100dvh;
-    padding-bottom: 96px;
+    /* La barre basse, plus la zone d'écriture qui flotte au-dessus. */
+    padding-bottom: calc(var(--nav-hauteur) + 118px);
   }
 
   /* --- La barre du haut --- */
@@ -506,7 +559,10 @@ const dit = QUI[sujet];
     position: fixed;
     left: 0;
     right: 0;
-    bottom: calc(68px + env(safe-area-inset-bottom, 0px));
+    /* Calée sur la hauteur RÉELLE de la barre basse (70 px de barre + 32 px de
+       cercle qui dépasse). Elle était en dur à 68 px, d'avant la barre
+       liquide : le cercle venait mordre le bas de la case de saisie. */
+    bottom: calc(var(--nav-hauteur) + env(safe-area-inset-bottom, 0px));
     z-index: 10;
     max-width: 480px;
     margin: 0 auto;
@@ -577,6 +633,157 @@ const dit = QUI[sujet];
 
   .envoyer:active {
     transform: scale(0.93);
+  }
+
+  /* --- Les vocaux ---
+     Dans une bulle : une étiquette et le lecteur natif. Le lecteur natif est
+     moins joli qu'un dessin sur mesure, mais c'est lui que le clavier, le
+     lecteur d'écran et tous les téléphones savent déjà utiliser. */
+  .vocal-bulle {
+    min-width: 220px;
+  }
+
+  .vocal-etiquette {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
+    font-size: 12.5px;
+    font-weight: 600;
+  }
+
+  .vocal-lecteur {
+    display: block;
+    width: 100%;
+    height: 38px;
+  }
+
+  /* Dans la zone d'écriture : le micro, puis le panneau qui prend sa place. */
+  .vocal-micro,
+  .vocal-annuler,
+  .vocal-stop,
+  .vocal-envoyer {
+    display: grid;
+    place-items: center;
+    width: 46px;
+    height: 46px;
+    flex: none;
+    border: 1px solid var(--bordure);
+    border-radius: 50%;
+    background: var(--surface);
+    color: var(--encre);
+    cursor: pointer;
+  }
+
+  .vocal-micro[hidden],
+  .vocal-ecouter[hidden],
+  .vocal-stop[hidden],
+  .vocal-envoyer[hidden],
+  .vocal-annuler[hidden],
+  .vocal-panneau[hidden] {
+    display: none;
+  }
+
+  .vocal-micro:active,
+  .vocal-stop:active,
+  .vocal-envoyer:active {
+    transform: scale(0.93);
+  }
+
+  .vocal-panneau {
+    flex: 1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--e2);
+    min-height: 46px;
+  }
+
+  /* Le point rouge qui bat : elle doit voir de loin que le téléphone
+     l'enregistre. Il ne bat que pendant l'enregistrement. */
+  .vocal-point {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--rose);
+  }
+
+  .vocal-panneau[data-etat='enregistre'] .vocal-point {
+    animation: vocal-bat 1s ease-in-out infinite;
+  }
+
+  .vocal-panneau:not([data-etat='enregistre']) .vocal-point {
+    background: var(--texte-3);
+  }
+
+  .vocal-temps {
+    min-width: 38px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    font-size: 15px;
+  }
+
+  .vocal-message {
+    flex: 1 1 100%;
+    order: 3;
+    font-size: 12.5px;
+    line-height: 1.35;
+    color: var(--texte-2);
+  }
+
+  .vocal-boutons {
+    display: flex;
+    align-items: center;
+    gap: var(--e2);
+    margin-left: auto;
+  }
+
+  .vocal-ecouter {
+    height: 46px;
+    padding: 0 16px;
+    border: 1px solid var(--bordure);
+    border-radius: 23px;
+    background: var(--surface);
+    color: var(--encre);
+    font-family: var(--texte);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .vocal-stop {
+    background: var(--rose);
+    border-color: var(--rose);
+  }
+
+  .vocal-carre {
+    width: 15px;
+    height: 15px;
+    border-radius: 3px;
+    background: #fff;
+  }
+
+  .vocal-envoyer {
+    background: var(--rose);
+    border-color: var(--rose);
+    color: #fff;
+  }
+
+  .vocal-envoyer:disabled {
+    opacity: 0.55;
+  }
+
+  /* Pendant un vocal, la case de texte et son bouton s'effacent : on ne
+     tape pas et on ne parle pas en même temps. */
+  .zone-ecriture.vocal-actif textarea,
+  .zone-ecriture.vocal-actif > .envoyer,
+  .zone-ecriture.vocal-actif > .vocal-micro {
+    display: none;
+  }
+
+  @keyframes vocal-bat {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.5); opacity: 0.55; }
   }
 
   @keyframes bulle-arrive {

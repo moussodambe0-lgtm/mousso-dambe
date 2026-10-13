@@ -222,6 +222,67 @@ médecin répond quand il peut ; une urgence, non.
 
 ---
 
+### Ce qui a changé le 13 octobre 2026 (et ce que tu dois en savoir)
+
+**Les vocaux au médecin.** Un micro dans la conversation « Le médecin » : elle
+enregistre, elle se réécoute, elle envoie. Un humain l'écoute, donc le moré et
+le dioula passent, et aucun son ne part vers un service extérieur (voir
+`supabase/migrations/20261013140000_vocaux.sql`, qui explique chaque choix).
+Bornes tenues par la base : 90 secondes, 1,2 Mo, le médecin seulement.
+
+**La dictée chez Dambé.** Un micro dans la discussion avec IA Dambé, mais qui
+ÉCRIT : elle parle, le téléphone écrit dans la case, elle relit. Dambé lit du
+texte et n'entend rien. Français seulement. Sur Android c'est Google qui
+reconnaît la voix, comme la touche micro de son clavier : nous ne gardons
+aucun son.
+
+**Une trouvaille grave, réparée.** L'en-tête de sécurité interdisait le micro
+à toute l'application (`microphone=()`). Aucune des deux fonctions n'aurait
+marché, avec ou sans l'autorisation de la femme. Il dit maintenant
+`microphone=(self)`.
+
+**« Effacer mes données » n'effaçait pas les messages.** La fonction datait
+d'avant la messagerie : elle supprimait le journal, les cycles et les
+questions à Dambé, rien d'autre. Elle supprime maintenant aussi la
+conversation avec le médecin, vocaux compris. **La conversation avec la
+boutique reste**, comme les commandes (adresses, délais, litiges). C'est une
+décision que je t'ai laissée : si tu veux tout effacer, c'est une ligne dans la
+migration. La page « Ce qu'on sait de toi » le dit en toutes lettres.
+
+**La barre du bas flotte.** Une pastille décollée du bas et des côtés, avec une
+ombre. L'ancien effet d'encoche creusée ne marche que sur un fond uni.
+
+**D'une page à l'autre, sans clignotement.** Le « petit bug » entre l'accueil,
+mon cycle et mon compte n'en était pas un : chaque onglet est une vraie page,
+le navigateur la jetait et la redessinait. Une règle de CSS (`@view-transition`)
+lui demande de fondre d'une page à l'autre, sans une ligne de JavaScript.
+
+**Retiré de l'accueil :** la bande qui défile, les conseils de phase, le
+bouton « Noter aujourd'hui » (doublon), la mention sous le panneau (déplacée
+dans le coin de la photo : elle est obligatoire).
+
+**Retiré de « Mon cycle » :** la rangée « Comment tu te sens aujourd'hui ? ».
+L'ovulation n'a plus un bébé comme image mais un ovule, et les trois dates sont
+empilées en rectangles.
+
+**La mascotte, version 6.** Après cinq versions dessinées à la main qui
+s'éloignaient à chaque fois, c'est maintenant TON image, recolorée (peau
+brune, le reste tel quel, la fleur du logo à la place de la croix). Outils :
+`outils/mascotte-depuis-image.py` puis `outils/mascotte-svg.py`.
+
+**La croix.** Ton image avait une croix rose sur le bonnet. Je ne l'ai pas
+gardée : un emblème proche de la croix rouge est protégé par les Conventions de
+Genève, dont le Burkina Faso est signataire. La fleur du logo est à la place.
+
+**Les photos du panneau « médecin ».** Trois personnes différentes : la femme
+au stéthoscope, l'homme que tu as envoyé, et une troisième (Pexels). Attention :
+la page dit « le médecin » au singulier. Ce sont des photos d'illustration,
+chacune porte la mention « Illustration », et **la photo de l'homme n'a pas de
+source connue** : dis-moi d'où elle vient, ou remplaçons-la avant la mise en
+ligne (`atelier-motion/images/medecin/LICENCE.md`).
+
+---
+
 ## 6. Ce que j'ai cassé et réparé en chemin
 
 Pour que tu saches où regarder si quelque chose se remet de travers :
@@ -245,6 +306,12 @@ Pour que tu saches où regarder si quelque chose se remet de travers :
 - **Le carrousel remontait la page.** Il demandait à la carte suivante de se
   mettre en vue ; quand tu avais défilé plus bas, le navigateur remontait tout
   l'écran pour la montrer. C'est la bande qui glisse, maintenant.
+- **Le cercle de la barre mordait la case de saisie** (13 octobre). La
+  barre liquide avait grandi de 34 px et les zones d'écriture étaient restées
+  calées à 68 px. Elles lisent maintenant la hauteur réelle de la barre.
+- **Mon propre essai du vocal mentait** : il comptait le mot « vocal-lecteur »
+  dans le CSS de la page, et supposait une base vide alors que la démo garde
+  les essais précédents. Il compare maintenant avant et après.
 - **`updateUser` ne lisait pas la session** quand on attache une adresse à un
   compte anonyme : il lui faut une session en mémoire, pas seulement un
   en-tête. La page disait « réessaie plus tard » pour une raison qui n'avait
@@ -252,4 +319,4 @@ Pour que tu saches où regarder si quelque chose se remet de travers :
 
 ---
 
-*Dernière mise à jour : 12 octobre 2026, au soir.*
+*Dernière mise à jour : 13 octobre 2026, l'après-midi.*

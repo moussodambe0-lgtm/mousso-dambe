@@ -27,10 +27,25 @@
  * L'ancienne mascotte au foulard est gardée dans
  * `atelier-motion/animations/ancienne-mascotte-foulard/`.
  *
- * Les dessins viennent de Motion (12 octobre 2026) : quatre poses en SVG, et
- * une feuille de style qui ne fait bouger que `transform` et `opacity`, joue
- * l'entrée une fois, puis laisse seulement les yeux cligner. Tout est posé
- * dans la page, donc aucune requête réseau et rien à attendre sur une 3G.
+ * HISTORIQUE (12 et 13 octobre 2026). Les dessins sont venus de Motion : une
+ * femme au foulard, puis cinq versions d'infirmière dessinées à la main (v1 à
+ * v5). Chacune s'éloignait de ce qu'Arthur voulait. Il a fini par envoyer SON
+ * image (une infirmière chibi) en disant « utilise cette image, change juste
+ * le teint en brun ». C'est donc, depuis la version 6, cette image elle-même,
+ * recolorée par `outils/mascotte-depuis-image.py`, et non plus un dessin
+ * refait : les quatre SVG de `src/assets/mascotte/` sont des cadres
+ * (`outils/mascotte-svg.py`) autour de `public/mascotte/infirmiere.webp` et de
+ * `infirmiere-visage.webp`.
+ *
+ * Les trois poses ne se distinguent donc plus par le dessin mais par le
+ * mouvement : elle se balance pour saluer, penche la tête avec sa bulle pour
+ * écouter, hoche la tête sous ses éclats pour féliciter. La feuille de style
+ * ne fait bouger que `transform` et `opacity`, joue l'entrée une fois, puis
+ * laisse tout au repos.
+ *
+ * L'image est un fichier du site (`/mascotte/…webp`), pas du SVG dessiné : sur
+ * une 3G elle pèse 50 Ko en grand et 20 Ko en visage. Le visage, qui est sur
+ * chaque page, a son propre petit fichier.
  *
  * Les états demandés dans le cahier, et ce qu'ils rendent ici :
  *   neutre, ecoute, reflechit  -> elle écoute, la tête acquiesce

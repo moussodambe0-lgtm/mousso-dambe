@@ -97,6 +97,17 @@ const panier = comptePanier(lirePanier(Astro));
             <span>Ton nom, ton numéro et ton quartier pour la course. Jamais ce que tu notes sur ton cycle.</span>
           </div>
         </li>
+        <li>
+          <span class="rond-icone"><Icone nom="coeur" taille={18} /></span>
+          <div>
+            <strong>Le médecin, seulement ce que tu lui envoies</strong>
+            <span>
+              Tes messages et tes vocaux au médecin sont lus par la personne qui te répond, et par personne
+              d'autre. Un vocal est écouté par un humain : aucun service extérieur ne le reçoit, aucune machine
+              ne le transcrit, et il ne part jamais vers Dambé. « Effacer mes données » efface aussi tes messages et tes vocaux au médecin.
+            </span>
+          </div>
+        </li>
       </ul>
     </section>
 
@@ -127,7 +138,7 @@ const panier = comptePanier(lirePanier(Astro));
           <>
             <Alerte
               type="erreur"
-              texte="Ton journal, tes cycles et tes questions à Dambé seront effacés définitivement. Il n'y a pas de corbeille, rien ne pourra être récupéré."
+              texte="Ton journal, tes cycles, tes questions à Dambé et ta conversation avec le médecin, vocaux compris, seront effacés définitivement. Il n'y a pas de corbeille, rien ne pourra être récupéré."
             />
             <form method="POST" class="marge">
               <input type="hidden" name="confirme" value="oui" />
@@ -140,7 +151,7 @@ const panier = comptePanier(lirePanier(Astro));
         ) : (
           <>
             <p class="doux">
-              Tu peux effacer ton journal, tes cycles et tes questions à Dambé. Tes commandes déjà passées sont gardées :
+              Tu peux effacer ton journal, tes cycles, tes questions à Dambé et ta conversation avec le médecin, vocaux compris. Tes commandes déjà passées sont gardées :
               elles servent de preuve d'achat, pour toi comme pour nous.
             </p>
             <a class="btn btn-contour btn-plein marge" href="/confidentialite?effacer=1">

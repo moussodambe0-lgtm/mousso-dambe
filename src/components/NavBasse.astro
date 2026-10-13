@@ -3,7 +3,7 @@
  * LA BARRE BASSE, NAVIGATION LIQUIDE.
  *
  * Code donné par Arthur le 12 octobre 2026 au soir, intégré ici. Un cercle
- * creuse une encoche dans la barre sous l'onglet actif, l'icône monte dedans,
+ * se pose sur la barre au-dessus de l'onglet actif, l'icône monte dedans,
  * son libellé apparaît en dessous, et le cercle s'étire pendant qu'il glisse.
  *
  * TROIS CHOSES ONT CHANGÉ PAR RAPPORT À SON CODE, et chacune pour une raison :
@@ -15,10 +15,13 @@
  *      avant le premier pixel, et la barre reste juste même si le script ne
  *      se charge jamais.
  *
- *   2. La couleur de l'encoche suit la page. Dans son code, `--page-bg` est
- *      écrit en dur. Ici l'accueil a un fond différent du reste ; l'encoche
- *      lit donc `--encoche`, que chaque page règle. Avec une couleur figée,
- *      on verrait un rectangle d'une autre teinte autour du cercle.
+ *   2. Elle FLOTTE (13 octobre 2026, demande d'Arthur : « pas collée au bas,
+ *      un truc circulaire détaché du bas »). Une pastille décollée du bas et
+ *      des côtés, avec une ombre. Du coup l'encoche creusée de son code ne
+ *      tient plus : elle suppose une barre posée sur un fond uni, dont le
+ *      cercle emprunte la couleur. Une barre qui flotte passe au-dessus d'un
+ *      contenu qui défile. Le cercle porte donc la couleur de la barre et
+ *      fait une bosse qui la prolonge.
  *
  *   3. Le libellé de l'onglet actif reste, mais les autres gardent leur
  *      texte dans la page, caché à l'œil et lu par les lecteurs d'écran.
