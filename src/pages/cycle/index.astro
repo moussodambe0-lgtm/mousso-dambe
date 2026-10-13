@@ -22,6 +22,7 @@
 import Base from '../../layouts/Base.astro';
 import Icone from '../../components/Icone.astro';
 import AnneauSegmente from '../../components/AnneauSegmente.astro';
+import VuesCycle from '../../components/VuesCycle.astro';
 import GoutteJour from '../../components/GoutteJour.astro';
 import BebeJour from '../../components/BebeJour.astro';
 import OvuleJour from '../../components/OvuleJour.astro';
@@ -223,10 +224,7 @@ const enRegles = info?.type === 'regles';
 
   <main class="page tableau">
     {/* --- Les deux vues de « Mon cycle » --- */}
-    <nav class="deux-vues" aria-label="Vues de mon cycle">
-      <a class="vue-choix vue-actif" href="/cycle" aria-current="page">Tableau de bord</a>
-      <a class="vue-choix" href="/cycle/calendrier">Calendrier</a>
-    </nav>
+    <VuesCycle actif="tableau" />
 
     {message && <Alerte type="reussite" texte={message} />}
     {erreur && <Alerte type="erreur" texte={erreur} />}
@@ -423,34 +421,6 @@ const enRegles = info?.type === 'regles';
 <style>
   .tableau {
     padding-top: var(--e4);
-  }
-
-  /* --- La deux-vues entre les deux vues --- */
-  .deux-vues {
-    display: flex;
-    gap: 4px;
-    margin-bottom: var(--e4);
-    padding: 4px;
-    border-radius: var(--r-ronde);
-    background: var(--surface-douce);
-  }
-
-  .vue-choix {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 40px;
-    border-radius: var(--r-ronde);
-    color: var(--texte-2);
-    font-size: 14px;
-    font-weight: 600;
-  }
-
-  .vue-actif {
-    background: var(--surface);
-    color: var(--encre);
-    box-shadow: var(--ombre);
   }
 
   /* --- L'anneau et son centre --- */

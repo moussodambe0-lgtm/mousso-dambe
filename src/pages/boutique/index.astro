@@ -21,7 +21,6 @@ const RAYONS = [
   { id: 'serviettes', libelle: 'Serviettes' },
   { id: 'culottes', libelle: 'Culottes' },
   { id: 'lavables', libelle: 'Lavables' },
-  { id: 'kits', libelle: 'Kits' },
 ];
 
 const rayon = Astro.url.searchParams.get('rayon') ?? '';
@@ -176,21 +175,26 @@ if (!moi && !avaitUnCookie) {
     align-items: center;
   }
 
+  /* La hauteur seulement, à la demande d'Arthur (13 octobre 2026) : le texte,
+     l'icône et la largeur ne bougent pas. */
   .rassure {
     display: flex;
     align-items: center;
     gap: var(--e3);
-    padding: var(--e3) var(--e4);
+    padding: 5px var(--e4);
     color: #fff;
   }
 
   .rassure strong {
     display: block;
     font-size: 13.5px;
+    line-height: 1.2;
   }
 
   .rassure span {
+    display: block;
     font-size: 12px;
+    line-height: 1.2;
     color: var(--rose-clair);
   }
 

@@ -77,12 +77,12 @@ titre('Le prix envoyé par le navigateur est ignoré');
 
 titre('Le stock est respecté');
 {
-  const avant = await rpc(`select stock from public.produits where slug = 'kit-premieres-regles'`);
-  const trop = JSON.stringify([{ slug: 'kit-premieres-regles', quantite: 20 }]);
+  const avant = await rpc(`select stock from public.produits where slug = 'serviettes-lavables-3'`);
+  const trop = JSON.stringify([{ slug: 'serviettes-lavables-3', quantite: 20 }]);
   await rpc(`select public.passer_commande($1::jsonb, 'Awa', '70123456', 'Dassasgho', '') as x`, [trop]);
   const r = await rpc(`select public.passer_commande($1::jsonb, 'Awa', '70123456', 'Dassasgho', '') as x`, [trop]);
   verifier('on ne commande pas plus que le stock', r.x.ok === false && r.x.erreur.includes('stock_insuffisant'), JSON.stringify(r.x));
-  const apres = await rpc(`select stock from public.produits where slug = 'kit-premieres-regles'`);
+  const apres = await rpc(`select stock from public.produits where slug = 'serviettes-lavables-3'`);
   verifier('le stock a baissé une seule fois', apres.stock === avant.stock - 20, `stock ${apres.stock}`);
 }
 

@@ -11,6 +11,7 @@
  */
 import Base from '../layouts/Base.astro';
 import Entete from '../components/Entete.astro';
+import Avatar from '../components/Avatar.astro';
 import Icone from '../components/Icone.astro';
 import Alerte from '../components/Alerte.astro';
 import BoutonGoogle from '../components/BoutonGoogle.astro';
@@ -107,7 +108,6 @@ if (Astro.url.searchParams.get('ok') === 'garde') {
 
 const cycle = await monCycle(Astro);
 const panier = comptePanier(lirePanier(Astro));
-const initiales = (moi.prenom || moi.email || '?').slice(0, 2).toUpperCase();
 ---
 
 <Base titre="Mon compte" nav="compte" panier={panier}>
@@ -118,7 +118,10 @@ const initiales = (moi.prenom || moi.email || '?').slice(0, 2).toUpperCase();
     {erreur && <div class="marge-bas"><Alerte type="erreur" texte={erreur} /></div>}
 
     <section class="carte bloc identite apparait">
-      <span class="initiales chiffre">{initiales}</span>
+      {/* Sa photo de profil : un visage à elle, tiré de sa graine, toujours le
+          même, jamais le même qu'une autre (demande d'Arthur, 13 octobre 2026).
+          Elle remplace les deux initiales. */}
+      <Avatar graine={moi.avatarGraine} prenom={moi.prenom} identifiant={moi.id} taille={88} morph />
       <div class="qui">
         <div class="prenom">{moi.prenom || 'Toi'}</div>
         <div class="gris">{moi.email ?? 'Sans compte, sans mot de passe'}</div>
@@ -291,19 +294,6 @@ const initiales = (moi.prenom || moi.email || '?').slice(0, 2).toUpperCase();
     display: flex;
     align-items: center;
     gap: var(--e4);
-  }
-
-  .initiales {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 52px;
-    height: 52px;
-    flex: none;
-    border-radius: 17px;
-    background: var(--rose-clair);
-    color: var(--rose-fonce);
-    font-size: 21px;
   }
 
   .qui {

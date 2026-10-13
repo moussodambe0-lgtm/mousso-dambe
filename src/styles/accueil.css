@@ -491,22 +491,3 @@
   }
 }
 
-/* La mention obligatoire, posée dans le coin de la photo.
-   Elle doit rester LISIBLE : une mention qu'on ne peut pas lire ne vaut pas
-   mieux qu'une mention absente. D'où le voile sombre derrière, qui la tient
-   quelle que soit la photo, claire ou foncée. */
-.banniere-mention {
-  position: absolute;
-  right: 6px;
-  bottom: 6px;
-  z-index: 2;
-  padding: 2px 7px;
-  border-radius: 999px;
-  background: rgba(27, 17, 22, 0.42);
-  color: rgba(255, 255, 255, 0.92);
-  font-size: 9.5px;
-  letter-spacing: 0.2px;
-  line-height: 1.5;
-  white-space: nowrap;
-  pointer-events: none;
-}

@@ -34,6 +34,7 @@
  */
 import Base from '../../layouts/Base.astro';
 import Icone from '../../components/Icone.astro';
+import Symbole from '../../components/Symbole.astro';
 import Alerte from '../../components/Alerte.astro';
 import { clientSession, baseConfiguree } from '../../lib/supabase';
 import { visiteuse, lirePanier, comptePanier } from '../../lib/session';
@@ -167,7 +168,9 @@ const dit = QUI[sujet];
       <a class="retour" href="/discussions" aria-label="Retour aux discussions">
         <Icone nom="retour" taille={22} />
       </a>
-      <span class:list={['visage', estMedecin && 'visage-medecin']}><Icone nom={dit.icone} taille={20} /></span>
+      <span class:list={['visage', estMedecin ? 'visage-medecin' : 'visage-boutique']}>
+        {estMedecin ? <Icone nom={dit.icone} taille={20} /> : <Symbole forme="fleur" taille={38} titre="Mousso Dambé" />}
+      </span>
       <span class="qui">
         <b>{dit.titre}</b>
         <span>{dit.sous}</span>
@@ -383,6 +386,14 @@ const dit = QUI[sujet];
   .visage-medecin {
     background: var(--rose);
     color: #fff;
+  }
+
+  /* La boutique : le logo de Mousso Dambé sur un rond blanc. */
+  .visage-boutique {
+    width: 50px;
+    height: 50px;
+    background: #fff;
+    border: 1px solid var(--bordure);
   }
 
   .qui b {

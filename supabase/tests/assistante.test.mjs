@@ -120,12 +120,12 @@ titre('Le journal intime ne part pas non plus');
 
 titre('Le catalogue envoyé ne contient que des produits en stock');
 {
-  await db.query(`update public.produits set stock = 0 where slug = 'kit-premieres-regles'`);
+  await db.query(`update public.produits set stock = 0 where slug = 'lot-3-culottes'`);
   const r = await rpc(`select public.assistante_contexte() as c`);
   const slugs = r.c.catalogue.map((p) => p.slug);
-  verifier('le produit en rupture est retiré', !slugs.includes('kit-premieres-regles'));
+  verifier('le produit en rupture est retiré', !slugs.includes('lot-3-culottes'));
   verifier('les autres restent', slugs.includes('serviettes-nuit-10'));
-  await db.query(`update public.produits set stock = 20 where slug = 'kit-premieres-regles'`);
+  await db.query(`update public.produits set stock = 15 where slug = 'lot-3-culottes'`);
 }
 
 titre("Le quota par minute protège la formule d'Arthur");

@@ -92,19 +92,6 @@
   overflow: hidden;
 }
 
-.cal-marque {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 10px;
-  font-family: var(--titre);
-  font-weight: 800;
-  font-size: 15px;
-  color: var(--blood);
-  letter-spacing: 0.2px;
-}
-
 .cal-mois {
   display: flex;
   align-items: center;
@@ -191,10 +178,25 @@
   opacity: 0.75;
 }
 
+/* La taille vient des attributs de chaque icône ; seule la case du calendrier
+   les réduit (28 x 34 au lieu de 36 x 43). */
 .goutte {
   display: block;
-  width: 36px;
-  height: 43px;
+}
+
+.cal-icone .goutte {
+  width: 28px;
+  height: 34px;
+}
+
+/* Lisse et brillante, mais pas au point d'être criarde : un reflet, un
+   dégradé doux et une ombre à peine posée. Le reste de la page reste à plat. */
+.goutte-douce {
+  filter: drop-shadow(0 2px 2px rgba(190, 40, 70, 0.2));
+}
+
+.goutte-douce.goutte-prevue {
+  filter: none;
 }
 
 .bebe {

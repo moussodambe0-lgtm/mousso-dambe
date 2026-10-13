@@ -15,16 +15,20 @@ interface Props {
   largeur?: number;
   hauteur?: number;
   titre?: string;
-  /** Aplat, sans dégradé ni reflet ni ombre : pour le calendrier. */
+  /** Aplat, sans dégradé ni reflet ni ombre. */
   plat?: boolean;
+  /** Brillante et moins rouge : celle du calendrier (retour d'Arthur, 13 octobre
+   * 2026 : « trop rouges, plus petites, moins rouges, lisses et brillantes comme
+   * avant »). */
+  doux?: boolean;
 }
 
-const { numero = '', prevue = false, largeur = 36, hauteur = 43, titre, plat = false } = Astro.props;
+const { numero = '', prevue = false, largeur = 36, hauteur = 43, titre, plat = false, doux = false } = Astro.props;
 const CHEMIN = 'M20 2C20 2 5 20 5 31a15 15 0 0 0 30 0C35 20 20 2 20 2Z';
 ---
 
 <svg
-  class:list={['goutte', prevue && 'goutte-prevue', plat && 'goutte-plate']}
+  class:list={['goutte', prevue && 'goutte-prevue', plat && 'goutte-plate', doux && 'goutte-douce']}
   width={largeur}
   height={hauteur}
   viewBox="0 0 40 48"
@@ -43,7 +47,7 @@ const CHEMIN = 'M20 2C20 2 5 20 5 31a15 15 0 0 0 30 0C35 20 20 2 20 2Z';
       />
     ) : (
       <>
-        <path d={CHEMIN} fill={plat ? 'var(--blood)' : 'url(#g-sang)'} />
+        <path d={CHEMIN} fill={plat ? 'var(--blood)' : doux ? 'url(#g-sang-doux)' : 'url(#g-sang)'} />
         {!plat && <ellipse
           cx="13.5"
           cy="21"

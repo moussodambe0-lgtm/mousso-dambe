@@ -14,6 +14,7 @@
  */
 import Base from '../../layouts/Base.astro';
 import Icone from '../../components/Icone.astro';
+import Symbole from '../../components/Symbole.astro';
 import Mascotte from '../../components/Mascotte.astro';
 import { clientSession, baseConfiguree } from '../../lib/supabase';
 import { visiteuse, lirePanier, comptePanier } from '../../lib/session';
@@ -45,7 +46,6 @@ const nonLus = Number(data?.non_lus ?? 0);
   <main class="page">
     <header class="tete">
       <h1>Discussions</h1>
-      <p class="sous">IA Dambé, le médecin, et la boutique. Chacun dans son coin.</p>
     </header>
 
     <ul class="causeries">
@@ -112,7 +112,10 @@ const nonLus = Number(data?.non_lus ?? 0);
       <li class="apparait" data-ordre="3">
         <a class="causerie" href="/discussions/boutique">
           <span class="causerie-visage causerie-visage-boutique">
-            <Icone nom="boutique" taille={24} />
+            {/* Le logo de Mousso Dambé comme photo de profil de la boutique
+                (demande d'Arthur, 13 octobre 2026). Sur un rond blanc : le logo
+                ne se pose pas sur un fond sombre. */}
+            <Symbole forme="fleur" taille={54} titre="Mousso Dambé" />
           </span>
           <span class="causerie-corps">
             <span class="causerie-haut">
@@ -141,10 +144,11 @@ const nonLus = Number(data?.non_lus ?? 0);
       </li>
     </ul>
 
-    <p class="note apparait" data-ordre="4">
-      La boutique et le médecin voient ton prénom, ton téléphone et ce que tu leur écris. Ils ne voient jamais ton
-      calendrier, ton journal, ni ce que tu demandes à IA Dambé. Et les deux conversations ne se mélangent pas.
-    </p>
+    {/* La phrase sur ce que voient la boutique et le médecin, et la ligne
+        « Chacun dans son coin » ont été retirées le 13 octobre 2026, à la
+        demande d'Arthur. Les promesses elles-mêmes tiennent toujours : elles
+        sont dans la base (aucun écran d'administration ne lit un journal) et
+        dans « Ce qu'on sait de toi ». */}
 
     <div class="espace"></div>
   </main>
@@ -158,12 +162,6 @@ const nonLus = Number(data?.non_lus ?? 0);
   .tete h1 {
     font-size: 26px;
     font-weight: 800;
-  }
-
-  .sous {
-    margin-top: 4px;
-    font-size: 14px;
-    color: var(--texte-2);
   }
 
   .causeries {
@@ -209,8 +207,10 @@ const nonLus = Number(data?.non_lus ?? 0);
   }
 
   .causerie-visage-boutique {
-    background: var(--encre);
-    color: var(--rose-clair);
+    width: 66px;
+    height: 66px;
+    background: #fff;
+    border: 1px solid var(--bordure);
   }
 
   .causerie-visage-medecin {
@@ -295,12 +295,5 @@ const nonLus = Number(data?.non_lus ?? 0);
     color: #fff;
     font-size: 11px;
     font-weight: 700;
-  }
-
-  .note {
-    margin-top: var(--e5);
-    font-size: 12.5px;
-    color: var(--texte-3);
-    line-height: 1.5;
   }
 </style>

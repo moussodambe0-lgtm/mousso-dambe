@@ -60,10 +60,10 @@ titre('Accessibilité et bonne formation');
 
   // Les identifiants internes doivent être dérivés de la graine, sinon deux
   // rendus du même avatar donneraient des découpes différentes.
-  const id1 = /id="(av[a-z0-9]+)c"/.exec(avatar('awa-7f3c'))?.[1];
-  const id2 = /id="(av[a-z0-9]+)c"/.exec(avatar('awa-7f3c'))?.[1];
+  const id1 = /id="(av[a-z0-9]+)b"/.exec(avatar('awa-7f3c'))?.[1];
+  const id2 = /id="(av[a-z0-9]+)b"/.exec(avatar('awa-7f3c'))?.[1];
   verifier("l'identifiant interne est stable", !!id1 && id1 === id2);
-  const id3 = /id="(av[a-z0-9]+)c"/.exec(avatar('autre'))?.[1];
+  const id3 = /id="(av[a-z0-9]+)b"/.exec(avatar('autre'))?.[1];
   verifier('une autre graine donne un autre identifiant', id1 !== id3);
 }
 

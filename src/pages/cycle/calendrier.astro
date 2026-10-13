@@ -20,6 +20,7 @@ import Icone from '../../components/Icone.astro';
 import DefsCycle from '../../components/DefsCycle.astro';
 import GoutteJour from '../../components/GoutteJour.astro';
 import BebeJour from '../../components/BebeJour.astro';
+import VuesCycle from '../../components/VuesCycle.astro';
 import Alerte from '../../components/Alerte.astro';
 import '../../styles/calendrier.css';
 import { clientSession, baseConfiguree } from '../../lib/supabase';
@@ -224,12 +225,12 @@ function libelle(c: Case): string {
 
   <main class="ecran-calendrier">
     <div class="page">
-      <header class="entete">
-        <a class="rond" href="/" aria-label="Retour à l'accueil">
-          <Icone nom="retour" taille={20} epaisseur={2} />
-        </a>
-        <h1>Mon calendrier</h1>
-      </header>
+      {/* Les deux vues de « Mon cycle », les mêmes que sur le tableau de bord.
+          Elles n'existaient pas ici : on arrivait sur le calendrier sans
+          pouvoir revenir au tableau de bord (retour d'Arthur, 13 octobre
+          2026). Le titre reste dans la page pour les lecteurs d'écran. */}
+      <h1 class="lecture-seule">Mon calendrier</h1>
+      <VuesCycle actif="calendrier" />
 
       {message && <div class="marge-bas"><Alerte type="reussite" texte={message} /></div>}
       {erreur && <div class="marge-bas"><Alerte type="erreur" texte={erreur} /></div>}
@@ -238,7 +239,7 @@ function libelle(c: Case): string {
         aDesDonnees && (
           <section class="cal-resume">
             <div class="cal-resume-carte">
-              <GoutteJour plat largeur={26} hauteur={31} />
+              <GoutteJour doux largeur={26} hauteur={31} />
               <div>
                 <div class="cal-resume-quoi">Prochaines règles</div>
                 <div class="cal-resume-valeur">{dateCourte(prochaines!)}</div>
@@ -258,11 +259,6 @@ function libelle(c: Case): string {
       }
 
       <section class="cal-carte">
-        <div class="cal-marque">
-          <GoutteJour plat largeur={14} hauteur={17} />
-          Mousso Dambé
-        </div>
-
         <nav class="cal-mois" aria-label="Changer de mois">
           <a class="cal-fleche" href={`/cycle/calendrier?mois=${moisAvant}`} aria-label="Mois précédent">
             <Icone nom="retour" taille={20} epaisseur={2.6} />
@@ -296,7 +292,7 @@ function libelle(c: Case): string {
                   {
                     c.type === 'regles' ? (
                       <span class="cal-icone">
-                        <GoutteJour plat numero={c.numero} prevue={c.prevu} />
+                        <GoutteJour doux numero={c.numero} prevue={c.prevu} />
                       </span>
                     ) : c.type === 'fertile' || c.type === 'ovulation' ? (
                       <>
@@ -324,8 +320,8 @@ function libelle(c: Case): string {
         </div>
 
         <div class="cal-legende">
-          <div><GoutteJour plat largeur={18} hauteur={22} /> Règles</div>
-          <div><GoutteJour plat largeur={18} hauteur={22} prevue /> Règles prévues</div>
+          <div><GoutteJour doux largeur={18} hauteur={22} /> Règles</div>
+          <div><GoutteJour doux largeur={18} hauteur={22} prevue /> Règles prévues</div>
           <div><span class="cal-legende-bande"></span> Période fertile</div>
           <div><BebeJour plat taille={24} ovulation /> Ovulation</div>
         </div>
@@ -361,7 +357,7 @@ function libelle(c: Case): string {
               <div class:list={['cal-fiche-icone', TEXTES[fiche.type].fond]}>
                 {
                   fiche.type === 'regles' ? (
-                    <GoutteJour plat largeur={30} hauteur={36} prevue={fiche.prevu} />
+                    <GoutteJour doux largeur={30} hauteur={36} prevue={fiche.prevu} />
                   ) : fiche.type === 'faible' ? (
                     <span class="pastille-neutre"></span>
                   ) : fiche.type === 'ovulation' ? (
@@ -415,13 +411,8 @@ function libelle(c: Case): string {
 </Base>
 
 <style>
-  .ecran-calendrier .entete h1 {
-    font-size: 22px;
-  }
-
-  .ecran-calendrier .rond {
-    border: 1px solid var(--cal-line);
-    box-shadow: none;
+  .ecran-calendrier .page {
+    padding-top: var(--e4);
   }
 
   .marge-bas {

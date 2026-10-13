@@ -226,8 +226,9 @@ const BANNIERES = [
 // ATTENTION, le texte de la page parle du médecin au singulier (« Le
 // médecin », « il n'y a qu'un seul médecin »). Trois personnes différentes
 // sur trois messages disent autre chose : ce sont des PHOTOS D'ILLUSTRATION,
-// d'où la mention « Illustration » sur chacune, et personne n'est présenté
-// comme le médecin qui répondra.
+// et personne n'est présenté comme le médecin qui répondra. La mention
+// visible « Illustration » a été retirée le 13 octobre 2026 à la demande
+// d'Arthur (deux fois) : elle reste dans le texte alternatif de chaque photo.
 //
 // On regarde si le fichier existe vraiment, au lieu d'écrire son adresse en
 // dur : une image manquante laisserait une icône cassée en plein milieu de
@@ -365,7 +366,7 @@ const photoDe = (i: number) => photos[i] ?? photos[photos.length - 1] ?? null;
                         src={photoDe(b.pose)!.src}
                         srcset={photoDe(b.pose)!.jeu}
                         sizes="180px"
-                        alt=""
+                        alt="Photo d'illustration"
                         width="180"
                         height="200"
                         loading={b.pose === 0 ? 'eager' : 'lazy'}
@@ -379,24 +380,6 @@ const photoDe = (i: number) => photos[i] ?? photos[photos.length - 1] ?? null;
                     )
                   }
 
-                  {
-                    photoDe(b.pose) && (
-                      // ELLE EST OBLIGATOIRE, PAS DÉCORATIVE. La licence
-                      // Pexels interdit de laisser croire que la personne
-                      // photographiée recommande le service : il faut dire
-                      // que c'est une photo d'illustration, et non le médecin
-                      // qui répondra.
-                      //
-                      // Arthur ne voulait plus la voir sous le panneau (13
-                      // octobre 2026). Elle n'est donc pas supprimée, elle est
-                      // posée dans le coin de la photo, en tout petit : la
-                      // ligne grise sous la bannière disparaît, la vérité
-                      // reste. Le jour où la photo sera remplacée par un
-                      // dessin de Motion, cette mention pourra partir pour de
-                      // bon.
-                      <span class="banniere-mention">Illustration</span>
-                    )
-                  }
                 </div>
               </article>
             ))

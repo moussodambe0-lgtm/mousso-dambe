@@ -1,0 +1,80 @@
+---
+/**
+ * LES DEUX VUES DE « MON CYCLE » : tableau de bord et calendrier.
+ *
+ * Arthur, le 13 octobre 2026 : « on doit vraiment savoir que tableau de bord
+ * et calendrier sont des boutons, sinon les gens ne feront pas attention ».
+ * C'était une capsule rose pâle avec un onglet blanc : on la prenait pour un
+ * titre. Ce sont maintenant deux vrais boutons, chacun avec son icône, son
+ * contour. Celui où on est est PLEIN ; l'autre est blanc à contour rose.
+ * (Une flèche avait été essayée : « Tableau de bord » passait sur deux lignes.)
+ *
+ * Le même composant sert les deux pages : avant, chacune avait sa copie, et
+ * le calendrier n'avait pas les boutons du tout (on y entrait sans pouvoir
+ * revenir au tableau de bord).
+ */
+import Icone from './Icone.astro';
+
+interface Props {
+  actif: 'tableau' | 'calendrier';
+}
+
+const { actif } = Astro.props;
+---
+
+<nav class="vues" aria-label="Vues de Mon cycle">
+  <a
+    class:list={['vue', actif === 'tableau' && 'vue-actif']}
+    href="/cycle"
+    aria-current={actif === 'tableau' ? 'page' : undefined}
+  >
+    <Icone nom="tableau" taille={20} epaisseur={2.2} />
+    <span>Tableau de bord</span>
+  </a>
+  <a
+    class:list={['vue', actif === 'calendrier' && 'vue-actif']}
+    href="/cycle/calendrier"
+    aria-current={actif === 'calendrier' ? 'page' : undefined}
+  >
+    <Icone nom="cycle" taille={20} epaisseur={2.2} />
+    <span>Calendrier</span>
+  </a>
+</nav>
+
+<style>
+  .vues {
+    display: flex;
+    gap: 10px;
+    margin-bottom: var(--e4);
+  }
+
+  .vue {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 50px;
+    padding: 0 10px;
+    border: 2px solid var(--rose);
+    border-radius: 16px;
+    background: var(--surface);
+    color: var(--rose);
+    font-size: 14.5px;
+    font-weight: 700;
+    line-height: 1.1;
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  .vue:active {
+    transform: scale(0.97);
+  }
+
+  .vue-actif {
+    background: var(--rose);
+    color: #fff;
+    cursor: default;
+  }
+
+</style>

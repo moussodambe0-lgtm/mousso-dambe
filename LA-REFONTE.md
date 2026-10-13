@@ -311,6 +311,24 @@ faible : un panneau rouge posé sur un risque faible ferait crier au loup.
 
 **Les dates de l'accueil** ouvrent le calendrier sur le jour touché.
 
+**Les deux vues de Mon cycle** (Tableau de bord, Calendrier) sont deux vrais
+boutons à contour rose, avec leur icône, sur les deux pages. Le calendrier
+n'avait pas ces boutons : on y entrait sans pouvoir revenir.
+
+**Les photos de profil.** Chaque inscrite a automatiquement un visage à elle,
+tiré de son identifiant (même prénom, comptes différents : visages différents),
+dessiné d'après ton image : 8 teints, 11 coiffures, 5 couleurs de cheveux,
+bijoux, hauts et fonds variés. Il est sur le menu et sur la page Compte (qui
+affichait ses initiales). Ce n'est pas un rendu 3D comme ton image : on ne
+l'obtient pas en 5 Ko de dessin. Le logo de Mousso Dambé est la photo de profil
+de la boutique dans les discussions.
+
+**Retiré à ta demande :** le « Kit premières règles » (dépublié, pas supprimé :
+le remettre est une ligne), la mention « Illustration » sur les photos du
+médecin (elle reste dans le texte alternatif), « Mousso Dambé » au-dessus du
+calendrier, les deux phrases de la page Discussions sur ce que voit la
+boutique. Les gouttes du calendrier sont plus petites, rouges et brillantes.
+
 ---
 
 ## 6. Ce que j'ai cassé et réparé en chemin
