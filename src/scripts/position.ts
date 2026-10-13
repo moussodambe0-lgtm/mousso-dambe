@@ -18,15 +18,39 @@ const bloc = document.querySelector<HTMLElement>('[data-position]');
 if (bloc) {
   const bouton = bloc.querySelector<HTMLButtonElement>('.position-bouton');
   const dit = bloc.querySelector<HTMLElement>('.position-dit');
-  const lat = bloc.querySelector<HTMLInputElement>('.position-lat');
-  const lng = bloc.querySelector<HTMLInputElement>('.position-lng');
+  // Les deux champs cachés sont cherchés dans TOUTE la page, pas dans le
+  // bloc : ils vivent en haut du formulaire, au-dessus du bloc, parce qu'un
+  // champ caché se met au début d'un formulaire. Les chercher dans le bloc
+  // les rendait introuvables, et le bouton restait caché pour tout le monde.
+  // C'est le défaut qu'Arthur a signalé le 13 octobre 2026 (« au niveau de
+  // mes adresses ajoute une option pour partager sa position » : l'option
+  // était bien écrite, mais invisible).
+  const lat = document.querySelector<HTMLInputElement>('.position-lat');
+  const lng = document.querySelector<HTMLInputElement>('.position-lng');
   const quartierBloc = document.querySelector<HTMLElement>('.position-quartier');
   const champQuartier = quartierBloc?.querySelector<HTMLInputElement>('input');
+  // Le mot du bouton vit dans son propre `span` : écrire dans le bouton
+  // entier effacerait l'icône de lieu qu'il contient.
+  const mot = bloc.querySelector<HTMLElement>('.position-mot');
 
-  if (bouton && dit && lat && lng && navigator.geolocation) {
+  if (bouton && dit && lat && lng) {
+    // Le bouton est démasqué DÈS QUE ce script tourne, même si le navigateur
+    // ne sait pas donner la position. C'est un défaut constaté le 13 octobre
+    // 2026 : Arthur ne voyait aucune option de position sur son téléphone,
+    // parce que `navigator.geolocation` n'existe QUE sur une adresse en https
+    // ou en localhost. En réseau local (http://192.168.x.x), le bouton
+    // restait caché, et rien ne disait pourquoi. Un bouton qui explique vaut
+    // mieux qu'une option invisible.
     bouton.hidden = false;
 
     bouton.addEventListener('click', () => {
+      if (!navigator.geolocation) {
+        dit.hidden = false;
+        dit.textContent =
+          "Ton navigateur ne permet pas de partager ta position ici (il la refuse hors d'une adresse sécurisée). Donne ton quartier à la place.";
+        return;
+      }
+
       bouton.disabled = true;
       dit.hidden = false;
       dit.textContent = 'On te demande ta position…';
@@ -36,7 +60,7 @@ if (bloc) {
           lat.value = String(position.coords.latitude);
           lng.value = String(position.coords.longitude);
           bouton.disabled = false;
-          bouton.textContent = 'Position partagée';
+          if (mot) mot.textContent = 'Position partagée';
           bouton.classList.add('position-ok');
           dit.textContent = 'Ta position est partagée. Le quartier n’est plus obligatoire.';
 
@@ -56,6 +80,12 @@ if (bloc) {
     });
   }
 }
+
+// Un témoin « le script est passé », pour les essais : sans lui, un essai qui
+// regarde la page avant que Vite ait fini de compiler voit le bouton encore
+// caché et croit à une panne. Constaté le 13 octobre 2026, sur un serveur qui
+// venait de redémarrer.
+document.documentElement.dataset.position = 'pret';
 
 // Ce fichier est un module : sans cette ligne, TypeScript le traite comme un
 // script global, et deux fichiers qui nomment la même constante se heurtent.

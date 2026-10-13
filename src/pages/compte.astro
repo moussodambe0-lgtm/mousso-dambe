@@ -37,11 +37,11 @@
  * reste à `/confidentialite` pour qui en connaît l'adresse.
  */
 import Base from '../layouts/Base.astro';
-import Entete from '../components/Entete.astro';
 import Avatar from '../components/Avatar.astro';
 import Icone from '../components/Icone.astro';
+import CarteProduit from '../components/CarteProduit.astro';
 import { visiteuse, lirePanier, comptePanier } from '../lib/session';
-import { clientSession, baseConfiguree } from '../lib/supabase';
+import { clientSession, clientPublic, baseConfiguree } from '../lib/supabase';
 
 if (!baseConfiguree()) return Astro.redirect('/', 302);
 const moi = await visiteuse(Astro);
@@ -57,26 +57,42 @@ const { data: commandesData } = await client.rpc('mes_commandes');
 const commandes = (commandesData ?? []) as { etat: string }[];
 const nombreEtat = (etats: string[]) => commandes.filter((c) => etats.includes(c.etat)).length;
 
+// Les icônes du bandeau, d'après les références envoyées par Arthur le 13
+// octobre 2026. « En livraison » (un livreur en scooter) et « Livrées » (une
+// coche cerclée) sont SES images, détourées et passées en noir foncé par
+// `outils/icone-depuis-image.py` : il a demandé de les coller telles quelles
+// plutôt que de les redessiner. Les deux autres sont dessinées au trait dans
+// `Icone.astro` ; sa croix d'annulation à lui était une image de banque
+// filigranée, donc inutilisable telle quelle.
 const ETATS_COMPTE = [
-  { cle: 'preparation', mot: 'En préparation', icone: 'colis', nombre: nombreEtat(['nouvelle', 'preparee']) },
-  { cle: 'livraison', mot: 'En livraison', icone: 'camion', nombre: nombreEtat(['envoyee']) },
-  { cle: 'livree', mot: 'Livrées', icone: 'coche', nombre: nombreEtat(['livree']) },
-  { cle: 'annulee', mot: 'Annulées', icone: 'croix', nombre: nombreEtat(['annulee']) },
+  { cle: 'preparation', mot: 'En préparation', icone: 'carton', image: null, nombre: nombreEtat(['nouvelle', 'preparee']) },
+  { cle: 'livraison', mot: 'En livraison', icone: null, image: '/icones/en-livraison.png', nombre: nombreEtat(['envoyee']) },
+  { cle: 'livree', mot: 'Livrées', icone: null, image: '/icones/livree.png', nombre: nombreEtat(['livree']) },
+  { cle: 'annulee', mot: 'Annulées', icone: 'croix-cercle', image: null, nombre: nombreEtat(['annulee']) },
 ];
 
 const adresseResume = [moi.quartier, moi.repere].filter(Boolean).join(' · ');
+
+// Les produits en bas de page (Arthur, 13 octobre 2026 : « les produits, les
+// serviettes, culottes doivent apparaître dans compte tout en bas »). Lus avec
+// le client public, comme la boutique : ce sont les mêmes fiches, le même
+// catalogue, et personne n'a besoin d'être reconnue pour voir un prix.
+const { data: produitsData } = await clientPublic(Astro)
+  .from('produits')
+  .select('slug, nom, prix_cfa, rayon, image, etiquette, stock')
+  .eq('publie', true)
+  .order('ordre')
+  .limit(6);
+const produits = produitsData ?? [];
 ---
 
 <Base titre="Mon compte" nav="compte" panier={panier}>
   <main class="page">
-    <Entete titre="Mon compte" retour="/">
-      <a class="rond" href="/parametres" aria-label="Paramètres">
-        <Icone nom="reglages" taille={20} />
-      </a>
-    </Entete>
-
-    {/* Sans rectangle (Arthur, 13 octobre 2026 : « il faut enlever le
-        rectangle là »). Juste le rond, le nom, l'adresse ou son absence. */}
+    {/* Ni flèche de retour, ni titre « Mon compte » (Arthur, 13 octobre
+        2026) : on entre ici par l'onglet du bas et on en sort pareil, et le
+        nom écrit en grand dit déjà chez qui on est. L'identité monte donc
+        TOUT EN HAUT, à la hauteur de l'engrenage, qui est SON image détourée
+        par `outils/icone-depuis-image.py` et posée nue, sans carré autour. */}
     <section class="identite apparait">
       {/* La photo se choisit, elle ne s'invente plus : touche le rond pour
           ouvrir la galerie (`/compte/avatar`). Tant qu'elle n'a rien choisi,
@@ -86,8 +102,15 @@ const adresseResume = [moi.quartier, moi.repere].filter(Boolean).join(' · ');
         <span class="rond-photo-crayon"><Icone nom="crayon" taille={14} /></span>
       </a>
       <div class="qui">
-        <div class="prenom">{moi.prenom || 'Toi'}</div>
-        <div class="gris">{moi.email ?? 'Sans compte, sans mot de passe'}</div>
+        {/* Le nom tient lieu de titre de la page, maintenant que « Mon
+            compte » n'est plus écrit : la page garde donc un vrai titre pour
+            un lecteur d'écran. */}
+        <h1 class="prenom">{moi.prenom || 'Toi'}</h1>
+        {/* L'email seulement si elle en a un. La phrase « Sans compte, sans
+            mot de passe » qui s'affichait sinon est supprimée (Arthur, 13
+            octobre 2026) : elle expliquait un manque à quelqu'un qui n'avait
+            rien demandé. */}
+        {moi.email && <div class="gris">{moi.email}</div>}
         {/* Le petit logo de localisation, demandé juste sous le nom. Lecture
             seule : le quartier se donne à la commande, pas ici. */}
         <div class="lieu">
@@ -95,26 +118,16 @@ const adresseResume = [moi.quartier, moi.repere].filter(Boolean).join(' · ');
           <span>{moi.quartier || 'Quartier non renseigné'}</span>
         </div>
       </div>
-    </section>
-
-    {/* Le bandeau des commandes, dans l'esprit de Jia : un coup d'œil sur où
-        en sont ses commandes, sans ouvrir la liste. */}
-    <section class="etats apparait" aria-label="Mes commandes">
-      {
-        ETATS_COMPTE.map((e) => (
-          <a class="etat" href="/commandes">
-            <span class="etat-rond"><Icone nom={e.icone} taille={20} /></span>
-            {e.nombre > 0 && <span class="etat-nombre">{e.nombre}</span>}
-            <span class="etat-mot">{e.mot}</span>
-          </a>
-        ))
-      }
+      <a class="engrenage" href="/parametres" aria-label="Paramètres">
+        <img src="/icones/parametres.png" alt="" width="26" height="26" decoding="async" />
+      </a>
     </section>
 
     {/* Favoris et panier, côte à côte, en petits rectangles (Arthur, 13
         octobre 2026 : « il doit pas être écrit comme ça, il doit être dans un
-        petit rectangle »). La grille complète des favoris déménage à
-        `/favoris`, le panier garde le sien à `/panier`. */}
+        petit rectangle »), et AVANT les commandes : il a demandé le même jour
+        d'échanger les deux blocs de place. La grille complète des favoris
+        déménage à `/compte/favoris`, le panier garde le sien à `/panier`. */}
     <section class="tuiles apparait" aria-label="Favoris et panier">
       <a class="tuile" href="/compte/favoris">
         <Icone nom="coeur" taille={22} classe="tuile-icone" />
@@ -126,6 +139,29 @@ const adresseResume = [moi.quartier, moi.repere].filter(Boolean).join(' · ');
         <span class="tuile-mot">Panier</span>
         {panier > 0 && <span class="tuile-nombre">{panier}</span>}
       </a>
+    </section>
+
+    {/* Le bandeau des commandes, dans l'esprit de Jia : un coup d'œil sur où
+        en sont ses commandes, sans ouvrir la liste. Le titre au-dessus est
+        demandé par Arthur le 13 octobre 2026 : sans lui, quatre mots isolés
+        ne disent pas de quoi ils parlent. */}
+    <h2 class="section-titre apparait">Mes commandes</h2>
+    <section class="etats apparait" aria-label="Mes commandes">
+      {
+        ETATS_COMPTE.map((e) => (
+          <a class="etat" href="/commandes">
+            <span class="etat-rond">
+              {e.image ? (
+                <img class="etat-image" src={e.image} alt="" width="28" height="28" decoding="async" />
+              ) : (
+                <Icone nom={e.icone!} taille={28} epaisseur={2} />
+              )}
+            </span>
+            {e.nombre > 0 && <span class="etat-nombre">{e.nombre}</span>}
+            <span class="etat-mot">{e.mot}</span>
+          </a>
+        ))
+      }
     </section>
 
     {/* L'adresse de livraison : ce que `passer_commande` enregistrait déjà en
@@ -140,12 +176,36 @@ const adresseResume = [moi.quartier, moi.repere].filter(Boolean).join(' · ');
       <Icone nom="avant" taille={18} classe="adresse-fleche" />
     </a>
 
-    <form method="POST" action="/deconnexion" class="deconnexion">
-      <button class="btn btn-contour btn-plein" type="submit">
-        <Icone nom="sortie" taille={19} />
-        Me déconnecter
-      </button>
-    </form>
+    {/* « Me déconnecter » a déménagé dans Paramètres le 13 octobre 2026, à la
+        demande d'Arthur : ce n'est pas un geste de tous les jours, il n'a rien
+        à faire au milieu de ce qu'elle ouvre souvent. */}
+
+    {/* La boutique, tout en bas (Arthur, 13 octobre 2026). Les six premières
+        fiches du catalogue, dans l'ordre de la boutique ; « Voir tout » mène
+        au rayon complet. */}
+    {
+      produits.length > 0 && (
+        <>
+          <h2 class="section-titre apparait">
+            Pour toi
+            <a class="voir-tout" href="/boutique">Voir tout</a>
+          </h2>
+          <div class="produits apparait">
+            {produits.map((p) => (
+              <CarteProduit
+                slug={p.slug}
+                nom={p.nom}
+                prixCfa={p.prix_cfa}
+                rayon={p.rayon}
+                image={p.image}
+                etiquette={p.etiquette}
+                stock={p.stock}
+              />
+            ))}
+          </div>
+        </>
+      )
+    }
 
     <div class="espace"></div>
   </main>
@@ -156,7 +216,32 @@ const adresseResume = [moi.quartier, moi.repere].filter(Boolean).join(' · ');
     display: flex;
     align-items: center;
     gap: var(--e4);
-    padding: var(--e2) 0;
+    padding: calc(var(--e5) + env(safe-area-inset-top, 0px)) 0 var(--e2);
+  }
+
+  /* Le logo seul, sans carré ni bordure (Arthur, 13 octobre 2026 : « je veux
+     juste que ce soit le logo qui apparaisse »). La zone touchable reste
+     grande, elle, sinon il devient impossible à viser au pouce. */
+  .engrenage {
+    display: grid;
+    place-items: center;
+    flex: none;
+    align-self: flex-start;
+    width: 44px;
+    height: 44px;
+    margin-left: auto;
+    margin-right: -10px;
+  }
+
+  .engrenage img {
+    display: block;
+    width: 26px;
+    height: 26px;
+    object-fit: contain;
+  }
+
+  .engrenage:active {
+    transform: scale(0.92);
   }
 
   .rond-photo {
@@ -183,10 +268,14 @@ const adresseResume = [moi.quartier, moi.repere].filter(Boolean).join(' · ');
     min-width: 0;
   }
 
+  /* Le nom en grand (Arthur, 13 octobre 2026) : c'est elle, c'est sa page,
+     c'est la première chose qu'on doit lire. */
   .prenom {
     font-family: var(--titre);
-    font-size: 16.5px;
-    font-weight: 700;
+    font-size: 24px;
+    font-weight: 800;
+    line-height: 1.15;
+    overflow-wrap: anywhere;
   }
 
   .gris {
@@ -205,11 +294,39 @@ const adresseResume = [moi.quartier, moi.repere].filter(Boolean).join(' · ');
     font-size: 12.5px;
   }
 
+  .section-titre {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--e3);
+    margin: var(--e5) 0 var(--e2);
+    font-size: 16px;
+    font-weight: 700;
+  }
+
+  .voir-tout {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--rose);
+  }
+
+  .produits {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--e3);
+  }
+
+  /* Les quatre états tiennent dans UN SEUL rectangle (Arthur, 13 octobre
+     2026 : « tous les logos doivent être dans le même rectangle »), comme sur
+     l'écran de compte de Jia. Chaque état reste touchable à l'intérieur. */
   .etats {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: var(--e2);
-    margin-top: var(--e5);
+    padding: var(--e4) var(--e2);
+    border: 1px solid var(--bordure);
+    border-radius: var(--r-carte);
+    background: var(--surface);
   }
 
   .etat {
@@ -217,28 +334,38 @@ const adresseResume = [moi.quartier, moi.repere].filter(Boolean).join(' · ');
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 6px;
-    padding: var(--e3) 4px;
-    border: 1px solid var(--bordure);
-    border-radius: var(--r-carte);
-    background: var(--surface);
+    gap: 8px;
+    padding: 2px;
+    border-radius: var(--r-champ);
     text-align: center;
   }
 
   .etat:active {
-    transform: scale(0.96);
+    transform: scale(0.94);
   }
 
+  /* Les dessins et les mots du bandeau sont en noir foncé, pas en rose, et
+     plus grands que le reste de la page (Arthur, 13 octobre 2026 : « les
+     écritures doivent être en noir foncé, les dessins aussi », puis « encore
+     plus grand [...] et plus foncé »). Ce noir est plus profond que l'encre
+     du texte courant, qui tire sur le prune. */
   .etat-rond {
     display: grid;
     place-items: center;
-    color: var(--rose);
+    color: #0d0a0c;
+  }
+
+  .etat-image {
+    display: block;
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
   }
 
   .etat-nombre {
     position: absolute;
-    top: 6px;
-    right: 10px;
+    top: -4px;
+    right: 6px;
     display: grid;
     place-items: center;
     min-width: 17px;
@@ -252,9 +379,10 @@ const adresseResume = [moi.quartier, moi.repere].filter(Boolean).join(' · ');
   }
 
   .etat-mot {
-    font-size: 11px;
-    color: var(--texte-2);
-    line-height: 1.2;
+    font-size: 13px;
+    font-weight: 700;
+    color: #0d0a0c;
+    line-height: 1.25;
   }
 
   .tuiles {
@@ -349,7 +477,4 @@ const adresseResume = [moi.quartier, moi.repere].filter(Boolean).join(' · ');
     color: var(--texte-3);
   }
 
-  .deconnexion {
-    margin-top: var(--e6);
-  }
 </style>

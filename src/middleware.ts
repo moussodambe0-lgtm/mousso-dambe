@@ -45,15 +45,20 @@ export const onRequest = defineMiddleware(async (contexte, suite) => {
   reponse.headers.set('X-Content-Type-Options', 'nosniff');
   // L'adresse d'une page de cycle ne doit pas partir vers un site extérieur.
   reponse.headers.set('Referrer-Policy', 'same-origin');
-  // Le micro est autorisé POUR CE SITE SEULEMENT, `(self)`. Il était fermé
-  // pour tout le monde, `microphone=()`, ce qui interdit au navigateur de
-  // l'ouvrir même quand elle l'autorise : la dictée dans la discussion avec
-  // Dambé et le vocal au médecin auraient affiché « micro refusé » sans
-  // qu'elle ait rien refusé. Un cadre venu d'ailleurs n'y a pas droit, et
-  // `frame-ancestors 'none'` empêche déjà qu'on en pose un.
+  // Le micro ET la position sont autorisés POUR CE SITE SEULEMENT, `(self)`.
+  // Les deux ont été fermés pour tout le monde au départ, et les deux ont
+  // cassé une fonction au moment précis où on l'a ajoutée : `microphone=()`
+  // aurait fait dire « micro refusé » à la dictée et au vocal au médecin, et
+  // `geolocation=()` faisait répondre « position refusée » au bouton
+  // « Partager ma position » alors qu'elle venait de l'autoriser (défaut
+  // signalé par Arthur le 13 octobre 2026 : « le partage de position quand on
+  // veut commander ne marche pas »). Un en-tête qui ferme la porte passe
+  // AVANT la permission du navigateur : elle a beau dire oui, la page n'a
+  // même pas le droit de demander. Un cadre venu d'ailleurs n'y a pas droit,
+  // et `frame-ancestors 'none'` empêche déjà qu'on en pose un.
   reponse.headers.set(
     'Permissions-Policy',
-    'camera=(), microphone=(self), geolocation=(), payment=(), usb=()'
+    'camera=(), microphone=(self), geolocation=(self), payment=(), usb=()'
   );
   // Un an d'HTTPS obligatoire, posé seulement en production : en local, le
   // site tourne en http et l'en-tête bloquerait le développement.

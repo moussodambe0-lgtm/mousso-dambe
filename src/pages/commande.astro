@@ -136,7 +136,7 @@ const QUARTIERS = [
           hidden
         >
           <Icone nom="lieu" taille={18} />
-          {positionLat !== null ? 'Position partagée' : 'Partager ma position'}
+          <span class="position-mot">{positionLat !== null ? 'Position partagée' : 'Partager ma position'}</span>
         </button>
         <p class="position-dit" hidden={positionLat === null}>
           {positionLat !== null && 'Ta position est partagée. Le quartier n’est plus obligatoire.'}

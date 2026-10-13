@@ -100,7 +100,7 @@ const panier = comptePanier(lirePanier(Astro));
       <div class="position-bloc" data-position>
         <button class:list={['btn', 'btn-contour', 'btn-plein', 'position-bouton', aUnePosition && 'position-ok']} type="button" hidden>
           <Icone nom="lieu" taille={18} />
-          {aUnePosition ? 'Position partagée' : 'Partager ma position'}
+          <span class="position-mot">{aUnePosition ? 'Position partagée' : 'Partager ma position'}</span>
         </button>
         <p class="position-dit" hidden={!aUnePosition}>
           {aUnePosition && 'Ta position est déjà partagée. Le quartier n’est plus obligatoire.'}

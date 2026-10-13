@@ -12,16 +12,24 @@ import Icone from './Icone.astro';
 interface Props {
   titre: string;
   sousTitre?: string;
-  retour?: string;
+  /** `null` retire la flèche : pour un écran qu'on ne quitte pas en arrière
+   * mais en changeant d'onglet, comme « Mon compte » (Arthur, 13 octobre
+   * 2026 : « il y a en haut à gauche une flèche pour quitter la page,
+   * enlève ça »). */
+  retour?: string | null;
 }
 
 const { titre, sousTitre, retour = '/' } = Astro.props;
 ---
 
 <header class="entete">
-  <a class="rond" href={retour} aria-label="Revenir en arrière">
-    <Icone nom="retour" taille={20} epaisseur={2} />
-  </a>
+  {
+    retour && (
+      <a class="rond" href={retour} aria-label="Revenir en arrière">
+        <Icone nom="retour" taille={20} epaisseur={2} />
+      </a>
+    )
+  }
   <div class="titres">
     <h1>{titre}</h1>
     {sousTitre && <p class="sous">{sousTitre}</p>}

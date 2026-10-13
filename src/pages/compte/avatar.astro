@@ -52,7 +52,15 @@ const panier = comptePanier(lirePanier(Astro));
 
     {erreur && <div class="marge-bas"><Alerte type="erreur" texte={erreur} /></div>}
 
-    <p class="aide">Choisis une photo, ou n'en garde aucune.</p>
+    {
+      galerie.length === 0 ? (
+        <p class="aide">
+          Les photos de profil arrivent bientôt. En attendant, ton compte garde un rond neutre.
+        </p>
+      ) : (
+        <p class="aide">Choisis une photo, ou n'en garde aucune.</p>
+      )
+    }
 
     <form method="POST" class="grille">
       <button

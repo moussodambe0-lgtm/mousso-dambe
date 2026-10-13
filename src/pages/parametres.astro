@@ -20,11 +20,16 @@ if (!moi) return Astro.redirect('/connexion', 302);
 
 const panier = comptePanier(lirePanier(Astro));
 
+// « Service client » n'a pas encore de destination : Arthur a dit le 13
+// octobre 2026 qu'il ne doit PAS mener à la conversation avec la boutique,
+// mais à une page d'administration qu'il créera après. En attendant, la ligne
+// garde sa place sans faire semblant de mener quelque part : un lien qui
+// tombe sur une page absente est pire qu'une ligne qui annonce son retard.
 const LIGNES = [
   { icone: 'compte', mot: 'Mes informations', href: '/parametres/informations' },
   { icone: 'lieu', mot: 'Mes adresses', href: '/compte/adresse' },
   { icone: 'cloche', mot: 'Mise à jour', href: '/parametres/mise-a-jour' },
-  { icone: 'bulle', mot: 'Service client', href: '/discussions/boutique' },
+  { icone: 'bulle', mot: 'Service client', href: null },
 ];
 ---
 
@@ -35,15 +40,32 @@ const LIGNES = [
     <h2 class="section-titre">Mon compte</h2>
     <nav class="liste apparait">
       {
-        LIGNES.map((l) => (
-          <a class="ligne" href={l.href}>
-            <span class="ligne-rond"><Icone nom={l.icone} taille={19} /></span>
-            <span class="ligne-mot">{l.mot}</span>
-            <Icone nom="avant" taille={18} classe="ligne-fleche" />
-          </a>
-        ))
+        LIGNES.map((l) =>
+          l.href ? (
+            <a class="ligne" href={l.href}>
+              <span class="ligne-rond"><Icone nom={l.icone} taille={19} /></span>
+              <span class="ligne-mot">{l.mot}</span>
+              <Icone nom="avant" taille={18} classe="ligne-fleche" />
+            </a>
+          ) : (
+            <div class="ligne ligne-morte">
+              <span class="ligne-rond"><Icone nom={l.icone} taille={19} /></span>
+              <span class="ligne-mot">{l.mot}</span>
+              <span class="ligne-bientot">Bientôt</span>
+            </div>
+          )
+        )
       }
     </nav>
+
+    {/* « Me déconnecter » vient de « Mon compte » (Arthur, 13 octobre 2026) :
+        c'est ici qu'on range ce qu'on fait une fois de temps en temps. */}
+    <form method="POST" action="/deconnexion" class="deconnexion">
+      <button class="btn btn-contour btn-plein" type="submit">
+        <Icone nom="sortie" taille={19} />
+        Me déconnecter
+      </button>
+    </form>
 
     <div class="espace"></div>
   </main>
@@ -100,5 +122,24 @@ const LIGNES = [
   .ligne :global(.ligne-fleche) {
     flex: none;
     color: var(--texte-3);
+  }
+
+  .ligne-morte .ligne-rond,
+  .ligne-morte .ligne-mot {
+    opacity: 0.55;
+  }
+
+  .deconnexion {
+    margin-top: var(--e6);
+  }
+
+  .ligne-bientot {
+    flex: none;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: var(--surface-douce);
+    color: var(--texte-3);
+    font-size: 11.5px;
+    font-weight: 600;
   }
 </style>
