@@ -52,22 +52,11 @@ body:has(.accueil) .nav-basse {
   animation: acc-descend 0.5s ease both;
 }
 
-.acc-bonjour {
-  text-align: center;
-  line-height: 1.25;
-}
-
-.acc-bonjour b {
-  display: block;
-  font-family: var(--titre);
-  font-size: 18px;
-  font-weight: 700;
-}
-
-.acc-bonjour span {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--acc-muted);
+/* Le logo, au milieu de l'en-tête. Il est posé dans une colonne qui prend
+   toute la place restante, donc il se centre tout seul entre l'avatar et le
+   bouton de recherche, quelle que soit la largeur de l'écran. */
+.acc-marque {
+  margin: 0 auto;
 }
 
 .acc-rond {

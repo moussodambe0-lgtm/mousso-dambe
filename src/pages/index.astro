@@ -18,6 +18,7 @@ import Icone from '../components/Icone.astro';
 import Avatar from '../components/Avatar.astro';
 import ObjetsCarte from '../components/ObjetsCarte.astro';
 import Mascotte from '../components/Mascotte.astro';
+import Symbole from '../components/Symbole.astro';
 import DefsCycle from '../components/DefsCycle.astro';
 import GoutteJour from '../components/GoutteJour.astro';
 import BebeJour from '../components/BebeJour.astro';
@@ -272,8 +273,6 @@ const photos = POSES.map((nom) => {
 const photoDe = (i: number) => photos[i] ?? photos[photos.length - 1] ?? null;
 const photoMedecin = photos.length > 0;
 
-const MOIS_COURTS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
-const dateDuJour = `${dateDe(hui).getDate()} ${MOIS_COURTS[dateDe(hui).getMonth()]}`;
 ---
 
 <Base titre="Mousso Dambé" nav={moi ? 'accueil' : null} panier={panier} pleinEcran={!moi} prenom={moi?.prenom ?? ''}>
@@ -306,10 +305,11 @@ const dateDuJour = `${dateDe(hui).getDate()} ${MOIS_COURTS[dateDe(hui).getMonth(
               morph
             />
           </a>
-          <div class="acc-bonjour">
-            <b>Bonjour, {moi.prenom || 'toi'}</b>
-            <span>Aujourd'hui, {dateDuJour}</span>
-          </div>
+          {/* Le logo à la place du « Bonjour » et de la date (demande d'Arthur
+              du 13 octobre 2026). Elle sait comment elle s'appelle et quel
+              jour on est : son téléphone le lui dit déjà. Le logo, lui, dit
+              où elle est. */}
+          <Symbole forme="nom" taille={120} classe="acc-marque" titre="Mousso Dambé" />
           <a class="acc-rond" href="/boutique" aria-label="Chercher un produit">
             <Icone nom="recherche" taille={22} epaisseur={2} />
           </a>

@@ -281,12 +281,17 @@ console.log('\nEntrer sans compte, et garder son compte ensuite');
   r = await envoyer('/connexion', { email: adresse, motdepasse: 'motdepasse123' });
   verifier('elle se reconnecte avec cette adresse', r.statut === 303, `${r.statut}`);
 
-  const accueil = await ouvrir('/');
+  // Le prénom se lit sur la page Compte, et non plus sur l'accueil : depuis le
+  // 13 octobre 2026, l'en-tête de l'accueil porte le logo à la place du
+  // « Bonjour » et de la date (demande d'Arthur).
+  const sonCompte = await ouvrir('/compte');
   verifier(
     'elle retrouve son prénom sur un autre téléphone',
-    accueil.html.includes('Bonjour, Salimata'),
+    sonCompte.html.includes('Salimata'),
     'le compte anonyme n’a pas été récupéré'
   );
+
+  const accueil = await ouvrir('/');
   verifier(
     'et son cycle, calculé depuis la date qu’elle avait donnée',
     /Jour 3\s+de (tes règles|ton cycle)/.test(accueil.html),
