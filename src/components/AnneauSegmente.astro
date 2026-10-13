@@ -30,8 +30,8 @@
  *   3. Les couleurs sont celles de l'application, pas celles de la planche.
  *      Sa planche met du rouge sombre sur l'ovulation ; ici le violet ne sert
  *      QU'À la fertilité (DESIGN.md), et il ne doit jamais se confondre avec
- *      le rouge des règles. Grenat pour les règles, lilas pour la fenêtre
- *      fertile, lilas foncé pour le jour d'ovulation.
+ *      le rouge des règles. Grenat pour les règles, rose clair pour la fenêtre
+ *      fertile, rose soutenu pour le jour d'ovulation.
  *
  *   4. Au-delà de 32 jours de cycle, un numéro sur deux seulement est écrit
  *      (plus celui d'aujourd'hui) : à 45 jours, les cases font 8 degrés et
@@ -109,8 +109,8 @@ const arcTexte = (debut: number, fin: number, r: number) => {
 
 const FONDS: Record<TypeJour, string> = {
   regles: 'var(--grenat)',
-  fertile: 'var(--lilas)',
-  ovulation: 'var(--lilas-fort)',
+  fertile: 'var(--fertile)',
+  ovulation: 'var(--fertile-fort)',
   faible: 'var(--surface)',
 };
 
@@ -195,7 +195,8 @@ const resume =
                 class:list={[
                   'num',
                   c.actuel && 'num-actuel',
-                  !c.actuel && c.type !== 'faible' && 'num-sur-couleur',
+                  !c.actuel && (c.type === 'regles' || c.type === 'ovulation') && 'num-sur-couleur',
+                  !c.actuel && c.type === 'fertile' && 'num-fertile',
                 ]}
               >
                 {c.jour}
@@ -296,6 +297,11 @@ const resume =
     fill: #fff;
   }
 
+  .num-fertile {
+    fill: var(--fertile-texte);
+    font-weight: 700;
+  }
+
   .num-actuel {
     fill: #fff;
     font-size: 12.5px;
@@ -315,7 +321,7 @@ const resume =
   }
 
   .etiquette-fertile {
-    fill: var(--lilas-fort);
+    fill: var(--fertile-texte);
   }
 
   /* --- Le mouvement : les cases se posent, du jour 1 au dernier. --- */

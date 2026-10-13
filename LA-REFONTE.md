@@ -283,19 +283,25 @@ des photos d'illustration, chacune porte la mention « Illustration ». Les
 sources et licences sont dans `atelier-motion/images/medecin/LICENCE.md`.
 
 **Le calendrier, à plat.** Plus de dégradés, d'ombres, de halo qui respire ni
-de rebonds. La période fertile est en lilas (c'est la couleur de l'anneau de
-Mon cycle), le bébé n'est plus que sur le jour d'ovulation, et toutes les
+de rebonds. La période fertile est en rose clair, le bébé n'est plus que sur le jour d'ovulation, et toutes les
 autres dates sont ordinaires. Tu avais dit « vert » : le vert veut dire
 « risque plus faible » partout dans l'application, le mettre sur les jours
 fertiles aurait inversé son sens, et tu as choisi le lilas. Les jours de règles
 gardent une goutte (plate) : sans elle le calendrier perd sa raison d'être. Dis
 -moi si tu veux la retirer aussi.
 
-**L'avertissement contraception a été réécrit** : il disait « les jours verts
-indiquent un risque plus faible », et il n'y a plus de jours verts. Il dit
-maintenant « les jours en lilas sont ceux où une grossesse est possible, mais
-les autres jours ne sont pas sans risque ». Il reste obligatoire sur le
-calendrier et sur Mon cycle.
+**L'avertissement contraception a été retiré des deux écrans, à ta demande**
+(Mon cycle, puis le calendrier : tu l'as demandé deux fois). Tu l'avais toi-même
+exigé « obligatoire » le 12. La phrase existe toujours dans
+`src/lib/cycle-calcul.ts` (`AVERTISSEMENT_CONTRACEPTION`) : la réafficher tient
+en quelques lignes. Ce que ça change, pour que tu le saches : plus rien, sur
+ces écrans, ne dit qu'une date « sans couleur » n'est pas sûre, ni que le
+calcul n'est pas une contraception. La fiche d'un jour a aussi perdu son
+« Risque de grossesse ». Il reste le panneau « Risque de grossesse » de Mon
+cycle, que tu avais demandé en grand.
+
+**La période fertile est en rose clair**, plus en violet : bande du calendrier,
+anneau de Mon cycle, légende et cartes (`--fertile` dans `tokens.css`).
 
 **Mon cycle.** Les titres des cartes de dates sont grands et les dates
 petites. Le « Risque de grossesse » est un panneau : titre et mot en grand,

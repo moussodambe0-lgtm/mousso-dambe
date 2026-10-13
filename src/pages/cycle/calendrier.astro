@@ -31,7 +31,6 @@ import {
   moyenneCycles,
   ecartEnJours,
   plusDeJours,
-  AVERTISSEMENT_CONTRACEPTION,
   type ReglagesCycle,
   type TypeJour,
 } from '../../lib/cycle-calcul';
@@ -145,16 +144,16 @@ for (let j = 1; j <= dernier.getDate(); j += 1) {
 }
 while (cases.length % 7 !== 0) cases.push(null);
 
-// La bande LILAS relie les jours fertiles qui se suivent DANS LA MÊME RANGÉE :
-// une bande qui sauterait d'une ligne à l'autre ne voudrait rien dire.
+// La bande ROSE CLAIR relie les jours fertiles qui se suivent DANS LA MÊME
+// RANGÉE : une bande qui sauterait d'une ligne à l'autre ne voudrait rien dire.
 //
-// Demande d'Arthur du 13 octobre 2026 : « seulement sur la période fertile, le
-// bébé seulement le jour de l'ovulation, le reste des dates normal, sans rien
-// de distinctif ». Les jours à risque faible n'ont donc plus de bande verte :
-// ce sont des dates ordinaires. (Il avait dit « vert » ; le vert veut dire
-// « risque plus faible » partout ailleurs dans l'application, et le mettre
-// sur les jours les plus risqués aurait inversé son sens. Il a choisi le
-// lilas, qui est déjà celui de l'anneau du tableau de bord.)
+// Demande d'Arthur du 13 octobre 2026 : la couleur seulement sur la période
+// fertile, le bébé seulement le jour de l'ovulation, le reste des dates
+// ordinaire, sans rien de distinctif. Il avait dit « vert » ; le vert veut dire
+// « risque plus faible » partout ailleurs dans l'application, le mettre sur les
+// jours les plus risqués aurait inversé son sens. Il a choisi le lilas, puis
+// demandé du rose clair à la place du violet : c'est la couleur de la
+// fertilité, ici comme sur l'anneau de Mon cycle (`--fertile` dans tokens.css).
 const fertileOuOvulation = (c: Case | null | undefined) =>
   !!c && (c.type === 'fertile' || c.type === 'ovulation');
 for (let i = 0; i < cases.length; i += 1) {
@@ -207,33 +206,6 @@ const TEXTES: Record<TypeJour, { nom: string; fond: string; texte: string; class
       "Le risque de grossesse est plus faible ce jour-là, mais il n'est jamais nul. Ce calendrier n'est pas une contraception.",
   },
 };
-
-const RISQUES: Record<string, { mot: string; classe: string }> = {
-  faible: { mot: 'Faible', classe: 'jauge-faible' },
-  eleve: { mot: 'Élevé', classe: 'jauge-eleve' },
-  'tres-eleve': { mot: 'Très élevé', classe: 'jauge-tres-eleve' },
-};
-
-// L'avertissement sur la contraception vient du calculateur, qui en est la
-// seule source. On met en gras deux morceaux de CETTE phrase, au lieu de la
-// recopier ici : une phrase recopiee finit toujours par diverger de
-// l'originale, et celle-ci ne doit jamais changer sans qu'on le veuille.
-const A_METTRE_EN_GRAS = [
-  'les autres jours ne sont pas sans risque',
-  "n'est pas une méthode de contraception fiable",
-];
-const morceauxAvertissement: { texte: string; fort: boolean }[] = [];
-{
-  let reste = AVERTISSEMENT_CONTRACEPTION;
-  for (const fort of A_METTRE_EN_GRAS) {
-    const i = reste.indexOf(fort);
-    if (i === -1) continue;
-    if (i > 0) morceauxAvertissement.push({ texte: reste.slice(0, i), fort: false });
-    morceauxAvertissement.push({ texte: fort, fort: true });
-    reste = reste.slice(i + fort.length);
-  }
-  if (reste) morceauxAvertissement.push({ texte: reste, fort: false });
-}
 
 const panier = comptePanier(lirePanier(Astro));
 
@@ -359,15 +331,11 @@ function libelle(c: Case): string {
         </div>
       </section>
 
-      <aside class="cal-avertissement" role="note">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C99A2E" stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
-          <circle cx="12" cy="12" r="10"></circle>
-          <path d="M12 8v5M12 16.5v.5"></path>
-        </svg>
-        <span>
-          {morceauxAvertissement.map((m) => (m.fort ? <b>{m.texte}</b> : <Fragment>{m.texte}</Fragment>))}
-        </span>
-      </aside>
+      {/* L'avertissement sur la contraception a été retiré du calendrier le
+          13 octobre 2026, À LA DEMANDE D'ARTHUR (deux fois : d'abord sur Mon
+          cycle, puis ici). Il l'avait lui-même exigé obligatoire le 12.
+          `AVERTISSEMENT_CONTRACEPTION` est toujours dans `cycle-calcul.ts` :
+          le réafficher tient en quelques lignes. */}
 
       {
         !aDesDonnees && (
@@ -412,17 +380,11 @@ function libelle(c: Case): string {
               </div>
             </div>
 
-            <div class="cal-risque">
-              <div class="cal-risque-ligne">
-                <span>Risque de grossesse</span>
-                <b>{RISQUES[fiche.risque].mot}</b>
-              </div>
-              <div class="cal-jauge">
-                <i class={RISQUES[fiche.risque].classe}></i>
-              </div>
-            </div>
-
-            <p class="cal-fiche-texte">{TEXTES[fiche.type].texte}</p>
+            {/* Le bloc « Risque de grossesse » (mot, jauge) et les phrases qui
+                parlent du risque ont été retirés de la fiche le 13 octobre 2026,
+                à la demande d'Arthur. Ne reste que ce qui n'est pas du risque : le
+                conseil de soin d'un jour de règles. */}
+            {fiche.type === 'regles' && <p class="cal-fiche-texte">{TEXTES[fiche.type].texte}</p>}
 
             {
               fiche.iso > hui ? (

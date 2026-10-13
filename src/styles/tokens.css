@@ -100,6 +100,15 @@
   /* Le même vert, assez tenu pour se voir comme un trait d'anneau sur le fond
      rosé : le fond pâle y disparaissait et l'anneau semblait troué. */
   --vert-doux-trait: #a8dcbf;
+  /* LA FERTILITÉ, EN ROSE CLAIR (Arthur, 13 octobre 2026 : « la période
+     fertile, au lieu de mettre en violet, mets en rose clair »). Le brief
+     du 12 disait « lilas pour la fertilité » ; c'est remplacé. Le lilas
+     ci-dessous reste pour le reste de l'application, il ne marque plus la
+     fertilité. */
+  --fertile: #f58fb0;
+  --fertile-fort: #e2578b;
+  --fertile-fond: #ffe4ed;
+  --fertile-texte: #a3234f;
   --lilas: #7b55d6;
   --lilas-fond: #ece5fb;
   --lilas-fort: #5a2fb8;

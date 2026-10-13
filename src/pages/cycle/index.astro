@@ -16,8 +16,8 @@
  * Tout est calculé sur le serveur par `src/lib/cycle-calcul.ts`, le seul
  * endroit où vivent ces règles, et qui porte 69 vérifications.
  *
- * L'avertissement de la section 5 est repris ici : les jours verts ne sont
- * pas une contraception. Il est obligatoire, il ne part pas.
+ * L'avertissement sur la contraception n'est PLUS sur cet écran (retiré à la
+ * demande d'Arthur le 13 octobre 2026) ; il reste sur le calendrier.
  */
 import Base from '../../layouts/Base.astro';
 import Icone from '../../components/Icone.astro';
@@ -29,18 +29,16 @@ import DefsCycle from '../../components/DefsCycle.astro';
 import Alerte from '../../components/Alerte.astro';
 import { clientSession, baseConfiguree } from '../../lib/supabase';
 import { visiteuse, lirePanier, comptePanier } from '../../lib/session';
-import { PHASES, FLUX } from '../../lib/cycle';
+import { FLUX } from '../../lib/cycle';
 import {
   infoDuJour,
   prochainesRegles,
   prochaineOvulation,
   fenetreFertile,
-  jourOvulation,
   moyenneCycles,
   ecartEnJours,
   plusDeJours,
   alertesSante,
-  AVERTISSEMENT_CONTRACEPTION,
   type ReglagesCycle,
   type TypeJour,
 } from '../../lib/cycle-calcul';
@@ -155,13 +153,6 @@ if (info?.type === 'regles') {
   grandMot = 'jour';
 }
 
-// --- La phase, dite avec les mots de cycle.ts -------------------------------
-let nomPhase: keyof typeof PHASES = 'elan';
-if (info?.type === 'regles') nomPhase = 'regles';
-else if (info?.type === 'fertile' || info?.type === 'ovulation') nomPhase = 'fertile';
-else if (info && info.jourDuCycle > jourOvulation(dureeCycle)) nomPhase = 'lune';
-const phase = PHASES[nomPhase];
-
 // --- Le risque de grossesse -------------------------------------------------
 // Trois niveaux seulement : au-delà, on donnerait une impression de précision
 // que ce calcul n'a pas. L'avertissement en bas d'écran dit le reste.
@@ -222,12 +213,6 @@ const alertes = aDesDonnees
       fluxAbondants: notes.filter((n) => n.flux === 'abondant').length,
     })
   : [];
-
-// L'avertissement obligatoire, avec deux fragments mis en gras.
-const GRAS_1 = "n'est pas une méthode de contraception fiable";
-const GRAS_2 = 'utilise une contraception adaptée';
-const i1 = AVERTISSEMENT_CONTRACEPTION.indexOf(GRAS_1);
-const i2 = AVERTISSEMENT_CONTRACEPTION.indexOf(GRAS_2);
 
 const noteDuJour = notes.find((n) => n.jour === hui) ?? null;
 const enRegles = info?.type === 'regles';
@@ -335,7 +320,7 @@ const enRegles = info?.type === 'regles';
               </p>
             </article>
 
-            <article class="info info-lilas">
+            <article class="info info-fertile">
               <span class="info-icone"><BebeJour taille={32} /></span>
               <h2>Fenêtre fertile</h2>
               <p class="info-grand">
@@ -344,7 +329,7 @@ const enRegles = info?.type === 'regles';
               <p class="info-petit">Les jours où une grossesse est possible</p>
             </article>
 
-            <article class="info info-lilas">
+            <article class="info info-fertile">
               <span class="info-icone"><OvuleJour taille={34} /></span>
               <h2>Ovulation estimée</h2>
               <p class="info-grand">{ovulation ? dateLongue(ovulation) : '—'}</p>
@@ -373,18 +358,10 @@ const enRegles = info?.type === 'regles';
             </article>
           </section>
 
-          {/* --- 4.2 La phase, et ce qui se passe dans le corps --- */}
-          <section class="carte bloc phase">
-            <div class="phase-tete">
-              <h2>{phase.nom}</h2>
-              <span class="phase-savant">{phase.savant}</span>
-            </div>
-            <p class="phase-texte">{phase.explique}</p>
-            <p class="phase-conseil">
-              <Icone nom="pousse" taille={17} />
-              {phase.conseil}
-            </p>
-          </section>
+          {/* Le bloc « Tes règles / menstruations » (le nom savant de la phase,
+              une explication et un conseil) a été retiré le 13 octobre 2026, à
+              la demande d'Arthur. L'écran garde ce qui répond à « où j'en
+              suis » : l'anneau, les dates, le risque. */}
 
           {/* --- 4.3 La bande des jours --- */}
           <section aria-label="Les jours à venir">
@@ -432,23 +409,12 @@ const enRegles = info?.type === 'regles';
       )
     }
 
-    {/* --- L'avertissement obligatoire, section 5 --- */}
-    <aside class="avertissement">
-      <Icone nom="info" taille={18} />
-      <p>
-        {i1 >= 0 ? (
-          <>
-            {AVERTISSEMENT_CONTRACEPTION.slice(0, i1)}
-            <strong>{GRAS_1}</strong>
-            {AVERTISSEMENT_CONTRACEPTION.slice(i1 + GRAS_1.length, i2 >= 0 ? i2 : undefined)}
-            {i2 >= 0 && <strong>{GRAS_2}</strong>}
-            {i2 >= 0 && AVERTISSEMENT_CONTRACEPTION.slice(i2 + GRAS_2.length)}
-          </>
-        ) : (
-          AVERTISSEMENT_CONTRACEPTION
-        )}
-      </p>
-    </aside>
+    {/* L'avertissement sur la contraception a été retiré de cet écran le
+        13 octobre 2026, À LA DEMANDE D'ARTHUR (il l'avait lui-même exigé
+        obligatoire le 12). Il reste sur le calendrier. Si une femme lit
+        « risque plus faible » comme « sans risque », c'est ici que ça se
+        paie : `AVERTISSEMENT_CONTRACEPTION` est toujours dans
+        `cycle-calcul.ts`, il suffit de le réafficher. */}
 
     <div class="espace"></div>
   </main>
@@ -546,8 +512,8 @@ const enRegles = info?.type === 'regles';
   }
 
   .pion-regles { background: var(--grenat); }
-  .pion-fertile { background: var(--lilas); }
-  .pion-ovulation { background: var(--lilas-fort); }
+  .pion-fertile { background: var(--fertile); }
+  .pion-ovulation { background: var(--fertile-fort); }
   /* Les jours à risque plus faible sont BLANCS dans la couronne, comme sur
      la planche d'Arthur : la légende doit dire la même chose qu'elle. */
   .pion-faible {
@@ -612,8 +578,8 @@ const enRegles = info?.type === 'regles';
     border-color: transparent;
   }
 
-  .info-lilas {
-    background: var(--lilas-fond);
+  .info-fertile {
+    background: var(--fertile-fond);
     border-color: transparent;
   }
 
@@ -770,45 +736,6 @@ const enRegles = info?.type === 'regles';
     }
   }
 
-  /* --- La phase --- */
-  .phase {
-    margin-bottom: var(--e5);
-  }
-
-  .phase-tete {
-    display: flex;
-    align-items: baseline;
-    gap: var(--e2);
-  }
-
-  .phase-tete h2 {
-    font-size: 18px;
-    font-weight: 700;
-  }
-
-  .phase-savant {
-    font-size: 12px;
-    color: var(--texte-3);
-  }
-
-  .phase-texte {
-    margin-top: var(--e2);
-    font-size: 14px;
-    color: var(--texte-2);
-    line-height: 1.5;
-  }
-
-  .phase-conseil {
-    display: flex;
-    gap: var(--e2);
-    align-items: flex-start;
-    margin-top: var(--e3);
-    padding-top: var(--e3);
-    border-top: 1px solid var(--bordure);
-    font-size: 13.5px;
-    line-height: 1.45;
-  }
-
   /* --- La bande des jours --- */
   .titre-section {
     margin-bottom: var(--e2);
@@ -845,7 +772,7 @@ const enRegles = info?.type === 'regles';
 
   .jour-case-regles { background: var(--grenat-clair); border-color: transparent; }
   .jour-case-fertile,
-  .jour-case-ovulation { background: var(--lilas-fond); border-color: transparent; }
+  .jour-case-ovulation { background: var(--fertile-fond); border-color: transparent; }
 
   .jour-case-aujourdhui {
     border-color: var(--encre);
@@ -914,24 +841,6 @@ const enRegles = info?.type === 'regles';
     font-size: 13px;
     color: var(--texte-2);
     line-height: 1.45;
-  }
-
-  /* --- L'avertissement obligatoire --- */
-  .avertissement {
-    display: flex;
-    gap: var(--e2);
-    align-items: flex-start;
-    padding: var(--e3);
-    border: 1px solid var(--bordure);
-    border-radius: var(--r-carte);
-    background: var(--surface);
-    font-size: 12.5px;
-    color: var(--texte-2);
-    line-height: 1.5;
-  }
-
-  .avertissement strong {
-    color: var(--encre);
   }
 
   /* --- Le vide --- */

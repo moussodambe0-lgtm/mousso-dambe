@@ -19,8 +19,8 @@
 .ecran-calendrier {
   --blood: #e01e3a;
   --blood-soft: #ffe3e8;
-  --fertile: #9c7cf0;
-  --fertile-soft: #f1eaff;
+  --fertile: #f58fb0;
+  --fertile-soft: #ffe4ed;
   --safe: #dcf2e3;
   --safe-ink: #2f6b45;
   --cal-card: #ffffff;
@@ -80,7 +80,7 @@
 }
 
 .cal-resume-quand.lilas {
-  color: var(--fertile);
+  color: #d94b7f;
 }
 
 /* --- La carte du calendrier ---------------------------------------------- */
@@ -260,7 +260,7 @@
 }
 
 .jour-fertile .cal-num {
-  color: #4f35a8;
+  color: #a3234f;
   font-weight: 700;
 }
 
@@ -336,29 +336,6 @@
   background: var(--fertile-soft);
 }
 
-/* --- L'avertissement, qui ne se retire pas ------------------------------- */
-.cal-avertissement {
-  display: flex;
-  gap: 10px;
-  margin-top: 14px;
-  padding: 12px 14px;
-  border: 1px solid #f6e3b4;
-  border-radius: 18px;
-  background: #fff8e9;
-  color: #6b5420;
-  font-size: 13px;
-  line-height: 1.45;
-}
-
-.cal-avertissement b {
-  color: #4d3b12;
-}
-
-.cal-avertissement svg {
-  flex: none;
-  margin-top: 1px;
-}
-
 /* --- La fiche d'un jour -------------------------------------------------- */
 .cal-voile {
   position: fixed;
@@ -423,40 +400,8 @@
 }
 
 .texte-regles { color: var(--blood); }
-.texte-fertile { color: var(--fertile); }
+.texte-fertile { color: #c9356c; }
 .texte-faible { color: var(--cal-ink); }
-
-.cal-risque {
-  margin-bottom: 12px;
-  padding: 14px;
-  border-radius: 18px;
-  background: #fbf3f6;
-}
-
-.cal-risque-ligne {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 8px;
-  font-size: 14px;
-}
-
-.cal-jauge {
-  height: 10px;
-  border-radius: 9px;
-  background: #efe3e9;
-  overflow: hidden;
-}
-
-.cal-jauge i {
-  display: block;
-  height: 100%;
-  border-radius: 9px;
-  animation: cal-jauge 0.6s 0.1s var(--ressort) both;
-}
-
-.jauge-faible { width: 25%; background: #58b97a; }
-.jauge-eleve { width: 75%; background: #9c7cf0; }
-.jauge-tres-eleve { width: 96%; background: #7a52e6; }
 
 .cal-fiche-texte {
   margin-bottom: 16px;

@@ -268,18 +268,23 @@ export function alertesSante(o: ObservationsSante): Alerte[] {
 /**
  * L'avertissement sur la contraception.
  *
- * Il est obligatoire et ne se retire pas. Demande expresse d'Arthur, et c'est
+ * RETIRÉ DES DEUX ÉCRANS le 13 octobre 2026, à la demande d'Arthur (sur Mon
+ * cycle puis sur le calendrier, redemandé deux fois). Il l'avait lui-même
+ * exigé « obligatoire » la veille. Cette constante reste, inutilisée, pour
+ * qu'on puisse le réafficher sans le réécrire.
+ *
+ * Texte d'origine de la raison : demande expresse d'Arthur, et c'est
  * une question de santé : un calendrier qui marque des jours comme fertiles
  * sans cette phrase se lit comme une méthode de contraception, ce qu'il n'est
  * pas.
  *
  * Réécrit le 13 octobre 2026. Il disait « les jours verts indiquent un risque
  * plus faible » ; le calendrier n'a plus de jours verts (la période fertile y
- * est en lilas, les autres dates sont ordinaires). La nouvelle phrase ne
+ * est en rose clair, les autres dates sont ordinaires). La nouvelle phrase ne
  * dépend plus d'une couleur, et elle dit l'essentiel : les jours qui ne sont
  * pas marqués ne sont PAS sans risque. Les deux morceaux mis en gras par les
  * écrans (« n'est pas une méthode de contraception fiable » et « utilise une
  * contraception adaptée ») n'ont pas bougé.
  */
 export const AVERTISSEMENT_CONTRACEPTION =
-  "Les jours en lilas sont ceux où une grossesse est possible, mais les autres jours ne sont pas sans risque : ce calcul n'est pas une méthode de contraception fiable, surtout si ton cycle est irrégulier. Pour éviter une grossesse, utilise une contraception adaptée.";
+  "Les jours en rose clair sont ceux où une grossesse est possible, mais les autres jours ne sont pas sans risque : ce calcul n'est pas une méthode de contraception fiable, surtout si ton cycle est irrégulier. Pour éviter une grossesse, utilise une contraception adaptée.";
