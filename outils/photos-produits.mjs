@@ -77,6 +77,18 @@ const PHOTOS = [
     cadre: [0.0, 0.52, 0.78, 1.0],
   },
   {
+    source: 'serviettes-jetables-nuit.jpg',
+    nom: 'serviettes-nuit',
+    ancre: 0.5,
+  },
+  {
+    // Un peu bas : un brin de fleurs traverse le haut de la photo et, à la
+    // taille d'une carte, on le prend pour une partie du produit.
+    source: 'serviettes-jetables-jour.jpg',
+    nom: 'serviettes-jour',
+    ancre: 0.62,
+  },
+  {
     // Le badge « 12 PCS » est hors cadre : notre produit n'en vend pas douze,
     // et un chiffre écrit par le fournisseur sur notre fiche serait une
     // promesse qu'on ne tient pas.
