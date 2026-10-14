@@ -16,7 +16,6 @@
 import Base from '../layouts/Base.astro';
 import Icone from '../components/Icone.astro';
 import Mascotte from '../components/Mascotte.astro';
-import Anim from '../components/Anim.astro';
 import Alerte from '../components/Alerte.astro';
 import { clientSession, baseConfiguree } from '../lib/supabase';
 import { visiteuse, lirePanier, comptePanier } from '../lib/session';
@@ -168,7 +167,17 @@ const branchee = ollamaConfigure();
               {m.reponse ? (
                 <div class="bulle-elle">{m.reponse}</div>
               ) : (
-                <Anim nom="etat-reflechit" classe="reflechit" titre="Dambé réfléchit" />
+                /* Une question restée sans réponse (la page a été fermée
+                   pendant que Dambé réfléchissait) : le même petit visage que
+                   pendant l'attente, et non plus le grand dessin. */
+                <div class="reflechit">
+                  <Mascotte etat="visage" taille={24} titre={null} />
+                  <span class="points" aria-label="Dambé réfléchit" role="img">
+                    <i></i>
+                    <i></i>
+                    <i></i>
+                  </span>
+                </div>
               )}
               {m.produit && produits[m.produit] && (
                 <a class="produit-propose" href={`/boutique/${m.produit}`}>
@@ -273,7 +282,21 @@ const branchee = ollamaConfigure();
       jour où ils changent, ils changent aux deux endroits à la fois. */}
   <template id="modele-attente">
     <div class="bulle-moi"></div>
-    <Anim nom="etat-reflechit" classe="reflechit" titre="Dambé réfléchit" />
+    {/* Arthur, 14 octobre 2026 : « avant que l'IA réponde il y a de gros trucs
+        qui apparaissent au milieu [...] enlève ça. À la place mets la mascotte
+        en petit à gauche qui va apparaître avant la réponse. Elle sera en
+        train de réfléchir. Et dès que la réponse arrive elle disparaît. »
+        C'est donc son visage, petit, posé à gauche comme une bulle de
+        réponse, avec trois points qui respirent. Le dessin plein écran
+        `etat-reflechit` ne sert plus ici. */}
+    <div class="reflechit">
+      <Mascotte etat="visage" taille={24} titre={null} />
+      <span class="points" aria-label="Dambé réfléchit" role="img">
+        <i></i>
+        <i></i>
+        <i></i>
+      </span>
+    </div>
   </template>
 
   <script>
@@ -366,10 +389,61 @@ const branchee = ollamaConfigure();
     padding-top: var(--e4);
   }
 
+  /* Le petit visage de Dambé, à gauche, avec trois points qui respirent
+     (Arthur, 14 octobre 2026). Il prend la place d'une bulle de réponse, et
+     disparaît dès que la vraie réponse le remplace. */
+  /* Ni carré, ni bulle, ni fond (Arthur, 14 octobre 2026 : « supprime le carré
+     dans lequel est la mascotte lorsqu'elle réfléchit »). Juste son visage, en
+     petit, à gauche, et trois points qui respirent à côté. */
   .reflechit {
+    display: flex;
+    align-items: center;
     align-self: flex-start;
-    width: 84px;
-    justify-content: flex-start;
+    gap: 7px;
+    padding: 2px 0;
+  }
+
+  .points {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .points i {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--rose);
+    opacity: 0.35;
+    animation: dambe-point 1.3s ease-in-out infinite;
+  }
+
+  .points i:nth-child(2) {
+    animation-delay: 0.18s;
+  }
+
+  .points i:nth-child(3) {
+    animation-delay: 0.36s;
+  }
+
+  @keyframes dambe-point {
+    0%, 60%, 100% {
+      opacity: 0.3;
+      transform: translateY(0);
+    }
+    30% {
+      opacity: 1;
+      transform: translateY(-3px);
+    }
+  }
+
+  /* Elle respire doucement au lieu de sauter, pour qui a demandé moins de
+     mouvement. Le point reste visible : il dit que quelque chose se passe. */
+  @media (prefers-reduced-motion: reduce) {
+    .points i {
+      animation: none;
+      opacity: 0.75;
+    }
   }
 
   .produit-propose {
@@ -451,6 +525,23 @@ const branchee = ollamaConfigure();
     gap: var(--e2);
     align-items: center;
     padding: var(--e3) var(--e4);
+  }
+
+  /* Une écriture plus petite que dans le reste de l'application (Arthur, 14
+     octobre 2026 : « quand j'écris un message sur la barre les écritures sont
+     trop grosses »). On s'arrête à 16 px et pas moins : en dessous, Safari sur
+     iPhone zoome tout seul sur la page dès qu'elle touche la case, et il faut
+     ensuite pincer l'écran pour revenir. */
+  .saisie-dedans .champ {
+    font-size: 16px;
+  }
+
+  /* Plus de rose quand elle commence à taper (Arthur, 14 octobre 2026). La
+     bordure se fonce quand même : sans aucun changement, on ne sait plus où
+     on écrit, et c'est le genre de repère dont on ne mesure l'utilité qu'une
+     fois perdu. Les autres champs de l'application gardent le rose. */
+  .saisie-dedans .champ:focus {
+    border-color: var(--bordure-forte);
   }
 
   /* --- Le micro ---

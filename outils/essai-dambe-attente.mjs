@@ -99,6 +99,22 @@ const poubelle = await evaluer(`!!document.querySelector('form[action="/dambe/ef
 verifier('plus de poubelle à côté d’IA Dambé', poubelle === false);
 
 console.log('\nLes trois temps : ça part, elle réfléchit, elle répond');
+
+// On attend que le script soit en place : sur un serveur qui vient de
+// compiler, la page s'affiche avant lui, et le formulaire partirait alors en
+// navigation ordinaire (le repli, correct, mais ce n'est pas ce qu'on teste).
+for (let i = 0; i < 60; i += 1) {
+  if (await evaluer(`document.documentElement.dataset.dambe === 'pret'`)) break;
+  await attendre(250);
+}
+verifier(
+  'le script de la discussion est en place',
+  (await evaluer(`document.documentElement.dataset.dambe === 'pret'`)) === true
+);
+// Un temoin pose dans la page : s'il survit a l'envoi, la page n'a PAS ete
+// rechargee. Arthur, 14 octobre 2026 : « a chaque fois que j'envoie un
+// message la page se recharge ».
+await evaluer(`window.__marqueur = 'ici'; 'ok'`);
 // Le fil garde les échanges d'avant : on compte les réponses AVANT d'envoyer,
 // sinon on prend une vieille bulle pour la nouvelle et on croit que le modèle
 // a répondu avant même d'avoir été appelé.
@@ -145,7 +161,35 @@ for (let i = 0; i < 80; i += 1) {
   await attendre(500);
 }
 verifier('elle finit par répondre', reponse.length > 40, `${reponse.length} caractères`);
+verifier(
+  'et la page ne s’est PAS rechargée',
+  (await evaluer(`window.__marqueur ?? null`)) === 'ici',
+  'le marqueur a disparu : la page a ete rechargee'
+);
+verifier(
+  'la case est vidée pour la question suivante',
+  (await evaluer(`document.querySelector('#question')?.value`)) === '',
+  'la question precedente est restee dans la case'
+);
 verifier('la mascotte ne réfléchit plus', (await evaluer(`!document.querySelector('.reflechit')`)) === true);
+
+// La derniere reponse doit se voir SANS descendre a la main : elle ne doit pas
+// finir sous la case ou elle ecrit, qui est posee par-dessus la page.
+const visible = await evaluer(`(() => {
+  const bulles = document.querySelectorAll('.bulle-elle');
+  const derniere = bulles[bulles.length - 1];
+  const saisie = document.querySelector('form.saisie');
+  if (!derniere || !saisie) return null;
+  const b = derniere.getBoundingClientRect();
+  const s = saisie.getBoundingClientRect();
+  return JSON.stringify({ bas: Math.round(b.bottom), hautCase: Math.round(s.top) });
+})()`);
+const { bas, hautCase } = JSON.parse(visible ?? '{}');
+verifier(
+  'la réponse se voit sans descendre à la main',
+  bas <= hautCase + 2,
+  `la bulle finit à ${bas}, la case commence à ${hautCase}`
+);
 
 const emojis = (reponse.match(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu) ?? []).filter((e) => e !== '\uFE0F');
 verifier('elle met des émojis tendres dans sa réponse', emojis.length >= 1, `trouvés : ${emojis.join(' ') || 'aucun'}`);

@@ -135,6 +135,14 @@ if (titre === null) {
     aspect-ratio: 1;
   }
 
+  /* Les tailles sont une liste fermée, et une taille absente retombe EN
+     SILENCE sur 120 px : c'est ce qui a fait apparaître une mascotte énorme
+     dans la bulle « Dambé réfléchit » le 14 octobre 2026, alors que la page
+     en demandait 24. Toute nouvelle taille s'ajoute donc ICI. */
+  .mascotte[data-taille='22'] { --m-taille: 22px; }
+  .mascotte[data-taille='24'] { --m-taille: 24px; }
+  .mascotte[data-taille='26'] { --m-taille: 26px; }
+  .mascotte[data-taille='28'] { --m-taille: 28px; }
   .mascotte[data-taille='32'] { --m-taille: 32px; }
   .mascotte[data-taille='38'] { --m-taille: 38px; }
   .mascotte[data-taille='44'] { --m-taille: 44px; }
