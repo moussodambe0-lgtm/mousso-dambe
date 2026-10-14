@@ -1,0 +1,205 @@
+---
+/**
+ * Les messages de la boutique, côté vendeur.
+ *
+ * Arthur, le 14 octobre 2026 : « les messages de ceux qui écrivent à la
+ * boutique ». Seulement ceux-là : les questions posées au médecin restent
+ * dans l'espace d'administration, qui est l'autre métier.
+ *
+ * La conversation elle-même s'ouvre sur `/admin/[fil]`, qui sait déjà tout
+ * faire (lire, répondre, répondre par un vocal, marquer lu). La dupliquer
+ * n'apporterait rien et ferait deux endroits à corriger le jour d'un défaut.
+ */
+import Vendeur from '../../layouts/Vendeur.astro';
+import Avatar from '../../components/Avatar.astro';
+import Icone from '../../components/Icone.astro';
+import { clientSession, baseConfiguree } from '../../lib/supabase';
+import { visiteuse } from '../../lib/session';
+import { quandCourt } from '../../lib/format';
+
+if (!baseConfiguree()) return Astro.redirect('/', 302);
+const moi = await visiteuse(Astro);
+if (!moi) return Astro.redirect('/connexion', 302);
+
+const client = clientSession(Astro)!;
+const { data: admin } = await client.rpc('est_admin');
+if (admin !== true) return Astro.redirect('/compte', 302);
+
+const cherche = (Astro.url.searchParams.get('q') ?? '').trim();
+const { data } = await client.rpc('boite_de_reception', {
+  p_recherche: cherche || null,
+  p_depuis: 0,
+  p_sujet: 'boutique',
+});
+const fils = (data?.fils ?? []) as any[];
+
+const { data: tab } = await client.rpc('tableau_vendeur');
+---
+
+<Vendeur titre="Messages" onglet="messages" aPreparer={tab?.a_preparer ?? 0} messages={tab?.messages_boutique ?? 0}>
+  <h1 class="titre-page">Messages de la boutique</h1>
+
+  <form class="chercher" method="get">
+    <Icone nom="recherche" taille={18} />
+    <label class="lecture-seule" for="q">Chercher un prénom ou un numéro</label>
+    <input id="q" type="search" name="q" value={cherche} placeholder="Prénom ou numéro" />
+    {cherche && (
+      <a class="vider" href="/vendeur/messages" aria-label="Vider la recherche">
+        <Icone nom="croix" taille={16} />
+      </a>
+    )}
+  </form>
+
+  {
+    fils.length === 0 ? (
+      <p class="rien">
+        {cherche ? 'Personne ne correspond à cette recherche.' : "Personne n'a écrit à la boutique pour l'instant."}
+      </p>
+    ) : (
+      <ul class="liste">
+        {fils.map((f) => (
+          <li>
+            <a class="fil" href={`/admin/${f.fil}`}>
+              <Avatar fichier={f.avatar_fichier} prenom={f.prenom} taille={46} />
+              <span class="fil-corps">
+                <span class="fil-haut">
+                  <span class="fil-nom">{f.prenom}</span>
+                  <span class="fil-heure">{quandCourt(f.quand)}</span>
+                </span>
+                <span class="fil-apercu">
+                  {f.apercu_de === 'boutique' && <span class="de-nous">Toi : </span>}
+                  {f.apercu}
+                </span>
+              </span>
+              {f.non_lus > 0 && <span class="pastille-nombre">{f.non_lus}</span>}
+            </a>
+          </li>
+        ))}
+      </ul>
+    )
+  }
+
+  <p class="note">
+    Les questions posées au médecin ne sont pas ici : elles restent dans l'espace d'administration.
+  </p>
+</Vendeur>
+
+<style>
+  .titre-page {
+    margin: var(--e4) 0 var(--e3);
+    font-size: 25px;
+  }
+
+  .chercher {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin-bottom: var(--e4);
+    padding: 0 var(--e3);
+    border: 1px solid var(--bordure);
+    border-radius: var(--r-champ);
+    background: var(--surface);
+    color: var(--texte-3);
+  }
+
+  .chercher input {
+    flex: 1;
+    min-width: 0;
+    min-height: 46px;
+    border: none;
+    background: none;
+    font-family: var(--texte);
+    font-size: 15px;
+    color: var(--encre);
+  }
+
+  .chercher input:focus {
+    outline: none;
+  }
+
+  .liste {
+    display: flex;
+    flex-direction: column;
+    gap: var(--e2);
+    list-style: none;
+  }
+
+  .fil {
+    display: flex;
+    align-items: center;
+    gap: var(--e3);
+    padding: var(--e3);
+    border: 1px solid var(--bordure);
+    border-radius: var(--r-carte);
+    background: var(--surface);
+  }
+
+  .fil:active {
+    transform: scale(0.99);
+  }
+
+  .fil-corps {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .fil-haut {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--e2);
+  }
+
+  .fil-nom {
+    font-size: 15px;
+    font-weight: 700;
+  }
+
+  .fil-heure {
+    flex: none;
+    font-size: 12px;
+    color: var(--texte-3);
+  }
+
+  .fil-apercu {
+    display: block;
+    margin-top: 2px;
+    font-size: 13.5px;
+    color: var(--texte-2);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .de-nous {
+    color: var(--texte-3);
+  }
+
+  .pastille-nombre {
+    display: grid;
+    place-items: center;
+    flex: none;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: var(--rose);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .rien {
+    padding: var(--e5);
+    border: 1px dashed var(--bordure);
+    border-radius: var(--r-carte);
+    color: var(--texte-2);
+    text-align: center;
+  }
+
+  .note {
+    margin-top: var(--e4);
+    font-size: 13px;
+    color: var(--texte-3);
+  }
+</style>

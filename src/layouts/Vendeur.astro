@@ -1,0 +1,170 @@
+---
+/**
+ * Le gabarit de l'espace vendeur.
+ *
+ * Arthur, le 14 octobre 2026 : « tu vois l'espace vendeur de Jia ; je veux à
+ * peu près la même chose, mais adapté pour Mousso Dambé ». Chez Jia, la
+ * console vendeur a sa propre barre basse à cinq onglets (Dashboard, Produits,
+ * Messages, Commandes, Ma boutique) et chaque écran s'y accroche.
+ *
+ * CE QUI CHANGE ICI, et pourquoi : Jia est une place de marché, avec des
+ * vendeurs qui ont chacun leur boutique à remplir, une vérification de pièces
+ * d'identité, des litiges et des paiements en ligne. Mousso Dambé n'a qu'une
+ * boutique, celle d'Arthur, pas de paiement en ligne et pas de litige. Les
+ * onglets « Ma boutique » et « Vérification » n'auraient donc rien à montrer :
+ * il en reste quatre, et le tableau de bord récupère ce qui compte.
+ *
+ * Qui entre : la base, et elle seule. `est_admin()` est demandé par chaque
+ * page avant d'afficher quoi que ce soit, et les fonctions appelées refusent
+ * de répondre à quelqu'un d'autre, même en SQL direct.
+ */
+import Base from './Base.astro';
+import Icone from '../components/Icone.astro';
+
+export type OngletVendeur = 'tableau' | 'produits' | 'messages' | 'commandes';
+
+interface Props {
+  titre: string;
+  onglet: OngletVendeur;
+  /** Le nombre de commandes qui attendent d'être préparées. */
+  aPreparer?: number;
+  /** Les messages de la boutique encore non lus. */
+  messages?: number;
+}
+
+const { titre, onglet, aPreparer = 0, messages = 0 } = Astro.props;
+
+const ONGLETS: { cle: OngletVendeur; libelle: string; href: string; icone: string; compteur?: number }[] = [
+  { cle: 'tableau', libelle: 'Tableau', href: '/vendeur', icone: 'tableau' },
+  { cle: 'produits', libelle: 'Produits', href: '/vendeur/produits', icone: 'carton' },
+  { cle: 'commandes', libelle: 'Commandes', href: '/vendeur/commandes', icone: 'liste', compteur: aPreparer },
+  { cle: 'messages', libelle: 'Messages', href: '/vendeur/messages', icone: 'bulles', compteur: messages },
+];
+---
+
+<Base titre={titre} nav={null}>
+  <div class="vendeur">
+    <header class="barre-vendeur">
+      <div class="dedans">
+        <span class="marque">Espace vendeur</span>
+        <a class="sortie" href="/compte">Quitter</a>
+      </div>
+    </header>
+
+    <main class="page corps">
+      <slot />
+      <div class="place-barre"></div>
+    </main>
+
+    <nav class="nav-vendeur" aria-label="Espace vendeur">
+      {
+        ONGLETS.map((o) => (
+          <a
+            class:list={['onglet', onglet === o.cle && 'onglet-actif']}
+            href={o.href}
+            aria-current={onglet === o.cle ? 'page' : undefined}
+          >
+            <span class="onglet-icone">
+              <Icone nom={o.icone} taille={22} />
+              {(o.compteur ?? 0) > 0 && <span class="onglet-compteur">{o.compteur}</span>}
+            </span>
+            <span class="onglet-mot">{o.libelle}</span>
+          </a>
+        ))
+      }
+    </nav>
+  </div>
+</Base>
+
+<style>
+  .vendeur {
+    min-height: 100dvh;
+  }
+
+  .barre-vendeur {
+    background: var(--surface);
+    border-bottom: 1px solid var(--bordure);
+  }
+
+  .dedans {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--e3);
+    padding: calc(var(--e4) + env(safe-area-inset-top, 0px)) var(--e4) var(--e4);
+  }
+
+  .marque {
+    font-family: var(--titre);
+    font-size: 18px;
+    font-weight: 800;
+  }
+
+  .sortie {
+    font-size: 14.5px;
+    font-weight: 600;
+    color: var(--rose);
+  }
+
+  /* De la place pour la barre du bas, qui flotte au-dessus du contenu. */
+  .place-barre {
+    height: 104px;
+  }
+
+  .nav-vendeur {
+    position: fixed;
+    left: 50%;
+    bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+    z-index: 30;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    width: min(440px, calc(100% - 24px));
+    transform: translateX(-50%);
+    padding: 6px;
+    border-radius: 999px;
+    background: var(--encre);
+    box-shadow: 0 10px 30px rgba(27, 17, 22, 0.28);
+  }
+
+  .onglet {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 9px 2px;
+    border-radius: 999px;
+    color: rgba(255, 255, 255, 0.62);
+  }
+
+  .onglet-actif {
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+  }
+
+  .onglet-icone {
+    position: relative;
+    display: grid;
+    place-items: center;
+  }
+
+  .onglet-compteur {
+    position: absolute;
+    top: -5px;
+    right: -9px;
+    display: grid;
+    place-items: center;
+    min-width: 17px;
+    height: 17px;
+    padding: 0 4px;
+    border-radius: 999px;
+    background: var(--rose);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  .onglet-mot {
+    font-size: 11.5px;
+    font-weight: 600;
+  }
+</style>

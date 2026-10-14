@@ -32,6 +32,10 @@ create table auth.users (
   email text unique,
   phone text,
   raw_user_meta_data jsonb default '{}'::jsonb,
+  -- Supabase pose cette date quand l'adresse est verifiee (Google le fait de
+  -- lui-meme). Elle manquait ici, et le banc laissait donc passer un compte
+  -- dont l'adresse n'a jamais ete prouvee : ajoutee le 14 octobre 2026.
+  email_confirmed_at timestamptz,
   created_at timestamptz default now()
 );
 create or replace function auth.uid() returns uuid language sql stable as $$

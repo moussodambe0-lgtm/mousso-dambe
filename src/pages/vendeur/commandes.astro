@@ -1,0 +1,296 @@
+---
+/**
+ * Les commandes, côté vendeur.
+ *
+ * Le même travail que l'onglet « Commandes » de l'ancien écran
+ * d'administration, déplacé dans l'espace vendeur (Arthur, 14 octobre 2026 :
+ * deux espaces séparés, l'administration pour le service client, le vendeur
+ * pour la boutique).
+ *
+ * La position partagée par la cliente, quand elle en a donné une, devient un
+ * lien vers une carte : c'est ce dont le livreur a besoin, et c'est pour ça
+ * qu'elle l'a partagée.
+ */
+import Vendeur from '../../layouts/Vendeur.astro';
+import Icone from '../../components/Icone.astro';
+import Alerte from '../../components/Alerte.astro';
+import { clientSession, baseConfiguree } from '../../lib/supabase';
+import { visiteuse } from '../../lib/session';
+import { prix, dateLongue, messageErreur } from '../../lib/format';
+
+if (!baseConfiguree()) return Astro.redirect('/', 302);
+const moi = await visiteuse(Astro);
+if (!moi) return Astro.redirect('/connexion', 302);
+
+const client = clientSession(Astro)!;
+const { data: admin } = await client.rpc('est_admin');
+if (admin !== true) return Astro.redirect('/compte', 302);
+
+let erreur = '';
+
+if (Astro.request.method === 'POST') {
+  const f = await Astro.request.formData();
+  const { data, error } = await client.rpc('changer_etat_commande', {
+    p_id: String(f.get('id') ?? ''),
+    p_etat: String(f.get('etat') ?? ''),
+  });
+  if (error || !data?.ok) erreur = messageErreur(data?.erreur ?? error?.message);
+  else return Astro.redirect(`/vendeur/commandes?etat=${encodeURIComponent(String(f.get('retour') ?? ''))}`, 303);
+}
+
+const ETATS = [
+  { id: 'nouvelle', mot: 'À préparer', suivant: 'preparee', bouton: 'Marquer préparée' },
+  { id: 'preparee', mot: 'Préparées', suivant: 'envoyee', bouton: 'Donner au livreur' },
+  { id: 'envoyee', mot: 'En route', suivant: 'livree', bouton: 'Marquer livrée' },
+  { id: 'livree', mot: 'Livrées', suivant: null, bouton: '' },
+  { id: 'annulee', mot: 'Annulées', suivant: null, bouton: '' },
+];
+
+const filtre = Astro.url.searchParams.get('etat') ?? '';
+const { data } = await client.rpc('commandes_admin', { p_etat: filtre || null });
+const commandes = (data?.commandes ?? []) as any[];
+
+const { data: tab } = await client.rpc('tableau_vendeur');
+---
+
+<Vendeur titre="Commandes" onglet="commandes" aPreparer={tab?.a_preparer ?? 0} messages={tab?.messages_boutique ?? 0}>
+  <h1 class="titre-page">Commandes</h1>
+
+  {erreur && <div class="marge-bas"><Alerte type="erreur" texte={erreur} /></div>}
+
+  <nav class="filtres" aria-label="Filtrer les commandes">
+    <a class:list={['filtre', !filtre && 'filtre-actif']} href="/vendeur/commandes">Toutes</a>
+    {ETATS.map((e) => (
+      <a class:list={['filtre', filtre === e.id && 'filtre-actif']} href={`/vendeur/commandes?etat=${e.id}`}>
+        {e.mot}
+      </a>
+    ))}
+  </nav>
+
+  {
+    commandes.length === 0 ? (
+      <p class="rien">Aucune commande dans cette liste.</p>
+    ) : (
+      <ul class="liste">
+        {commandes.map((c) => {
+          const etat = ETATS.find((e) => e.id === c.etat);
+          return (
+            <li class="commande">
+              <div class="commande-haut">
+                <b class="numero chiffre">{c.numero}</b>
+                <span class="etiquette">{etat?.mot ?? c.etat}</span>
+              </div>
+              <p class="quand">{c.quand ? dateLongue(c.quand) : ''}</p>
+
+              <p class="qui">
+                {c.nom} · <a href={`tel:${c.telephone}`}>{c.telephone}</a>
+              </p>
+              <p class="ou">
+                <Icone nom="lieu" taille={15} />
+                {c.quartier || 'Quartier non donné'}
+                {c.repere ? `, ${c.repere}` : ''}
+              </p>
+              {c.position_lat && c.position_lng && (
+                <a
+                  class="carte-lien"
+                  href={`https://www.google.com/maps/search/?api=1&query=${c.position_lat},${c.position_lng}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Icone nom="lieu" taille={15} />
+                  Voir sa position sur une carte
+                </a>
+              )}
+
+              <ul class="articles">
+                {(c.articles ?? []).map((a: any) => (
+                  <li>
+                    <span>
+                      {a.quantite} × {a.nom}
+                      {a.taille ? ` · ${a.taille}` : ''}
+                    </span>
+                    {/* La fonction rend le prix À L'UNITÉ (`prix_cfa`), pas le
+                        total de la ligne : on multiplie ici plutôt que
+                        d'afficher un chiffre qui ne veut rien dire. */}
+                    <span class="chiffre">{prix((a.prix_cfa ?? 0) * (a.quantite ?? 1))}</span>
+                  </li>
+                ))}
+              </ul>
+
+              <div class="bas">
+                <span class="total chiffre">{prix(c.total_cfa ?? 0)} FCFA</span>
+                {etat?.suivant && (
+                  <form method="POST">
+                    <input type="hidden" name="id" value={c.id} />
+                    <input type="hidden" name="etat" value={etat.suivant} />
+                    <input type="hidden" name="retour" value={filtre} />
+                    <button class="btn btn-rose btn-petit" type="submit">{etat.bouton}</button>
+                  </form>
+                )}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    )
+  }
+</Vendeur>
+
+<style>
+  .titre-page {
+    margin: var(--e4) 0 var(--e3);
+    font-size: 25px;
+  }
+
+  .filtres {
+    display: flex;
+    gap: 7px;
+    overflow-x: auto;
+    margin-bottom: var(--e4);
+    padding-bottom: 4px;
+    scrollbar-width: none;
+  }
+
+  .filtres::-webkit-scrollbar {
+    display: none;
+  }
+
+  .filtre {
+    flex: none;
+    padding: 8px var(--e3);
+    border: 1px solid var(--bordure);
+    border-radius: 999px;
+    background: var(--surface);
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--texte-2);
+    white-space: nowrap;
+  }
+
+  .filtre-actif {
+    border-color: var(--rose);
+    background: var(--rose);
+    color: #fff;
+  }
+
+  .liste {
+    display: flex;
+    flex-direction: column;
+    gap: var(--e3);
+    list-style: none;
+  }
+
+  .commande {
+    padding: var(--e4);
+    border: 1px solid var(--bordure);
+    border-radius: var(--r-carte);
+    background: var(--surface);
+  }
+
+  .commande-haut {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--e3);
+  }
+
+  .numero {
+    font-size: 15.5px;
+  }
+
+  .etiquette {
+    flex: none;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: var(--surface-douce);
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--texte-2);
+  }
+
+  .quand {
+    margin-top: 2px;
+    font-size: 12.5px;
+    color: var(--texte-3);
+  }
+
+  .qui {
+    margin-top: var(--e3);
+    font-size: 14.5px;
+    font-weight: 600;
+  }
+
+  .qui a {
+    color: var(--rose);
+  }
+
+  .ou,
+  .carte-lien {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 4px;
+    font-size: 13.5px;
+    color: var(--texte-2);
+  }
+
+  .carte-lien {
+    margin-top: 6px;
+    font-weight: 600;
+    color: var(--rose);
+  }
+
+  .articles {
+    list-style: none;
+    margin: var(--e3) 0;
+    padding: var(--e3) 0;
+    border-top: 1px solid var(--bordure);
+    border-bottom: 1px solid var(--bordure);
+  }
+
+  .articles li {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--e3);
+    padding: 3px 0;
+    font-size: 13.5px;
+    color: var(--texte-2);
+  }
+
+  .articles .chiffre {
+    flex: none;
+    font-weight: 600;
+    color: var(--encre);
+  }
+
+  .bas {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--e3);
+  }
+
+  .total {
+    font-size: 19px;
+    font-weight: 800;
+    color: var(--rose);
+  }
+
+  .btn-petit {
+    min-height: 42px;
+    padding: 0 var(--e3);
+    font-size: 13.5px;
+  }
+
+  .rien {
+    padding: var(--e5);
+    border: 1px dashed var(--bordure);
+    border-radius: var(--r-carte);
+    color: var(--texte-2);
+    text-align: center;
+  }
+
+  .marge-bas {
+    margin-bottom: var(--e3);
+  }
+</style>

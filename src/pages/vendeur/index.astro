@@ -1,0 +1,233 @@
+---
+/**
+ * Le tableau de bord du vendeur.
+ *
+ * Calqué sur celui de Jia (« À traiter aujourd'hui », « Mes chiffres »,
+ * « Mon stock »), à la demande d'Arthur du 14 octobre 2026, et réduit à ce que
+ * Mousso Dambé sait vraiment : pas de paiement en ligne, pas de litige, pas de
+ * vitrine à compléter, puisqu'il n'y a qu'une boutique et qu'elle est la
+ * sienne.
+ *
+ * Tous les chiffres viennent d'un SEUL appel (`tableau_vendeur`) : une page
+ * qui fait dix allers-retours est lente là où la connexion se paie.
+ */
+import Vendeur from '../../layouts/Vendeur.astro';
+import Icone from '../../components/Icone.astro';
+import Alerte from '../../components/Alerte.astro';
+import { clientSession, baseConfiguree } from '../../lib/supabase';
+import { visiteuse } from '../../lib/session';
+import { prix } from '../../lib/format';
+
+if (!baseConfiguree()) return Astro.redirect('/', 302);
+const moi = await visiteuse(Astro);
+if (!moi) return Astro.redirect('/connexion', 302);
+
+const client = clientSession(Astro)!;
+const { data: admin } = await client.rpc('est_admin');
+if (admin !== true) return Astro.redirect('/compte', 302);
+
+const { data } = await client.rpc('tableau_vendeur');
+const t = (data?.ok ? data : {}) as Record<string, number>;
+
+const aFaire = [
+  { mot: 'À préparer', nombre: t.a_preparer ?? 0, href: '/vendeur/commandes?etat=nouvelle', icone: 'carton' },
+  { mot: 'À envoyer', nombre: t.a_envoyer ?? 0, href: '/vendeur/commandes?etat=preparee', icone: 'colis' },
+  { mot: 'En route', nombre: t.en_route ?? 0, href: '/vendeur/commandes?etat=envoyee', icone: 'camion' },
+  { mot: 'Messages', nombre: t.messages_boutique ?? 0, href: '/vendeur/messages', icone: 'bulles' },
+];
+const rienAFaire = aFaire.every((l) => l.nombre === 0);
+---
+
+<Vendeur titre="Tableau de bord" onglet="tableau" aPreparer={t.a_preparer ?? 0} messages={t.messages_boutique ?? 0}>
+  <h1 class="titre-page">Ta boutique aujourd'hui</h1>
+
+  <h2 class="titre-section">À traiter aujourd'hui</h2>
+  {
+    rienAFaire ? (
+      <p class="rien">Rien n'attend. Tout est à jour.</p>
+    ) : (
+      <div class="taches">
+        {aFaire
+          .filter((l) => l.nombre > 0)
+          .map((l) => (
+            <a class="tache" href={l.href}>
+              <span class="tache-rond"><Icone nom={l.icone} taille={20} /></span>
+              <span class="tache-mot">{l.mot}</span>
+              <span class="tache-nombre">{l.nombre}</span>
+              <Icone nom="avant" taille={18} classe="tache-fleche" />
+            </a>
+          ))}
+      </div>
+    )
+  }
+
+  <h2 class="titre-section">Mes chiffres</h2>
+  <div class="chiffres">
+    <div class="chiffre-carte">
+      <span class="chiffre-mot">Ventes du jour</span>
+      <span class="chiffre-valeur chiffre">{prix(t.ventes_jour ?? 0)}<small>FCFA</small></span>
+    </div>
+    <div class="chiffre-carte">
+      <span class="chiffre-mot">Ventes du mois</span>
+      <span class="chiffre-valeur chiffre">{prix(t.ventes_mois ?? 0)}<small>FCFA</small></span>
+    </div>
+    <div class="chiffre-carte">
+      <span class="chiffre-mot">Commandes ce mois</span>
+      <span class="chiffre-valeur chiffre">{t.commandes_mois ?? 0}</span>
+    </div>
+    <div class="chiffre-carte">
+      <span class="chiffre-mot">Produits en vente</span>
+      <span class="chiffre-valeur chiffre">{t.produits_publies ?? 0}</span>
+    </div>
+  </div>
+  <p class="note">Les commandes annulées ne sont comptées nulle part.</p>
+
+  <h2 class="titre-section">Mon stock</h2>
+  {
+    (t.en_rupture ?? 0) > 0 && (
+      <div class="marge-bas">
+        <Alerte
+          type="attention"
+          texte={`${t.en_rupture} produit${(t.en_rupture ?? 0) > 1 ? 's sont' : ' est'} en rupture. Tant que le stock est à zéro, personne ne peut le commander.`}
+        />
+      </div>
+    )
+  }
+  {
+    (t.stock_bas ?? 0) > 0 && (
+      <div class="marge-bas">
+        <Alerte
+          type="info"
+          texte={`${t.stock_bas} produit${(t.stock_bas ?? 0) > 1 ? 's ont' : ' a'} trois pièces ou moins. Pense à recommander.`}
+        />
+      </div>
+    )
+  }
+  {(t.en_rupture ?? 0) === 0 && (t.stock_bas ?? 0) === 0 && <p class="rien">Aucun produit ne manque.</p>}
+
+  <a class="btn btn-rose btn-plein marge" href="/vendeur/produits">
+    <Icone nom="plus" taille={19} />
+    Gérer mes produits
+  </a>
+</Vendeur>
+
+<style>
+  .titre-page {
+    margin: var(--e4) 0 var(--e2);
+    font-size: 25px;
+  }
+
+  .titre-section {
+    margin: var(--e5) 0 var(--e3);
+    font-size: 16.5px;
+    font-weight: 700;
+  }
+
+  .taches {
+    display: flex;
+    flex-direction: column;
+    gap: var(--e2);
+  }
+
+  .tache {
+    display: flex;
+    align-items: center;
+    gap: var(--e3);
+    padding: var(--e3) var(--e4);
+    border: 1px solid var(--bordure);
+    border-radius: var(--r-carte);
+    background: var(--surface);
+  }
+
+  .tache:active {
+    transform: scale(0.99);
+  }
+
+  .tache-rond {
+    display: grid;
+    place-items: center;
+    flex: none;
+    color: var(--rose);
+  }
+
+  .tache-mot {
+    flex: 1;
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  .tache-nombre {
+    display: grid;
+    place-items: center;
+    min-width: 26px;
+    height: 26px;
+    padding: 0 8px;
+    border-radius: 999px;
+    background: var(--rose);
+    color: #fff;
+    font-size: 13.5px;
+    font-weight: 700;
+  }
+
+  .tache :global(.tache-fleche) {
+    flex: none;
+    color: var(--texte-3);
+  }
+
+  .chiffres {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--e3);
+  }
+
+  .chiffre-carte {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: var(--e4);
+    border: 1px solid var(--bordure);
+    border-radius: var(--r-carte);
+    background: var(--surface);
+  }
+
+  .chiffre-mot {
+    font-size: 13px;
+    color: var(--texte-2);
+  }
+
+  .chiffre-valeur {
+    font-size: 23px;
+    font-weight: 800;
+    color: var(--encre);
+  }
+
+  .chiffre-valeur small {
+    margin-left: 4px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--texte-3);
+  }
+
+  .rien {
+    padding: var(--e4);
+    border: 1px dashed var(--bordure);
+    border-radius: var(--r-carte);
+    color: var(--texte-2);
+    font-size: 14.5px;
+    text-align: center;
+  }
+
+  .note {
+    margin-top: var(--e2);
+    font-size: 13px;
+    color: var(--texte-3);
+  }
+
+  .marge {
+    margin-top: var(--e5);
+  }
+
+  .marge-bas {
+    margin-bottom: var(--e2);
+  }
+</style>

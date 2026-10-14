@@ -53,6 +53,11 @@ const panier = comptePanier(lirePanier(Astro));
 const { data: favorisData } = await client.rpc('mes_favoris');
 const nombreFavoris = (favorisData?.ok ? favorisData.favoris.length : 0) as number;
 
+// L'espace vendeur ne se montre qu'à qui y a droit. Une cliente ne voit même
+// pas qu'il existe : c'est la base qui répond, pas cette page qui devine.
+const { data: estAdmin } = await client.rpc('est_admin');
+const vendeuse = estAdmin === true;
+
 const { data: commandesData } = await client.rpc('mes_commandes');
 const commandes = (commandesData ?? []) as { etat: string }[];
 const nombreEtat = (etats: string[]) => commandes.filter((c) => etats.includes(c.etat)).length;
@@ -163,6 +168,21 @@ const produits = produitsData ?? [];
         ))
       }
     </section>
+
+    {/* L'espace vendeur, seulement pour Arthur. Personne d'autre ne voit cette
+        ligne : `est_admin()` a déjà répondu non. */}
+    {
+      vendeuse && (
+        <a class="adresse vendeur-lien apparait" href="/vendeur">
+          <span class="adresse-rond"><Icone nom="tableau" taille={20} /></span>
+          <div class="adresse-texte">
+            <div class="adresse-titre">Espace vendeur</div>
+            <div class="adresse-detail">Commandes, produits, messages de la boutique</div>
+          </div>
+          <Icone nom="avant" taille={18} classe="adresse-fleche" />
+        </a>
+      )
+    }
 
     {/* L'adresse de livraison : ce que `passer_commande` enregistrait déjà en
         silence depuis le premier jour a maintenant un endroit pour se voir et
