@@ -21,7 +21,7 @@ import Alerte from '../components/Alerte.astro';
 import { clientSession, baseConfiguree } from '../lib/supabase';
 import { visiteuse, lirePanier, comptePanier } from '../lib/session';
 import { ollamaConfigure, demanderOllama, ErreurOllama } from '../lib/ollama';
-import { alerte, messagesPour, nettoyer, AVERTISSEMENT, SUGGESTIONS, type ContexteAssistante } from '../lib/assistante';
+import { alerte, messagesPour, nettoyer, SUGGESTIONS, type ContexteAssistante } from '../lib/assistante';
 import { prix, messageErreur } from '../lib/format';
 
 if (!baseConfiguree()) return Astro.redirect('/', 302);
@@ -130,18 +130,22 @@ const branchee = ollamaConfigure();
       </span>
       <div>
         <h1>IA Dambé</h1>
-        <div class:list={['etat', branchee ? 'etat-ok' : 'etat-off']}>
-          <i></i>
-          {branchee ? 'Prête à répondre' : 'Pas encore branchée'}
-        </div>
+        {/* « Prête à répondre » est supprimé (Arthur, 14 octobre 2026) : une
+            assistante qui annonce qu'elle est prête dit ce qui se voit déjà.
+            Quand elle n'est PAS branchée, en revanche, il faut le dire : sans
+            ça, elle aurait juste l'air muette. */}
+        {!branchee && (
+          <div class="etat etat-off">
+            <i></i>
+            Pas encore branchée
+          </div>
+        )}
       </div>
-      {messages.length > 0 && (
-        <form method="POST" action="/dambe/effacer" class="pousse">
-          <button class="rond" type="submit" aria-label="Effacer toute la discussion">
-            <Icone nom="poubelle" taille={19} />
-          </button>
-        </form>
-      )}
+      {/* La poubelle « Effacer toute la discussion » est retirée de cette
+          barre (Arthur, 14 octobre 2026). La route `/dambe/effacer` reste en
+          place, et effacer ses questions à Dambé reste possible depuis
+          « Effacer mes données », sur la page Confidentialité : remettre le
+          bouton ici tient en cinq lignes. */}
     </div>
   </header>
 
@@ -212,10 +216,13 @@ const branchee = ollamaConfigure();
       )
     }
 
-    <p class="avertissement">
-      <Icone nom="info" taille={14} />
-      {AVERTISSEMENT}
-    </p>
+    {/* La mention « Dambé n'est pas médecin et ne pose aucun diagnostic. Tes
+        questions passent par un service d'IA extérieur. » a été retirée de
+        sous la conversation le 14 octobre 2026, à la demande d'Arthur.
+        `AVERTISSEMENT` reste dans `src/lib/assistante.ts` : la remettre tient
+        en trois lignes. Ce qu'elle disait n'est pas perdu pour autant : la
+        page `/confidentialite` garde sa section « Ce qui part vers Dambé »,
+        qui dit que l'assistante tourne chez un prestataire extérieur. */}
 
     <div class="place-saisie"></div>
   </main>
@@ -258,8 +265,20 @@ const branchee = ollamaConfigure();
     <p class="page dictee-dit" aria-live="polite" hidden></p>
   </form>
 
+  {/* Le modèle que `dambe-attente.ts` recopie quand elle envoie sa question
+      (Arthur, 14 octobre 2026 : « ça doit partir, ensuite la tête de la
+      mascotte apparaît comme si elle réfléchit, et enfin elle répond »).
+      C'est un modèle plutôt qu'un morceau écrit dans le script : la bulle et
+      le dessin sont ainsi EXACTEMENT ceux que le serveur rend lui-même, et le
+      jour où ils changent, ils changent aux deux endroits à la fois. */}
+  <template id="modele-attente">
+    <div class="bulle-moi"></div>
+    <Anim nom="etat-reflechit" classe="reflechit" titre="Dambé réfléchit" />
+  </template>
+
   <script>
     import '../scripts/dictee';
+    import '../scripts/dambe-attente';
   </script>
 </Base>
 
@@ -405,20 +424,6 @@ const branchee = ollamaConfigure();
     text-align: left;
   }
 
-  .avertissement {
-    display: flex;
-    gap: 7px;
-    align-items: flex-start;
-    margin-top: var(--e4);
-    font-size: 13px;
-    color: var(--texte-3);
-    line-height: 1.45;
-  }
-
-  .avertissement :global(svg) {
-    flex: none;
-    margin-top: 2px;
-  }
 
   .marge {
     margin-top: var(--e4);
