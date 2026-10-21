@@ -167,10 +167,72 @@ await comme(
 );
 await comme(`select public.changer_telephone('70889900')`, [], claimsAutre);
 
-// Et le compte de démonstration est administrateur, pour que /admin se
-// regarde sur ce PC. C'est le banc local, pas la production : en ligne,
-// Arthur s'ajoutera lui-même par une ligne de SQL.
-await db.query(`insert into public.administrateurs (profil_id) values ($1)`, [DEMO_ID]);
+// ---------------------------------------------------------------------------
+// L'administrateur, et lui seul
+// ---------------------------------------------------------------------------
+// Arthur, le 21 octobre 2026 : « c'est seulement cet email qui doit pouvoir
+// accéder à la partie admin de Mousso Dambé ».
+//
+// Jusqu'à cette date, le banc nommait le compte de démonstration
+// (awa@essai.bf) administrateur, pour que /admin se regarde tout de suite.
+// C'était commode et faux : sur ce PC, n'importe qui ouvrant la démonstration
+// entrait dans la gestion. Le banc suit maintenant la même règle que la vraie
+// base, pour qu'on essaie ce qui sera en ligne et pas autre chose.
+//
+// L'adresse n'est écrite NULLE PART dans le dépôt : elle est lue dans le coffre
+// (`secrets/.env`, hors du dépôt), exactement comme le fait
+// `outils/nommer-admin.mjs`. Rien ne s'affiche d'elle au-delà de son début : ce
+// qui s'imprime dans un terminal finit dans un journal.
+const COFFRE = 'C:/Users/larou/OneDrive/Desktop/Jarvis/secrets/.env';
+
+function adresseAdminDuCoffre() {
+  if (!fs.existsSync(COFFRE)) return null;
+  for (const ligne of fs.readFileSync(COFFRE, 'utf8').split(/\r?\n/)) {
+    const propre = ligne.trim();
+    if (!propre || propre.startsWith('#')) continue;
+    // Le coffre contient des noms avec des espaces (« e-mail admin MOUSSO
+    // DAMBE ») : même tolérance que l'outil qui pose le réglage en ligne.
+    const m = /^(.+?)\s*=\s*(.*)$/.exec(propre);
+    if (m && /e-?mail.*admin.*mousso/i.test(m[1].trim())) {
+      const valeur = m[2].trim();
+      if (valeur) return valeur;
+    }
+  }
+  return null;
+}
+
+const emailAdmin = adresseAdminDuCoffre();
+let noteAdmin;
+
+if (emailAdmin) {
+  // Le réglage que `reclamer_admin()` lit pour savoir qui a le droit de
+  // demander la place. Sans lui, la fonction refuse tout le monde, et c'est
+  // bien ainsi : un réglage vide ne doit jamais vouloir dire « tout le monde ».
+  await db.query(
+    `insert into public.reglages (cle, valeur) values ('email_admin', $1)
+       on conflict (cle) do update set valeur = excluded.valeur`,
+    [emailAdmin]
+  );
+
+  // Un compte à cette adresse, avec son adresse confirmée, pour que le vrai
+  // parcours soit jouable ici : se connecter, puis réclamer la place.
+  const ADMIN_ID = randomUUID();
+  await db.query(
+    `insert into auth.users (id, email, mot_de_passe, raw_user_meta_data, email_confirmed_at)
+     values ($1, $2, $3, $4, now())`,
+    [ADMIN_ID, emailAdmin, 'motdepasse', JSON.stringify({ prenom: 'Arthur' })]
+  );
+  await db.query(`insert into public.administrateurs (profil_id) values ($1)`, [ADMIN_ID]);
+
+  const masque = emailAdmin.slice(0, 3) + '…@' + (emailAdmin.split('@')[1] ?? '');
+  noteAdmin = `Administrateur : ${masque} / motdepasse (la seule adresse qui entre)`;
+} else {
+  // Sur une machine sans le coffre, le banc ne doit pas devenir inutilisable :
+  // on retombe sur le compte de démonstration, et on le dit franchement.
+  await db.query(`insert into public.administrateurs (profil_id) values ($1)`, [DEMO_ID]);
+  noteAdmin =
+    'Coffre introuvable : faute de mieux, le compte de démonstration est administrateur (ce ne sera pas le cas en ligne).';
+}
 
 // --- Traduction du langage de PostgREST vers du SQL -------------------------
 
@@ -491,6 +553,7 @@ serveur.listen(PORT, '127.0.0.1', () => {
   const empreinte = createHash('sha256').update(CLE_SERVEUR).digest('hex').slice(0, 8);
   console.log(`\nBanc local prêt sur http://127.0.0.1:${PORT}`);
   console.log(`Compte de démonstration : awa@essai.bf / motdepasse`);
+  console.log(noteAdmin);
   console.log(`\nÀ mettre dans le .env DE DÉVELOPPEMENT, et nulle part ailleurs :`);
   console.log(`PUBLIC_SUPABASE_URL=http://127.0.0.1:${PORT}`);
   console.log(`PUBLIC_SUPABASE_ANON_KEY=cle-anon-du-banc`);

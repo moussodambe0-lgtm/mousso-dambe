@@ -22,7 +22,31 @@ import { fileURLToPath } from 'node:url';
 const RACINE = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SORTIE = path.join(RACINE, 'captures');
 const SITE = 'http://127.0.0.1:4322';
+// Depuis le 21 octobre 2026, la gestion repond sur son propre sous-domaine :
+// /admin et /vendeur sont introuvables sur l'adresse des clientes. Les
+// navigateurs resolvent tout *.localhost vers la machine, donc rien a installer.
+const SITE_ADMIN = 'http://admin.localhost:4322';
 const PORT_DEBUG = 9333;
+
+// L'adresse de l'administrateur n'est ecrite nulle part dans le depot : elle est
+// lue dans le coffre, hors du depot, comme le font le banc local et
+// outils/nommer-admin.mjs. Sans elle, les ecrans de gestion sont sautes plutot
+// que photographies de travers.
+const COFFRE = 'C:/Users/larou/OneDrive/Desktop/Jarvis/secrets/.env';
+
+function adresseAdmin() {
+  if (!fs.existsSync(COFFRE)) return null;
+  for (const ligne of fs.readFileSync(COFFRE, 'utf8').split(/\r?\n/)) {
+    const propre = ligne.trim();
+    if (!propre || propre.startsWith('#')) continue;
+    const m = /^(.+?)\s*=\s*(.*)$/.exec(propre);
+    if (m && /e-?mail.*admin.*mousso/i.test(m[1].trim())) {
+      const v = m[2].trim();
+      if (v) return v;
+    }
+  }
+  return null;
+}
 
 const CHROME = [
   'C:/Program Files/Google/Chrome/Application/chrome.exe',
@@ -89,16 +113,23 @@ const ECRANS = [
   { nom: '21-fil-boutique', url: '/discussions/boutique', connectee: true },
   { nom: '21b-fil-medecin', url: '/discussions/medecin', connectee: true },
   { nom: '22-fil-boutique-produit', url: '/discussions/boutique?produit=culotte-flux-abondant', connectee: true },
-  { nom: '23-admin-messages', url: '/admin', connectee: true },
-  { nom: '24-admin-commandes', url: '/admin?vue=commandes', connectee: true },
+  // La gestion, sur son sous-domaine et avec le seul compte qui y entre.
+  { nom: '23-admin-messages', url: '/admin', connectee: true, admin: true },
+  { nom: '24-admin-commandes', url: '/admin?vue=commandes', connectee: true, admin: true },
+  { nom: '25-gestion-tableau', url: '/vendeur', connectee: true, admin: true },
+  { nom: '26-gestion-produits', url: '/vendeur/produits', connectee: true, admin: true },
+  { nom: '27-gestion-commandes', url: '/vendeur/commandes', connectee: true, admin: true },
+  { nom: '28-gestion-messages', url: '/vendeur/messages', connectee: true, admin: true },
+  // Ce qu'une cliente voit si elle devine l'adresse de la gestion.
+  { nom: '29-gestion-introuvable', url: '/vendeur', connectee: true },
 ];
 
 /** Se connecte comme le ferait un téléphone, et récupère le cookie de session. */
-async function cookieDeSession() {
-  const reponse = await fetch(`${SITE}/connexion`, {
+async function cookieDeSession(base = SITE, email = 'awa@essai.bf') {
+  const reponse = await fetch(`${base}/connexion`, {
     method: 'POST',
-    headers: { 'content-type': 'application/x-www-form-urlencoded', origin: SITE },
-    body: new URLSearchParams({ email: 'awa@essai.bf', motdepasse: 'motdepasse' }),
+    headers: { 'content-type': 'application/x-www-form-urlencoded', origin: base },
+    body: new URLSearchParams({ email, motdepasse: 'motdepasse' }),
     redirect: 'manual',
   });
   const brut = reponse.headers.getSetCookie?.() ?? [];
@@ -107,7 +138,7 @@ async function cookieDeSession() {
     const [nom, ...reste] = paire.split('=');
     if (nom === 'md_session') return reste.join('=');
   }
-  throw new Error("La connexion au banc local a échoué : le cookie n'est pas revenu.");
+  throw new Error(`La connexion au banc local a échoué (${base}) : le cookie n'est pas revenu.`);
 }
 
 const attendre = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -156,6 +187,18 @@ fs.mkdirSync(SORTIE, { recursive: true });
 fs.rmSync(path.join(SORTIE, '.profil'), { recursive: true, force: true });
 const cookie = await cookieDeSession();
 
+// La gestion a sa propre adresse et sa propre session : il faut donc un second
+// cookie, obtenu avec la seule adresse qui y entre. Sans coffre sur cette
+// machine, les écrans de gestion sont sautés plutôt que photographiés de
+// travers : une capture d'un écran de refus ne prouve rien sur la gestion.
+const EMAIL_ADMIN = adresseAdmin();
+let cookieAdmin = null;
+if (EMAIL_ADMIN) {
+  cookieAdmin = await cookieDeSession(SITE_ADMIN, EMAIL_ADMIN);
+} else {
+  console.log("Coffre introuvable : les écrans de gestion sont sautés.");
+}
+
 const navigateur = spawn(
   CHROME,
   [
@@ -191,12 +234,16 @@ try {
   });
 
   for (const ecran of ECRANS) {
+    // Un écran de gestion vit sur l'autre adresse, avec l'autre session.
+    if (ecran.admin && !cookieAdmin) continue;
+    const base = ecran.admin ? SITE_ADMIN : SITE;
+
     await envoyer('Network.clearBrowserCookies');
     if (ecran.connectee) {
       await envoyer('Network.setCookie', {
         name: 'md_session',
-        value: cookie,
-        url: SITE,
+        value: ecran.admin ? cookieAdmin : cookie,
+        url: base,
         path: '/',
         httpOnly: true,
       });
@@ -217,7 +264,7 @@ try {
       });
     }
 
-    await envoyer('Page.navigate', { url: `${SITE}${ecran.url}` });
+    await envoyer('Page.navigate', { url: `${base}${ecran.url}` });
     // Le temps du rendu serveur, puis des animations d'arrivée (1,5 s au plus).
     await attendre(2200);
 
