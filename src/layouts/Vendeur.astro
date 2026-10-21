@@ -34,6 +34,13 @@ interface Props {
 
 const { titre, onglet, aPreparer = 0, messages = 0 } = Astro.props;
 
+// « Quitter » ramène au site des clientes, qui depuis le 21 octobre 2026 est sur
+// une autre adresse que la gestion. `Astro.site` porte cette adresse (SITE_URL,
+// sinon celle de Vercel, sinon le serveur de développement), donc ce lien suit
+// le domaine du jour sans que rien ne soit écrit en dur. Sans elle, on reste sur
+// un chemin relatif, qui marchera tant que la séparation n'est pas en place.
+const lienQuitter = Astro.site ? new URL('/compte', Astro.site).href : '/compte';
+
 const ONGLETS: { cle: OngletVendeur; libelle: string; href: string; icone: string; compteur?: number }[] = [
   { cle: 'tableau', libelle: 'Tableau', href: '/vendeur', icone: 'tableau' },
   { cle: 'produits', libelle: 'Produits', href: '/vendeur/produits', icone: 'carton' },
@@ -47,7 +54,7 @@ const ONGLETS: { cle: OngletVendeur; libelle: string; href: string; icone: strin
     <header class="barre-vendeur">
       <div class="dedans">
         <span class="marque">Espace vendeur</span>
-        <a class="sortie" href="/compte">Quitter</a>
+        <a class="sortie" href={lienQuitter}>Quitter</a>
       </div>
     </header>
 

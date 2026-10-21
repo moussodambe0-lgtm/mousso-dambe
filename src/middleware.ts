@@ -12,9 +12,10 @@
  */
 import { defineMiddleware } from 'astro:middleware';
 import { cheminPublic } from './lib/cache';
+import { hoteDemande, estHoteAdmin, verdict } from './lib/hotes';
 import { defautDeConfiguration } from './lib/configuration';
 import { PUBLIC_SUPABASE_URL } from 'astro:env/client';
-import { MD_CLE_SERVEUR } from 'astro:env/server';
+import { MD_CLE_SERVEUR, ADMIN_HOST } from 'astro:env/server';
 
 // Vérifié une seule fois au démarrage du serveur : si la mise en ligne est mal
 // configurée, aucune page ne doit s'ouvrir. Mieux vaut un site qui dit « pas
@@ -35,8 +36,30 @@ export const onRequest = defineMiddleware(async (contexte, suite) => {
     );
   }
 
-  const reponse = await suite();
   const chemin = contexte.url.pathname;
+
+  // Deux adresses, deux mondes (décision d'Arthur du 21 octobre 2026).
+  // L'administration ne répond que sur son sous-domaine, et la plateforme des
+  // clientes ne répond pas dessus. Le verdict est calculé AVANT d'exécuter la
+  // page : une page cachée ne doit pas même interroger la base.
+  const surHoteAdmin = estHoteAdmin(
+    hoteDemande(contexte.request.headers, contexte.url.hostname),
+    ADMIN_HOST
+  );
+  const quoiFaire = verdict(chemin, surHoteAdmin);
+
+  let reponse: Response;
+  if (quoiFaire.quoi === 'rediriger') {
+    reponse = contexte.redirect(quoiFaire.vers, 302);
+  } else if (quoiFaire.quoi === 'cacher') {
+    // Introuvable, et non « interdit » : sur le domaine public, répondre 403 à
+    // /admin reviendrait à confirmer que cet espace existe. La vraie page 404
+    // est servie pour que l'écran reste celui de l'application.
+    const rendue = await contexte.rewrite('/404');
+    reponse = new Response(rendue.body, { status: 404, headers: rendue.headers });
+  } else {
+    reponse = await suite();
+  }
 
   // Dit aux vieux navigateurs ce que frame-ancestors dit aux récents :
   // personne n'affiche cette application dans un cadre. Sans cela, un site

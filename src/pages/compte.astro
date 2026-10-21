@@ -42,6 +42,8 @@ import Icone from '../components/Icone.astro';
 import CarteProduit from '../components/CarteProduit.astro';
 import { visiteuse, lirePanier, comptePanier } from '../lib/session';
 import { clientSession, clientPublic, baseConfiguree } from '../lib/supabase';
+import { urlAdmin } from '../lib/hotes';
+import { ADMIN_HOST } from 'astro:env/server';
 
 if (!baseConfiguree()) return Astro.redirect('/', 302);
 const moi = await visiteuse(Astro);
@@ -57,6 +59,10 @@ const nombreFavoris = (favorisData?.ok ? favorisData.favoris.length : 0) as numb
 // pas qu'il existe : c'est la base qui répond, pas cette page qui devine.
 const { data: estAdmin } = await client.rpc('est_admin');
 const vendeuse = estAdmin === true;
+// La gestion a sa propre adresse depuis le 21 octobre 2026 : le lien sort du
+// site. Calculé ici, et jamais écrit en dur, pour suivre le domaine du jour
+// (localhost en développement, le vrai nom une fois acheté).
+const lienGestion = vendeuse ? urlAdmin(Astro.url.origin, ADMIN_HOST) : '#';
 
 const { data: commandesData } = await client.rpc('mes_commandes');
 const commandes = (commandesData ?? []) as { etat: string }[];
@@ -170,14 +176,19 @@ const produits = produitsData ?? [];
     </section>
 
     {/* L'espace vendeur, seulement pour Arthur. Personne d'autre ne voit cette
-        ligne : `est_admin()` a déjà répondu non. */}
+        ligne : `est_admin()` a déjà répondu non.
+
+        Depuis le 21 octobre 2026, la gestion vit sur sa propre adresse : ce lien
+        sort donc du site, et il faut s'y connecter à nouveau, puisque les deux
+        adresses ne partagent pas de session. Le détail le dit, pour que la
+        demande de mot de passe ne ressemble pas à une panne. */}
     {
       vendeuse && (
-        <a class="adresse vendeur-lien apparait" href="/vendeur">
+        <a class="adresse vendeur-lien apparait" href={lienGestion}>
           <span class="adresse-rond"><Icone nom="tableau" taille={20} /></span>
           <div class="adresse-texte">
             <div class="adresse-titre">Espace vendeur</div>
-            <div class="adresse-detail">Commandes, produits, messages de la boutique</div>
+            <div class="adresse-detail">Sur son adresse à part. Une connexion y est demandée.</div>
           </div>
           <Icone nom="avant" taille={18} classe="adresse-fleche" />
         </a>

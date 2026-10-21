@@ -23,7 +23,7 @@ if (!moi) return Astro.redirect('/connexion', 302);
 
 const client = clientSession(Astro)!;
 const { data: admin } = await client.rpc('est_admin');
-if (admin !== true) return Astro.redirect('/compte', 302);
+if (admin !== true) return Astro.redirect('/admin', 302);
 
 const cherche = (Astro.url.searchParams.get('q') ?? '').trim();
 const { data } = await client.rpc('boite_de_reception', {

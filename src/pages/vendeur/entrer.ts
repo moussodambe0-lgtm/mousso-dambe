@@ -17,15 +17,17 @@ export const POST: APIRoute = async (contexte) => {
   if (!baseConfiguree()) return contexte.redirect('/', 303);
 
   const origine = contexte.request.headers.get('origin');
-  if (origine && origine !== contexte.url.origin) return contexte.redirect('/compte', 303);
+  if (origine && origine !== contexte.url.origin) return contexte.redirect('/admin', 303);
 
   const client = clientSession(contexte as never);
   if (!client) return contexte.redirect('/connexion', 303);
 
   const { data } = await client.rpc('reclamer_admin');
   if (data?.ok) return contexte.redirect('/vendeur', 303);
-  return contexte.redirect('/compte?ok=pas-admin', 303);
+  return contexte.redirect('/admin?ok=pas-admin', 303);
 };
 
-// En GET, on ne donne rien : on renvoie simplement au compte.
-export const GET: APIRoute = (contexte) => contexte.redirect('/compte', 303);
+// En GET, on ne donne rien : on renvoie au seul ecran qui repond sur cette
+// adresse. Depuis le 21 octobre 2026, la gestion vit sur son sous-domaine, ou
+// la page du compte n'existe pas.
+export const GET: APIRoute = (contexte) => contexte.redirect('/admin', 303);

@@ -38,6 +38,13 @@ export default defineConfig({
       // reglages « cle_serveur_sha256 »). Jamais envoyée au navigateur : c'est
       // elle qui prouve qu'une commande vient bien du site et pas d'un robot.
       MD_CLE_SERVEUR: envField.string({ context: 'server', access: 'secret', optional: true }),
+      // Le sous-domaine de l'administration (décision d'Arthur du 21 octobre
+      // 2026 : l'admin est séparée de la plateforme principale). Facultative :
+      // sans elle, tout hôte commençant par « admin. » est reconnu, ce qui
+      // couvre `admin.localhost` en développement et le vrai sous-domaine le
+      // jour où le domaine sera acheté. À renseigner seulement pour un nom qui
+      // ne commence pas par « admin. ».
+      ADMIN_HOST: envField.string({ context: 'server', access: 'public', optional: true, default: '' }),
       // L'assistante passe par Ollama (décision d'Arthur, comme pour Jia).
       // Sans OLLAMA_URL, l'assistante reste simplement absente : aucune page ne
       // casse, et l'écran le dit.
@@ -85,6 +92,13 @@ export default defineConfig({
     build: {
       // Garde-fou de poids : rien de lourd ne doit partir au navigateur.
       chunkSizeWarningLimit: 80,
+    },
+    server: {
+      // En développement, l'administration s'ouvre sur `admin.localhost:4322`
+      // (les navigateurs résolvent tout `*.localhost` vers la machine). Sans
+      // cette ligne, Vite répond « Blocked request » à cet hôte, par parade
+      // contre le détournement de DNS. N'a aucun effet en production.
+      allowedHosts: ['localhost', 'admin.localhost', '127.0.0.1'],
     },
   },
 });
