@@ -380,7 +380,19 @@ async function corpsJson(requete) {
 
 async function utilisateurPar(champ, valeur) {
   await db.exec('reset role;');
-  const { rows } = await db.query(`select id, email, raw_user_meta_data from auth.users where ${champ} = $1`, [valeur]);
+  // Une adresse ne tient pas compte de la casse, et le vrai Supabase la range
+  // en minuscules avant de comparer. Le banc faisait l'inverse, en comparant
+  // caractère par caractère : un clavier verrouillé en majuscules faisait
+  // répondre « adresse ou mot de passe incorrect » pour une adresse juste
+  // (Arthur, le 21 octobre 2026 : « quand je mets l'email pour me connecter à
+  // l'admin ça ne passe pas »). Les espaces collés par un copier-coller sont
+  // retirés pour la même raison. Le mot de passe, lui, reste sensible à la
+  // casse : c'est le cas partout, et ce n'est pas au banc d'en décider.
+  const condition = champ === 'email' ? 'lower(trim(email)) = lower(trim($1))' : `${champ} = $1`;
+  const { rows } = await db.query(
+    `select id, email, raw_user_meta_data from auth.users where ${condition}`,
+    [valeur]
+  );
   return rows[0] ?? null;
 }
 
