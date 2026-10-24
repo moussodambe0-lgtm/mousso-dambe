@@ -12,6 +12,17 @@ import BoutonGoogle from '../components/BoutonGoogle.astro';
 import Alerte from '../components/Alerte.astro';
 import { clientPublic, poserSession, baseConfiguree } from '../lib/supabase';
 import { visiteuse } from '../lib/session';
+import { hoteDemande, estHoteAdmin } from '../lib/hotes';
+import { ADMIN_HOST } from 'astro:env/server';
+
+// Sur l'adresse de la gestion, on ne crée pas de compte : il n'y a qu'un
+// administrateur, nommé dans les réglages de la base. Le bouton « Je n'ai pas
+// encore de compte » menait à /ouverture, qui n'existe pas sur ce sous-domaine,
+// d'où « cette page n'est pas disponible » (Arthur, le 24 octobre 2026).
+const surHoteAdmin = estHoteAdmin(
+  hoteDemande(Astro.request.headers, Astro.url.hostname),
+  ADMIN_HOST
+);
 
 if (baseConfiguree() && (await visiteuse(Astro))) {
   return Astro.redirect('/', 302);
@@ -87,7 +98,7 @@ if (Astro.request.method === 'POST') {
       <button class="btn btn-rose btn-plein" type="submit">Me connecter</button>
 
       <p class="centre marge">
-        <a class="btn btn-texte" href="/ouverture">Je n'ai pas encore de compte</a>
+        {!surHoteAdmin && <a class="btn btn-texte" href="/ouverture">Je n'ai pas encore de compte</a>}
       </p>
     </form>
   </main>
