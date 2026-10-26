@@ -43,6 +43,7 @@ import CarteProduit from '../components/CarteProduit.astro';
 import { visiteuse, lirePanier, comptePanier } from '../lib/session';
 import { clientSession, clientPublic, baseConfiguree } from '../lib/supabase';
 import { urlAdmin } from '../lib/hotes';
+import { ETATS_CLIENTE } from '../lib/etats-commande';
 import { ADMIN_HOST } from 'astro:env/server';
 
 if (!baseConfiguree()) return Astro.redirect('/', 302);
@@ -75,12 +76,26 @@ const nombreEtat = (etats: string[]) => commandes.filter((c) => etats.includes(c
 // plutôt que de les redessiner. Les deux autres sont dessinées au trait dans
 // `Icone.astro` ; sa croix d'annulation à lui était une image de banque
 // filigranée, donc inutilisable telle quelle.
-const ETATS_COMPTE = [
-  { cle: 'preparation', mot: 'En préparation', icone: 'carton', image: null, nombre: nombreEtat(['nouvelle', 'preparee']) },
-  { cle: 'livraison', mot: 'En livraison', icone: null, image: '/icones/en-livraison.png', nombre: nombreEtat(['envoyee']) },
-  { cle: 'livree', mot: 'Livrées', icone: null, image: '/icones/livree.png', nombre: nombreEtat(['livree']) },
-  { cle: 'annulee', mot: 'Annulées', icone: 'croix-cercle', image: null, nombre: nombreEtat(['annulee']) },
-];
+// Les quatre etats, avec leur dessin. Les cles d'adresse et les regroupements
+// viennent de `src/lib/etats-commande.ts`, partage avec les pages elles-memes :
+// deux listes qui divergeraient donneraient un compteur annoncant une commande
+// introuvable. Seules les images restent ici, elles ne concernent que ce
+// bandeau (Arthur, 13 octobre 2026 : « en livraison » et « livrees » sont SES
+// images, les deux autres sont dessinees au trait).
+const DESSINS: Record<string, { icone: string | null; image: string | null }> = {
+  'en-preparation': { icone: 'carton', image: null },
+  'en-livraison': { icone: null, image: '/icones/en-livraison.png' },
+  livrees: { icone: null, image: '/icones/livree.png' },
+  annulees: { icone: 'croix-cercle', image: null },
+};
+
+const ETATS_COMPTE = ETATS_CLIENTE.map((e) => ({
+  cle: e.cle,
+  mot: e.mot,
+  icone: DESSINS[e.cle]?.icone ?? null,
+  image: DESSINS[e.cle]?.image ?? null,
+  nombre: nombreEtat(e.etats),
+}));
 
 const adresseResume = [moi.quartier, moi.repere].filter(Boolean).join(' · ');
 
@@ -160,7 +175,7 @@ const produits = produitsData ?? [];
     <section class="etats apparait" aria-label="Mes commandes">
       {
         ETATS_COMPTE.map((e) => (
-          <a class="etat" href="/commandes">
+          <a class="etat" href={`/commandes/${e.cle}`}>
             <span class="etat-rond">
               {e.image ? (
                 <img class="etat-image" src={e.image} alt="" width="28" height="28" decoding="async" />
@@ -350,11 +365,20 @@ const produits = produitsData ?? [];
   /* Les quatre états tiennent dans UN SEUL rectangle (Arthur, 13 octobre
      2026 : « tous les logos doivent être dans le même rectangle »), comme sur
      l'écran de compte de Jia. Chaque état reste touchable à l'intérieur. */
+  /* Arthur, le 26 octobre 2026 : « diminue la hauteur même du rectangle où ces
+     étapes sont alignées ». La hauteur venait du remplissage vertical (--e4,
+     en haut comme en bas) et de l'écart entre le dessin et le mot. Les deux
+     sont réduits.
+
+     Ce qui N'EST PAS touché : la taille des dessins (28 px) et des mots
+     (14,5 px), ni leur noir profond. Arthur les avait demandés « encore plus
+     grand et plus foncé » le 13 octobre, et rapetisser le contenu pour gagner
+     de la hauteur reviendrait à défaire cette demande-là. */
   .etats {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: var(--e2);
-    padding: var(--e4) var(--e2);
+    padding: var(--e3) var(--e2);
     border: 1px solid var(--bordure);
     border-radius: var(--r-carte);
     background: var(--surface);
@@ -365,7 +389,7 @@ const produits = produitsData ?? [];
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 8px;
+    gap: 5px;
     padding: 2px;
     border-radius: var(--r-champ);
     text-align: center;

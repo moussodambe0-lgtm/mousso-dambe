@@ -1,204 +1,43 @@
 ---
 /**
- * Mes commandes.
+ * Mes commandes : un aiguillage, plus une liste.
  *
- * Une commande non préparée s'annule ici. Une fois partie, elle ne s'annule
- * plus : on le dit franchement, et on explique qu'elle peut refuser le colis à
- * la livraison. Un bouton qui échoue une fois sur deux est pire que pas de
- * bouton.
+ * Arthur, le 26 octobre 2026 : « chacune de ces étapes doit mener sur une page
+ * précise distincte des autres ». Les commandes vivent donc dans quatre pages
+ * (`/commandes/en-preparation`, `en-livraison`, `livrees`, `annulees`), et
+ * cette adresse-ci n'affiche plus rien d'elle-même.
+ *
+ * Elle reste, parce que des liens pointent dessus (l'écran de confirmation, la
+ * barre de navigation, et tout ce qu'une femme a pu mettre en favori). Elle
+ * envoie vers l'onglet le plus utile : celui où se trouve quelque chose à
+ * suivre, en commençant par les colis en route, puis ce qui se prépare. Faute
+ * de quoi, le premier onglet.
+ *
+ * La page précédente faisait 230 lignes avec sa propre liste et son propre
+ * style ; tout cela vit maintenant dans `[etat].astro`, en un seul endroit.
  */
-import Base from '../layouts/Base.astro';
-import Entete from '../components/Entete.astro';
-import Icone from '../components/Icone.astro';
-import Alerte from '../components/Alerte.astro';
 import { clientSession, baseConfiguree } from '../lib/supabase';
-import { visiteuse, lirePanier, comptePanier } from '../lib/session';
-import { prix, dateLongue, messageErreur } from '../lib/format';
+import { visiteuse } from '../lib/session';
+import { ETATS_CLIENTE } from '../lib/etats-commande';
+
+export const prerender = false;
 
 if (!baseConfiguree()) return Astro.redirect('/', 302);
 const moi = await visiteuse(Astro);
 if (!moi) return Astro.redirect('/connexion', 302);
 
 const client = clientSession(Astro)!;
-let erreur = '';
-let message = '';
-
-if (Astro.request.method === 'POST') {
-  const f = await Astro.request.formData();
-  const numero = String(f.get('numero') ?? '');
-  const { data, error } = await client.rpc('annuler_ma_commande', { p_numero: numero });
-  if (error || !data?.ok) erreur = messageErreur(data?.erreur);
-  else return Astro.redirect('/commandes?ok=annule', 303);
-}
-
-if (Astro.url.searchParams.get('ok') === 'annule') message = 'Ta commande est annulée.';
-
 const { data: brutes } = await client.rpc('mes_commandes');
-const commandes = (brutes ?? []) as {
-  numero: string;
-  etat: string;
-  total: number;
-  cree_le: string;
-  quartier: string;
-  articles: { nom: string; taille: string | null; quantite: number; total: number }[];
-}[];
+const commandes = (brutes ?? []) as { etat: string }[];
 
-const ETATS: Record<string, { mot: string; classe: string; dit: string }> = {
-  nouvelle: { mot: 'Reçue', classe: 'pastille-rose', dit: 'On prépare ton colis.' },
-  preparee: { mot: 'Préparée', classe: 'pastille-rose', dit: 'Ton colis est prêt, le livreur passe le prendre.' },
-  envoyee: { mot: 'En route', classe: 'pastille-violette', dit: 'Le livreur a ton colis. Il appelle avant de passer.' },
-  livree: { mot: 'Livrée', classe: 'pastille-verte', dit: 'Livrée. Merci.' },
-  annulee: { mot: 'Annulée', classe: 'pastille-neutre', dit: 'Cette commande est annulée.' },
-};
+const aQuelqueChose = (cles: string[]) => commandes.some((c) => cles.includes(c.etat));
 
-const panier = comptePanier(lirePanier(Astro));
+// L'ordre de priorité : ce qui est en route d'abord, c'est ce qu'on vient
+// regarder ; puis ce qui se prépare ; puis l'historique.
+const ORDRE = ['en-livraison', 'en-preparation', 'livrees', 'annulees'];
+const premierUtile =
+  ORDRE.map((cle) => ETATS_CLIENTE.find((e) => e.cle === cle))
+    .find((e) => e && aQuelqueChose(e.etats))?.cle ?? ETATS_CLIENTE[0].cle;
+
+return Astro.redirect(`/commandes/${premierUtile}`, 302);
 ---
-
-<Base titre="Mes commandes" nav="compte" panier={panier}>
-  <main class="page">
-    <Entete titre="Mes commandes" retour="/compte" />
-
-    {message && <div class="marge-bas"><Alerte type="reussite" texte={message} /></div>}
-    {erreur && <div class="marge-bas"><Alerte type="erreur" texte={erreur} /></div>}
-
-    {
-      commandes.length === 0 ? (
-        <div class="etat-vide apparait">
-          <Icone nom="colis" taille={38} />
-          <h2>Aucune commande</h2>
-          <p>Tes serviettes et tes culottes t'attendent dans la boutique.</p>
-          <a class="btn btn-rose" href="/boutique">Voir la boutique</a>
-        </div>
-      ) : (
-        <div class="liste">
-          {commandes.map((c) => (
-            <section class="carte bloc commande apparait">
-              <div class="haut-commande">
-                <div>
-                  {/* Le numéro de commande ne s'affiche plus (Arthur, le
-                      26 octobre 2026 : « au niveau des commandes il y a ces
-                      numéros là, supprime ça »). Il continue d'exister et de
-                      voyager dans le champ caché du bouton d'annulation, juste
-                      en dessous : c'est lui qui dit à la base QUELLE commande
-                      annuler. Seul l'affichage disparaît.
-
-                      La date reste, et c'est elle qui permet désormais de
-                      reconnaître une commande parmi plusieurs. */}
-                  <div class="gris">{dateLongue(c.cree_le)}</div>
-                </div>
-                <span class:list={['pastille', ETATS[c.etat]?.classe ?? 'pastille-neutre']}>
-                  {ETATS[c.etat]?.mot ?? c.etat}
-                </span>
-              </div>
-
-              <ul class="articles">
-                {c.articles.map((a) => (
-                  <li>
-                    <span>
-                      {a.nom}
-                      {a.taille ? ` · ${a.taille}` : ''}
-                      {a.quantite > 1 ? ` × ${a.quantite}` : ''}
-                    </span>
-                    <span class="chiffre">{prix(a.total)}</span>
-                  </li>
-                ))}
-              </ul>
-
-              <div class="bas-commande">
-                <div>
-                  <div class="gris">Livrée à {c.quartier}</div>
-                  <div class="total chiffre">{prix(c.total)} FCFA</div>
-                </div>
-                {c.etat === 'nouvelle' && (
-                  <form method="POST" class="pousse">
-                    <input type="hidden" name="numero" value={c.numero} />
-                    <button class="btn btn-contour btn-petit" type="submit">Annuler</button>
-                  </form>
-                )}
-              </div>
-
-              <p class="dit">{ETATS[c.etat]?.dit ?? ''}</p>
-            </section>
-          ))}
-        </div>
-      )
-    }
-
-    <div class="espace"></div>
-  </main>
-</Base>
-
-<style>
-  .liste {
-    display: flex;
-    flex-direction: column;
-    gap: var(--e3);
-  }
-
-  .haut-commande {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: var(--e3);
-  }
-
-  .gris {
-    font-size: 14px;
-    color: var(--texte-3);
-  }
-
-  .articles {
-    list-style: none;
-    margin: var(--e3) 0;
-    padding: var(--e3) 0;
-    border-top: 1px solid var(--bordure);
-    border-bottom: 1px solid var(--bordure);
-  }
-
-  .articles li {
-    display: flex;
-    justify-content: space-between;
-    gap: var(--e3);
-    padding: 3px 0;
-    font-size: 15px;
-    color: var(--texte-2);
-  }
-
-  .articles .chiffre {
-    font-size: 15px;
-    font-weight: 600;
-    color: var(--encre);
-    flex: none;
-  }
-
-  .bas-commande {
-    display: flex;
-    align-items: center;
-    gap: var(--e3);
-  }
-
-  .total {
-    font-size: 20px;
-    color: var(--rose);
-  }
-
-  .btn-petit {
-    min-height: 40px;
-    padding: 0 var(--e3);
-    font-size: 15px;
-  }
-
-  .dit {
-    margin-top: var(--e2);
-    font-size: 14px;
-    color: var(--texte-3);
-  }
-
-  .marge-bas {
-    margin-bottom: var(--e3);
-  }
-
-  .etat-vide :global(svg) {
-    color: var(--texte-3);
-  }
-</style>

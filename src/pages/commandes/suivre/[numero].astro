@@ -1,0 +1,347 @@
+---
+/**
+ * Suivre une commande.
+ *
+ * Arthur, le 26 octobre 2026 : « au niveau de compte mes commandes il doit
+ * avoir un bouton suivre mes commandes pour suivre les commandes ; les étapes
+ * doivent être affichées ; une maps pour suivre l'avancée du livreur ; option
+ * écrire à la boutique, option annuler ; et les étapes de la livraison qui sont
+ * remplies et celles qui restent. »
+ *
+ * CE QUI EST FAIT ICI : les étapes franchies et celles qui restent, écrire à la
+ * boutique, annuler.
+ *
+ * CE QUI N'EST PAS FAIT, ET POURQUOI : la carte du livreur. Il n'existe aucune
+ * notion de livreur dans Mousso Dambé, ni table, ni position : le mot
+ * n'apparaît que dans des commentaires. Il faudrait d'abord qu'un livreur
+ * existe et partage sa position. Et une bibliothèque de cartes pèse environ
+ * 140 Ko quand toute l'application en envoie 2,4 Ko au navigateur, sur de la 3G
+ * comptée. Le jour venu, le chemin le plus honnête sera un lien qui ouvre
+ * l'application de cartes du téléphone, pas une carte embarquée.
+ *
+ * La commande est lue parmi les siennes (`mes_commandes`), pas par une requête
+ * ouverte sur un numéro : les règles d'accès de la base font qu'elle ne voit
+ * que les siennes, et un numéro deviné ne donne donc rien.
+ */
+import Base from '../../../layouts/Base.astro';
+import Entete from '../../../components/Entete.astro';
+import Icone from '../../../components/Icone.astro';
+import Alerte from '../../../components/Alerte.astro';
+import { clientSession, baseConfiguree } from '../../../lib/supabase';
+import { visiteuse, lirePanier, comptePanier } from '../../../lib/session';
+import { prix, dateLongue, messageErreur } from '../../../lib/format';
+import { pageDeLEtat, ETATS_CLIENTE } from '../../../lib/etats-commande';
+
+export const prerender = false;
+
+if (!baseConfiguree()) return Astro.redirect('/', 302);
+const moi = await visiteuse(Astro);
+if (!moi) return Astro.redirect('/connexion', 302);
+
+const client = clientSession(Astro)!;
+let erreur = '';
+
+if (Astro.request.method === 'POST') {
+  const f = await Astro.request.formData();
+  const { data, error } = await client.rpc('annuler_ma_commande', {
+    p_numero: String(f.get('numero') ?? ''),
+  });
+  if (error || !data?.ok) erreur = messageErreur(data?.erreur);
+  else return Astro.redirect('/commandes/annulees?ok=annule', 303);
+}
+
+const { data: brutes } = await client.rpc('mes_commandes');
+const toutes = (brutes ?? []) as {
+  numero: string;
+  etat: string;
+  total: number;
+  cree_le: string;
+  quartier: string;
+  articles: { nom: string; taille: string | null; quantite: number; total: number }[];
+}[];
+
+const commande = toutes.find((c) => c.numero === Astro.params.numero);
+// Un numéro qui n'est pas le sien, ou qui n'existe pas : on ne le dit pas
+// autrement qu'en la ramenant à sa liste. Répondre « cette commande n'existe
+// pas » renseignerait quelqu'un qui essaie des numéros au hasard.
+if (!commande) return Astro.redirect(`/commandes/${ETATS_CLIENTE[0].cle}`, 302);
+
+/**
+ * Le chemin normal d'un colis. L'annulation n'en fait pas partie : c'est une
+ * sortie de route, pas une étape, et l'afficher dans la file donnerait à croire
+ * que toute commande finit par être annulée.
+ */
+const CHEMIN = [
+  { etat: 'nouvelle', mot: 'Commande reçue', dit: 'On a ta commande.' },
+  { etat: 'preparee', mot: 'Colis préparé', dit: 'Emballage neutre, rien n’est écrit dessus.' },
+  { etat: 'envoyee', mot: 'En livraison', dit: 'Le livreur a ton colis.' },
+  { etat: 'livree', mot: 'Livrée', dit: 'Tu as payé à la remise.' },
+];
+
+const annulee = commande.etat === 'annulee';
+const place = CHEMIN.findIndex((e) => e.etat === commande.etat);
+const page = pageDeLEtat(commande.etat);
+const panier = comptePanier(lirePanier(Astro));
+---
+
+<Base titre="Suivre ma commande" nav="compte" panier={panier}>
+  <main class="page">
+    <Entete titre="Suivre ma commande" retour={`/commandes/${page?.cle ?? ETATS_CLIENTE[0].cle}`} />
+
+    {erreur && <div class="marge-bas"><Alerte type="erreur" texte={erreur} /></div>}
+
+    <p class="quand">Commandée le {dateLongue(commande.cree_le)}</p>
+
+    {
+      annulee ? (
+        <div class="annulee apparait">
+          <Icone nom="croix-cercle" taille={34} />
+          <h2>Commande annulée</h2>
+          <p>Elle n'a pas été livrée, et tu n'as rien payé.</p>
+        </div>
+      ) : (
+        /* Les étapes franchies et celles qui restent. La file est une liste
+           ordonnée : un lecteur d'écran annonce « 2 sur 4 », et chaque étape
+           dit elle-même où elle en est plutôt que de compter sur la couleur. */
+        <ol class="file apparait">
+          {CHEMIN.map((e, i) => {
+            const faite = i <= place;
+            const courante = i === place;
+            return (
+              <li class:list={['pas', faite && 'pas-fait', courante && 'pas-courant']}>
+                <span class="pas-puce" aria-hidden="true">
+                  {faite ? <Icone nom="coche" taille={15} /> : <i class="pas-point"></i>}
+                </span>
+                <span class="pas-corps">
+                  <b>{e.mot}</b>
+                  <small>{courante ? e.dit : faite ? 'Fait' : 'À venir'}</small>
+                </span>
+              </li>
+            );
+          })}
+        </ol>
+      )
+    }
+
+    <section class="carte bloc recap">
+      <ul class="articles">
+        {commande.articles.map((a) => (
+          <li>
+            <span>
+              {a.nom}
+              {a.taille ? ` · ${a.taille}` : ''}
+              {a.quantite > 1 ? ` × ${a.quantite}` : ''}
+            </span>
+            <span class="chiffre">{prix(a.total)}</span>
+          </li>
+        ))}
+      </ul>
+      <div class="total-ligne">
+        <span class="gris">Livrée à {commande.quartier}</span>
+        <span class="total chiffre">{prix(commande.total)} FCFA</span>
+      </div>
+    </section>
+
+    <div class="boutons">
+      {/* Écrire à la boutique arrive sur le fil existant, celui que la page
+          Discussions ouvre déjà : une commande n'a pas son fil à elle, sinon
+          elle se retrouverait avec autant de conversations que de commandes. */}
+      <a class="btn btn-contour btn-plein" href="/discussions/boutique">
+        <Icone nom="bulles" taille={18} />
+        Écrire à la boutique
+      </a>
+
+      {commande.etat === 'nouvelle' && (
+        <form method="POST">
+          <input type="hidden" name="numero" value={commande.numero} />
+          <button class="btn btn-texte btn-plein" type="submit">Annuler cette commande</button>
+        </form>
+      )}
+    </div>
+
+    {
+      commande.etat === 'envoyee' && (
+        /* La carte du livreur viendra ici. En attendant, on ne fait pas semblant
+           avec une image de carte figée : on dit ce qu'on sait. */
+        <p class="bientot">Le suivi du livreur sur une carte arrive bientôt.</p>
+      )
+    }
+  </main>
+</Base>
+
+<style>
+  .quand {
+    margin-bottom: var(--e4);
+    font-size: 14px;
+    color: var(--texte-3);
+  }
+
+  /* --- La file des étapes --- */
+  .file {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin-bottom: var(--e4);
+    padding: 0;
+    list-style: none;
+  }
+
+  .pas {
+    position: relative;
+    display: flex;
+    gap: var(--e3);
+    align-items: flex-start;
+    padding-bottom: var(--e4);
+  }
+
+  /* Le trait qui relie les étapes, derrière les puces. Il ne descend pas sous
+     la dernière, sinon la file semblerait continuer après la livraison. */
+  .pas:not(:last-child)::before {
+    content: '';
+    position: absolute;
+    top: 22px;
+    left: 10px;
+    width: 2px;
+    bottom: 0;
+    background: var(--bordure);
+  }
+
+  .pas-fait:not(:last-child)::before {
+    background: var(--rose);
+  }
+
+  .pas-puce {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 2px solid var(--bordure);
+    background: var(--surface);
+    color: #fff;
+    z-index: 1;
+  }
+
+  .pas-fait .pas-puce {
+    border-color: var(--rose);
+    background: var(--rose);
+  }
+
+  .pas-point {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--bordure-forte);
+  }
+
+  .pas-corps {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-top: 1px;
+  }
+
+  .pas-corps b {
+    font-size: 15.5px;
+    font-weight: 700;
+    color: var(--texte-2);
+  }
+
+  .pas-fait .pas-corps b {
+    color: var(--encre);
+  }
+
+  /* L'étape en cours est la seule à être pleinement lisible : c'est là qu'on
+     veut que l'oeil tombe. */
+  .pas-courant .pas-corps b {
+    font-weight: 800;
+  }
+
+  .pas-corps small {
+    font-size: 13.5px;
+    line-height: 1.45;
+    color: var(--texte-3);
+  }
+
+  .pas-courant .pas-corps small {
+    color: var(--rose-fonce);
+    font-weight: 600;
+  }
+
+  /* --- La commande annulée --- */
+  .annulee {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--e2);
+    margin-bottom: var(--e4);
+    padding: var(--e5) var(--e4);
+    border: 1px dashed var(--bordure-forte);
+    border-radius: var(--r-carte);
+    text-align: center;
+    color: var(--texte-2);
+  }
+
+  .annulee h2 {
+    font-family: var(--titre);
+    font-size: 19px;
+    font-weight: 800;
+    color: var(--encre);
+  }
+
+  /* --- Le récapitulatif --- */
+  .recap {
+    display: flex;
+    flex-direction: column;
+    gap: var(--e3);
+  }
+
+  .articles {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 0;
+    list-style: none;
+  }
+
+  .articles li {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--e2);
+    font-size: 15px;
+  }
+
+  .total-ligne {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--e2);
+    padding-top: var(--e2);
+    border-top: 1px solid var(--bordure);
+  }
+
+  .gris {
+    font-size: 14px;
+    color: var(--texte-3);
+  }
+
+  .total {
+    font-size: 17px;
+    font-weight: 800;
+  }
+
+  .boutons {
+    display: flex;
+    flex-direction: column;
+    gap: var(--e2);
+    margin-top: var(--e4);
+  }
+
+  .bientot {
+    margin-top: var(--e3);
+    font-size: 13.5px;
+    color: var(--texte-3);
+    text-align: center;
+  }
+</style>

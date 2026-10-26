@@ -1,0 +1,319 @@
+---
+/**
+ * Mes commandes, une page par état.
+ *
+ * Arthur, le 26 octobre 2026 : « chacune de ces étapes doit mener sur une page
+ * précise distincte des autres, et si le colis est dans une étape, seule
+ * l'étape affiche des infos. »
+ *
+ * Quatre adresses : /commandes/en-preparation, /commandes/en-livraison,
+ * /commandes/livrees, /commandes/annulees. Une page a une adresse, le bouton
+ * retour du téléphone fonctionne, et on sait toujours où on est. C'est la même
+ * décision qu'il avait prise sur son autre application : une vraie page par
+ * état plutôt qu'un filtre sur place.
+ *
+ * Le découpage des états vit dans `src/lib/etats-commande.ts`, partagé avec le
+ * bandeau de la page Compte : deux listes qui divergeraient donneraient un
+ * compteur annonçant une commande introuvable.
+ *
+ * Les onglets restent visibles sur chaque page, avec leurs compteurs : c'est ce
+ * qui permet de passer d'un état à l'autre sans repasser par le compte.
+ */
+import Base from '../../layouts/Base.astro';
+import Entete from '../../components/Entete.astro';
+import Icone from '../../components/Icone.astro';
+import Alerte from '../../components/Alerte.astro';
+import { clientSession, baseConfiguree } from '../../lib/supabase';
+import { visiteuse, lirePanier, comptePanier } from '../../lib/session';
+import { prix, dateLongue, messageErreur } from '../../lib/format';
+import { ETATS_CLIENTE, etatParCle } from '../../lib/etats-commande';
+
+export const prerender = false;
+
+if (!baseConfiguree()) return Astro.redirect('/', 302);
+const moi = await visiteuse(Astro);
+if (!moi) return Astro.redirect('/connexion', 302);
+
+// Une adresse qui ne correspond à aucun état mène à la première page, plutôt
+// qu'à une page introuvable : elle a peut-être suivi un lien devenu faux.
+const page = etatParCle(Astro.params.etat);
+if (!page) return Astro.redirect(`/commandes/${ETATS_CLIENTE[0].cle}`, 302);
+
+const client = clientSession(Astro)!;
+let message = '';
+let erreur = '';
+
+if (Astro.request.method === 'POST') {
+  const f = await Astro.request.formData();
+  const numero = String(f.get('numero') ?? '');
+  const { data, error } = await client.rpc('annuler_ma_commande', { p_numero: numero });
+  if (error || !data?.ok) erreur = messageErreur(data?.erreur);
+  // Après une annulation, la commande a changé de page : on l'envoie là où elle
+  // est désormais, sinon elle verrait sa liste inchangée et croirait à un échec.
+  else return Astro.redirect('/commandes/annulees?ok=annule', 303);
+}
+
+if (Astro.url.searchParams.get('ok') === 'annule') message = 'Ta commande est annulée.';
+
+const { data: brutes } = await client.rpc('mes_commandes');
+const toutes = (brutes ?? []) as {
+  numero: string;
+  etat: string;
+  total: number;
+  cree_le: string;
+  quartier: string;
+  articles: { nom: string; taille: string | null; quantite: number; total: number }[];
+}[];
+
+const commandes = toutes.filter((c) => page.etats.includes(c.etat));
+const compteur = (cles: string[]) => toutes.filter((c) => cles.includes(c.etat)).length;
+
+// Ce que chaque état dit, sans annoncer de délai : il n'y a pas encore d'équipe
+// logistique pour tenir une promesse d'heure ou de jour.
+const DIT: Record<string, string> = {
+  nouvelle: 'On prépare ton colis.',
+  preparee: 'Ton colis est prêt. Il part bientôt.',
+  envoyee: 'Le livreur a ton colis.',
+  livree: 'Livrée. Merci.',
+  annulee: 'Cette commande est annulée.',
+};
+
+const panier = comptePanier(lirePanier(Astro));
+---
+
+<Base titre={`Mes commandes · ${page.mot}`} nav="compte" panier={panier}>
+  <main class="page">
+    <Entete titre="Mes commandes" retour="/compte" />
+
+    {/* Les onglets : chacun est une vraie page, donc un vrai lien. L'onglet
+        courant n'est pas un lien vers lui-même, il porte `aria-current`. */}
+    <nav class="onglets" aria-label="États de mes commandes">
+      {
+        ETATS_CLIENTE.map((e) => {
+          const n = compteur(e.etats);
+          const actif = e.cle === page.cle;
+          return (
+            <a
+              class:list={['onglet', actif && 'onglet-actif']}
+              href={`/commandes/${e.cle}`}
+              aria-current={actif ? 'page' : undefined}
+            >
+              {e.mot}
+              {n > 0 && <span class="onglet-nombre">{n}</span>}
+            </a>
+          );
+        })
+      }
+    </nav>
+
+    {message && <div class="marge-bas"><Alerte type="reussite" texte={message} /></div>}
+    {erreur && <div class="marge-bas"><Alerte type="erreur" texte={erreur} /></div>}
+
+    {
+      commandes.length === 0 ? (
+        <div class="etat-vide apparait">
+          <Icone nom="colis" taille={38} />
+          <h2>{page.mot}</h2>
+          <p>{page.vide}</p>
+          <a class="btn btn-rose" href="/boutique">Voir la boutique</a>
+        </div>
+      ) : (
+        <div class="liste">
+          {commandes.map((c) => (
+            <section class="carte bloc commande apparait">
+              <div class="haut-commande">
+                <div class="gris">{dateLongue(c.cree_le)}</div>
+                <a class="suivre" href={`/commandes/suivre/${c.numero}`}>
+                  Suivre
+                  <Icone nom="avant" taille={16} />
+                </a>
+              </div>
+
+              <ul class="articles">
+                {c.articles.map((a) => (
+                  <li>
+                    <span>
+                      {a.nom}
+                      {a.taille ? ` · ${a.taille}` : ''}
+                      {a.quantite > 1 ? ` × ${a.quantite}` : ''}
+                    </span>
+                    <span class="chiffre">{prix(a.total)}</span>
+                  </li>
+                ))}
+              </ul>
+
+              <div class="bas-commande">
+                <div>
+                  <div class="gris">Livrée à {c.quartier}</div>
+                  <div class="total chiffre">{prix(c.total)} FCFA</div>
+                </div>
+                {c.etat === 'nouvelle' && (
+                  <form method="POST" class="pousse">
+                    <input type="hidden" name="numero" value={c.numero} />
+                    <button class="btn btn-contour btn-petit" type="submit">Annuler</button>
+                  </form>
+                )}
+              </div>
+
+              <p class="dit">{DIT[c.etat] ?? ''}</p>
+            </section>
+          ))}
+        </div>
+      )
+    }
+  </main>
+</Base>
+
+<style>
+  /* Les onglets défilent horizontalement : quatre mots français avec leurs
+     compteurs ne tiennent pas sur 390 px, et les couper en deux lignes ferait
+     sauter la page à chaque changement d'onglet. */
+  .onglets {
+    display: flex;
+    gap: var(--e2);
+    margin-bottom: var(--e4);
+    overflow-x: auto;
+    scrollbar-width: none;
+    /* Le bandeau touche les bords de l'écran, mais les onglets gardent leur
+       marge : sans cela, le premier colle au bord en défilant. */
+    padding: 2px var(--e1);
+    margin-left: calc(var(--e1) * -1);
+    margin-right: calc(var(--e1) * -1);
+  }
+
+  .onglets::-webkit-scrollbar {
+    display: none;
+  }
+
+  .onglet {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex: none;
+    padding: 8px 14px;
+    border: 1px solid var(--bordure);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--texte-2);
+    font-size: 14px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .onglet-actif {
+    border-color: transparent;
+    background: var(--rose);
+    color: #fff;
+  }
+
+  .onglet-nombre {
+    display: grid;
+    place-items: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: var(--rose-clair);
+    color: var(--rose-fonce);
+    font-size: 12px;
+    font-weight: 800;
+  }
+
+  .onglet-actif .onglet-nombre {
+    background: rgba(255, 255, 255, 0.28);
+    color: #fff;
+  }
+
+  .liste {
+    display: flex;
+    flex-direction: column;
+    gap: var(--e3);
+  }
+
+  .commande {
+    display: flex;
+    flex-direction: column;
+    gap: var(--e3);
+  }
+
+  .haut-commande {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--e3);
+  }
+
+  .gris {
+    font-size: 14px;
+    color: var(--texte-3);
+  }
+
+  .suivre {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    flex: none;
+    color: var(--rose);
+    font-size: 14.5px;
+    font-weight: 700;
+  }
+
+  .articles {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 0;
+    list-style: none;
+  }
+
+  .articles li {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--e2);
+    font-size: 15px;
+  }
+
+  .bas-commande {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--e3);
+    padding-top: var(--e2);
+    border-top: 1px solid var(--bordure);
+  }
+
+  .total {
+    font-size: 17px;
+    font-weight: 800;
+  }
+
+  .pousse {
+    flex: none;
+  }
+
+  .dit {
+    font-size: 14px;
+    color: var(--texte-2);
+  }
+
+  .etat-vide {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--e2);
+    padding: var(--e6) var(--e4);
+    text-align: center;
+    color: var(--texte-2);
+  }
+
+  .etat-vide h2 {
+    font-family: var(--titre);
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--encre);
+  }
+
+  .etat-vide .btn {
+    margin-top: var(--e3);
+  }
+</style>
