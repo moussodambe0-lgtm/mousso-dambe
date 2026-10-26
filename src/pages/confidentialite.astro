@@ -31,7 +31,10 @@ if (Astro.request.method === 'POST') {
   if (String(f.get('confirme') ?? '') === 'oui') {
     const { data, error } = await client.rpc('effacer_mes_donnees');
     if (error || !data?.ok) erreur = messageErreur(data?.erreur);
-    else return Astro.redirect('/compte?efface=1', 303);
+    // Le nombre de commandes encore en route voyage dans l'adresse : la page
+    // d'arrivée doit pouvoir dire ce qui n'a PAS pu être effacé, sinon la
+    // promesse « rien ne pourra être récupéré » serait fausse pour elles.
+    else return Astro.redirect(`/compte?efface=1&enroute=${Number(data.livraisons_en_cours ?? 0)}`, 303);
   }
 }
 
@@ -138,7 +141,7 @@ const panier = comptePanier(lirePanier(Astro));
           <>
             <Alerte
               type="erreur"
-              texte="Ton journal, tes cycles, tes questions à Dambé et ta conversation avec le médecin, vocaux compris, seront effacés définitivement. Il n'y a pas de corbeille, rien ne pourra être récupéré."
+              texte="Ton journal, tes cycles, tes questions à Dambé, ta conversation avec le médecin, vocaux compris, ton numéro, ton quartier et le point de ta position seront effacés définitivement. Il n'y a pas de corbeille, rien ne pourra être récupéré."
             />
             <form method="POST" class="marge">
               <input type="hidden" name="confirme" value="oui" />
@@ -151,8 +154,9 @@ const panier = comptePanier(lirePanier(Astro));
         ) : (
           <>
             <p class="doux">
-              Tu peux effacer ton journal, tes cycles, tes questions à Dambé et ta conversation avec le médecin, vocaux compris. Tes commandes déjà passées sont gardées :
-              elles servent de preuve d'achat, pour toi comme pour nous.
+              Tu peux effacer ton journal, tes cycles, tes questions à Dambé et ta conversation avec le médecin, vocaux compris, avec ton numéro, ton quartier
+              et le point de ta position. Tes commandes déjà passées restent dans ta liste, elles servent de preuve d'achat, mais l'adresse qu'elles gardaient
+              s'en va aussi. Une commande encore en route garde la sienne jusqu'à la livraison : sans elle, le livreur n'a plus où aller.
             </p>
             <a class="btn btn-contour btn-plein marge" href="/confidentialite?effacer=1">
               <Icone nom="poubelle" taille={19} />

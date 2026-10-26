@@ -39,6 +39,7 @@
 import Base from '../layouts/Base.astro';
 import Avatar from '../components/Avatar.astro';
 import Icone from '../components/Icone.astro';
+import Alerte from '../components/Alerte.astro';
 import CarteProduit from '../components/CarteProduit.astro';
 import { visiteuse, lirePanier, comptePanier } from '../lib/session';
 import { clientSession, clientPublic, baseConfiguree } from '../lib/supabase';
@@ -110,10 +111,34 @@ const { data: produitsData } = await clientPublic(Astro)
   .order('ordre')
   .limit(6);
 const produits = produitsData ?? [];
+
+// Le retour de « Effacer mes données ». Jusqu'au 26 octobre 2026, elle appuyait
+// sur « Oui, efface tout », arrivait ici, et RIEN ne lui disait que c'était
+// fait : l'écran d'après ressemblait à l'écran d'avant. Sur l'action la plus
+// définitive de l'application, et souvent faite dans l'urgence parce que
+// quelqu'un va prendre le téléphone, c'est le pire endroit pour se taire.
+//
+// Le nombre de commandes encore en route vient de la fonction qui a effacé :
+// leur adresse est la seule chose qui reste, et l'écran le dit plutôt que de
+// laisser croire que tout est parti.
+const efface = Astro.url.searchParams.get('efface') === '1';
+const enRoute = Math.max(0, Math.trunc(Number(Astro.url.searchParams.get('enroute') ?? 0)) || 0);
+const messageEfface = !efface
+  ? ''
+  : enRoute === 0
+    ? `C'est effacé. Ton journal, tes cycles, tes questions à Dambé, ta conversation avec le médecin et ton adresse ne sont plus là.`
+    : enRoute === 1
+      ? `C'est effacé. Ta commande encore en route garde son adresse jusqu'à la livraison, sinon le livreur n'aurait plus où aller. Elle partira dès qu'elle sera livrée.`
+      : `C'est effacé. Tes ${enRoute} commandes encore en route gardent leur adresse jusqu'à la livraison, sinon le livreur n'aurait plus où aller. Elles partiront dès qu'elles seront livrées.`;
 ---
 
 <Base titre="Mon compte" nav="compte" panier={panier}>
   <main class="page">
+    {messageEfface && (
+      <div class="marge-bas">
+        <Alerte type="reussite" texte={messageEfface} />
+      </div>
+    )}
     {/* Ni flèche de retour, ni titre « Mon compte » (Arthur, 13 octobre
         2026) : on entre ici par l'onglet du bas et on en sort pareil, et le
         nom écrit en grand dit déjà chez qui on est. L'identité monte donc
@@ -265,6 +290,12 @@ const produits = produitsData ?? [];
 </Base>
 
 <style>
+  /* L'écart sous le message de confirmation d'effacement. Comme dans
+     confidentialite.astro : cette classe n'est pas globale. */
+  .marge-bas {
+    margin-bottom: var(--e3);
+  }
+
   .identite {
     display: flex;
     align-items: center;

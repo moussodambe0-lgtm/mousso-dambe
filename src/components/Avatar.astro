@@ -37,9 +37,23 @@ interface Props {
   contour?: boolean;
   morph?: boolean;
   titre?: string;
+  /**
+   * Charger l'image seulement quand elle approche de l'écran.
+   *
+   * Posé par la galerie (`/compte/avatar`) depuis le 26 octobre 2026 : elle
+   * montre 62 portraits, soit 1 Mo d'images. Sur un forfait compté en 3G, les
+   * télécharger tous à l'ouverture de la page coûterait à une femme l'essentiel
+   * de ce qu'elle a acheté, pour voir six vignettes. Un portrait déjà à l'écran
+   * est chargé tout de suite malgré cet attribut : le navigateur ne diffère que
+   * ce qui est en dessous.
+   *
+   * Laissé à faux partout ailleurs : l'avatar de l'en-tête est la première
+   * chose qu'on voit, il ne doit pas apparaître après le reste.
+   */
+  differe?: boolean;
 }
 
-const { fichier, prenom = '', taille = 48, contour = true, morph = false, titre } = Astro.props;
+const { fichier, prenom = '', taille = 48, contour = true, morph = false, titre, differe = false } = Astro.props;
 
 const etiquette = titre ?? (prenom ? `Photo de profil de ${prenom}` : 'Photo de profil');
 ---
@@ -50,7 +64,14 @@ const etiquette = titre ?? (prenom ? `Photo de profil de ${prenom}` : 'Photo de 
 >
   {
     fichier ? (
-      <img src={`/avatars/${fichier}`} alt={etiquette} width={taille} height={taille} />
+      <img
+        src={`/avatars/${fichier}`}
+        alt={etiquette}
+        width={taille}
+        height={taille}
+        loading={differe ? 'lazy' : 'eager'}
+        decoding={differe ? 'async' : 'auto'}
+      />
     ) : (
       <Icone nom="compte" taille={Math.round(taille * 0.56)} titre={etiquette} />
     )

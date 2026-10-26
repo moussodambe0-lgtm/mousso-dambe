@@ -10,6 +10,8 @@
  *   3. une position hors du Burkina faisait passer une commande sans adresse ;
  *   4. un numéro avec l'indicatif du pays était refusé ;
  *   5. « Effacer mes données » gardait les réponses du questionnaire ;
+ *   5 bis. et gardait l'adresse, le numéro et la position GPS, dans le
+ *      profil comme dans chaque commande déjà livrée ;
  *   6. le message d'erreur de Postgres sortait de la fonction.
  */
 import { nouvelleBase, commeApi, commeServeur, nouveauCompte, verifier, bilan, titre } from './banc.mjs';
@@ -293,6 +295,104 @@ titre('5. « Effacer mes données » tient toute la promesse de la page');
 }
 
 // ---------------------------------------------------------------------------
+titre('5 bis. L adresse et la position partent aussi, commandes comprises');
+// ---------------------------------------------------------------------------
+// Décision d'Arthur du 26 octobre 2026 : « tout effacer, commandes comprises ».
+// Cyber avait laissé les deux chemins ouverts dans la migration 180000 ; c'est
+// le premier qui a été retenu. La seule chose qui reste est l'adresse d'une
+// commande ENCORE EN ROUTE, sans quoi le livreur n'aurait plus où aller : elle
+// est comptée et renvoyée, pour que l'écran le dise au lieu de le taire.
+{
+  await commeServeur(db, `delete from public.quotas`);
+  const sira = await nouveauCompte(db, 'sira', 'Sira');
+  const S = api(sira);
+
+  const adr = await S(`select public.enregistrer_adresse('Sira K','70112233','Dassasgho','derriere la pharmacie',12.37,-1.52) r`);
+  verifier('l adresse est enregistrée', adr.rows[0].r?.ok === true, j(adr.rows[0].r));
+
+  await commeServeur(db, `delete from public.quotas`);
+  const c1 = await commander(S, panier(1), 'Sira K', '70112233', 12.37, -1.52);
+  verifier('une première commande passe', c1.rows[0].r?.ok === true, j(c1.rows[0].r));
+  await commeServeur(db, `delete from public.quotas`);
+  const c2 = await commander(S, panier(2), 'Sira K', '70112233', 12.37, -1.52);
+  verifier('une deuxième commande passe', c2.rows[0].r?.ok === true, j(c2.rows[0].r));
+
+  // La première est livrée, la seconde est encore en route.
+  const nums = (await commeServeur(db,
+    `select numero from public.commandes where profil_id=$1 order by cree_le`, [sira])).rows;
+  verifier('les deux commandes sont en base', nums.length === 2, j(nums.length));
+  await commeServeur(db, `update public.commandes set etat='livree', livree_le=now() where numero=$1`, [nums[0].numero]);
+  await commeServeur(db, `update public.commandes set etat='envoyee' where numero=$1`, [nums[1].numero]);
+
+  const avant = (await commeServeur(db, `
+    select (select telephone from public.profils where id=$1) tel,
+           (select quartier from public.profils where id=$1) quartier,
+           (select position_lat from public.profils where id=$1) lat,
+           (select telephone from public.commandes where numero=$2) tel_livree,
+           (select position_lat from public.commandes where numero=$2) lat_livree`,
+    [sira, nums[0].numero])).rows[0];
+  verifier('le profil porte bien son numéro, son quartier et sa position',
+    avant.tel === '70112233' && avant.quartier === 'Dassasgho' && avant.lat !== null, j(avant));
+  verifier('et la commande livrée en garde une copie',
+    avant.tel_livree === '70112233' && avant.lat_livree !== null, j(avant));
+
+  const ef = await S(`select public.effacer_mes_donnees() r`);
+  verifier('l effacement répond oui', ef.rows[0].r?.ok === true, j(ef.rows[0].r));
+  verifier('et il compte la commande encore en route',
+    Number(ef.rows[0].r?.livraisons_en_cours) === 1, j(ef.rows[0].r));
+
+  const apres = (await commeServeur(db, `
+    select (select nom_livraison from public.profils where id=$1) nom,
+           (select telephone from public.profils where id=$1) tel,
+           (select quartier from public.profils where id=$1) quartier,
+           (select repere from public.profils where id=$1) repere,
+           (select position_lat from public.profils where id=$1) lat,
+           (select position_lng from public.profils where id=$1) lng,
+           (select nom from public.commandes where numero=$2) nom_livree,
+           (select telephone from public.commandes where numero=$2) tel_livree,
+           (select quartier from public.commandes where numero=$2) quartier_livree,
+           (select repere from public.commandes where numero=$2) repere_livree,
+           (select position_lat from public.commandes where numero=$2) lat_livree,
+           (select telephone from public.commandes where numero=$3) tel_en_route,
+           (select quartier from public.commandes where numero=$3) quartier_en_route,
+           (select position_lat from public.commandes where numero=$3) lat_en_route`,
+    [sira, nums[0].numero, nums[1].numero])).rows[0];
+
+  for (const [quoi, valeur] of [
+    ['le nom de livraison', apres.nom], ['le numéro', apres.tel], ['le quartier', apres.quartier],
+    ['le repère', apres.repere], ['la latitude', apres.lat], ['la longitude', apres.lng],
+  ]) {
+    verifier(`${quoi} du profil : plus rien`, valeur === null, j(valeur));
+  }
+  verifier('la commande livrée ne garde plus le nom', apres.nom_livree === '', j(apres.nom_livree));
+  verifier('ni le numéro', apres.tel_livree === '', j(apres.tel_livree));
+  verifier('ni le quartier', apres.quartier_livree === '', j(apres.quartier_livree));
+  verifier('ni le repère', apres.repere_livree === '', j(apres.repere_livree));
+  verifier('ni la position', apres.lat_livree === null, j(apres.lat_livree));
+
+  // Ce qui reste, et c'est voulu : la commande encore en route.
+  verifier('la commande en route garde son numéro', apres.tel_en_route === '70112233', j(apres.tel_en_route));
+  verifier('et son quartier', apres.quartier_en_route === 'Dassasgho', j(apres.quartier_en_route));
+  verifier('et sa position', apres.lat_en_route !== null, j(apres.lat_en_route));
+
+  // Une fois livrée, un nouvel appel la vide à son tour : rien n'est oublié
+  // pour toujours, c'est seulement différé jusqu'à ce que le colis arrive.
+  await commeServeur(db, `update public.commandes set etat='livree', livree_le=now() where numero=$1`, [nums[1].numero]);
+  const ef2 = await S(`select public.effacer_mes_donnees() r`);
+  verifier('le deuxième appel ne compte plus de livraison en cours',
+    Number(ef2.rows[0].r?.livraisons_en_cours) === 0, j(ef2.rows[0].r));
+  const fin = (await commeServeur(db,
+    `select telephone, quartier, position_lat from public.commandes where numero=$1`, [nums[1].numero])).rows[0];
+  verifier('et l ancienne commande en route est vidée à son tour',
+    fin.telephone === '' && fin.quartier === '' && fin.position_lat === null, j(fin));
+
+  // Et rien n'a bougé chez les autres.
+  const lea_ok = (await commeServeur(db,
+    `select count(*)::int n from public.commandes where profil_id=$1 and telephone <> ''`, [lea])).rows[0];
+  verifier('Léa garde l adresse de ses commandes', Number(lea_ok.n) > 0, j(lea_ok));
+}
+
+// ---------------------------------------------------------------------------
 titre('6. Le message d erreur de Postgres ne sort plus de la fonction');
 // ---------------------------------------------------------------------------
 {
@@ -333,25 +433,51 @@ titre('7. Le créateur d avatars est bien révoqué, et la galerie n est plus vi
   try { await Z(`select public.composer_avatar(1,1,1,1,1,1) r`); } catch (e) { refus = e.message; }
   verifier('composer_avatar n est plus appelable', /permission|denied/i.test(refus ?? ''), String(refus).slice(0, 90));
 
-  const n = Number((await commeServeur(db, `select count(*)::int n from public.avatars_disponibles`)).rows[0].n);
-  verifier('la galerie contient les douze portraits', n === 12, `n=${n}`);
-  const g = await Z(`select public.galerie_avatars() r`);
-  verifier('et galerie_avatars les rend bien', Array.isArray(g.rows[0].r) && g.rows[0].r.length === 12,
-    j(g.rows[0].r).slice(0, 90));
-  verifier('la mascotte n y est pas (décision du 13 octobre)',
-    !j(g.rows[0].r).includes('infirmiere'), j(g.rows[0].r).slice(0, 90));
-  verifier('les femmes passent avant les hommes',
-    g.rows[0].r?.[0]?.genre === 'femme' && g.rows[0].r?.[11]?.genre === 'homme', j(g.rows[0].r?.[0]));
-
-  // Chaque portrait déclaré doit exister sur le disque, sinon l'écran montre
-  // un carré cassé. C'est le genre d'écart qu'un test attrape et pas un oeil.
+  // Le compte attendu n'est plus écrit en dur : il se lit sur le disque. Les
+  // cinquante portraits de Motion du 26 octobre au soir sont arrivés après ce
+  // test, et un nombre en dur aurait fait passer la galerie au rouge pour la
+  // seule raison qu'elle avait grandi. Ce qui compte est l'égalité des deux
+  // côtés : tout fichier déclaré existe, tout fichier présent est déclaré.
   const fs = await import('node:fs');
   const path = await import('node:path');
   const url = await import('node:url');
   const racine = path.join(path.dirname(url.fileURLToPath(import.meta.url)), '..', '..');
   const surDisque = fs.readdirSync(path.join(racine, 'public', 'avatars'));
-  const manquants = (g.rows[0].r ?? []).map((a) => a.fichier).filter((f) => !surDisque.includes(f));
+  // La mascotte est sur le disque mais n'entre pas dans la galerie : c'est le
+  // visage de Dambé, pas une photo de profil à prendre (décision du 13 octobre).
+  const portraits = surDisque.filter((f) => f.endsWith('.webp') && f !== 'infirmiere-visage.webp');
+  verifier('il y a des portraits sur le disque', portraits.length > 50, `n=${portraits.length}`);
+
+  const n = Number((await commeServeur(db, `select count(*)::int n from public.avatars_disponibles`)).rows[0].n);
+  verifier('la galerie déclare tous les portraits du disque', n === portraits.length, `base=${n} disque=${portraits.length}`);
+  const g = await Z(`select public.galerie_avatars() r`);
+  const galerie = g.rows[0].r ?? [];
+  verifier('et galerie_avatars les rend bien',
+    Array.isArray(galerie) && galerie.length === portraits.length, `rendus=${galerie.length}`);
+  verifier('la mascotte n y est pas (décision du 13 octobre)',
+    !j(galerie).includes('infirmiere'), j(galerie).slice(0, 90));
+  // Pas seulement « la première est une femme et la dernière un homme » : aucun
+  // homme ne doit passer devant une femme, où que ce soit dans la liste.
+  const genres = galerie.map((a) => a.genre);
+  const premierHomme = genres.indexOf('homme');
+  verifier('les femmes passent avant les hommes',
+    premierHomme > 0 && !genres.slice(premierHomme).includes('femme'),
+    `premier homme au rang ${premierHomme} sur ${genres.length}`);
+  // Arthur, le 26 octobre 2026 : « en majorité des filles de moins de 35 ans ».
+  const nbFemmes = genres.filter((x) => x === 'femme').length;
+  verifier('les femmes sont largement majoritaires', nbFemmes > genres.length * 0.75,
+    `${nbFemmes} femmes sur ${genres.length}`);
+  // Deux portraits ne doivent pas se suivre dans la même famille de coiffure :
+  // dans un rond de 88 px, six afros d'affilée ne se distinguent plus.
+  const famille = (f) => String(f).replace(/-\d+\.webp$/, '');
+  const voisinsPareils = galerie.filter((a, i) => i > 0 && famille(a.fichier) === famille(galerie[i - 1].fichier));
+  verifier('deux voisins ne sont jamais de la même coiffure', voisinsPareils.length === 0,
+    voisinsPareils.map((a) => a.fichier).join(' '));
+
+  const manquants = galerie.map((a) => a.fichier).filter((f) => !surDisque.includes(f));
   verifier('chaque portrait déclaré existe sur le disque', manquants.length === 0, manquants.join(' '));
+  const oublies = portraits.filter((f) => !galerie.some((a) => a.fichier === f));
+  verifier('et chaque portrait du disque est déclaré', oublies.length === 0, oublies.join(' '));
 
   // On peut choisir un portrait, et revenir au rond neutre.
   const choix = await Z(`select public.choisir_avatar($1) r`, ['femme-afro-01.webp']);
@@ -395,6 +521,21 @@ titre('8. Les pages ne proposent plus ce que la base refuse');
   verifier('robots.txt existe', robots.length > 20, `${robots.length} octets`);
   verifier('il interdit tout par defaut', /^\s*Disallow:\s*\/\s*$/m.test(robots), robots.slice(-80));
   verifier('et laisse passer la boutique', /^\s*Allow:\s*\/boutique\s*$/m.test(robots), robots.slice(-80));
+
+  // La galerie des portraits pèse 1 Mo à elle seule depuis les cinquante de
+  // Motion. Sur un forfait compté en 3G, les charger tous à l'ouverture de la
+  // page serait indéfendable : le navigateur doit pouvoir s'arrêter à ce qui
+  // est visible. Lu dans le code, parce qu'un rendu ne prouve pas l'attribut.
+  const lignesAvec = (texte, mot) =>
+    texte.split(/\r?\n/).filter((l) => l.includes(mot)).join(' | ').slice(0, 120);
+  const galeriePage = fs.readFileSync(path.join(racine, 'src', 'pages', 'compte', 'avatar.astro'), 'utf8');
+  verifier('la galerie demande le chargement différé', /differe\s*(\/>|=)/.test(galeriePage),
+    lignesAvec(galeriePage, '<Avatar'));
+  const composant = fs.readFileSync(path.join(racine, 'src', 'components', 'Avatar.astro'), 'utf8');
+  verifier('et le composant sait le faire', /loading=\{differe \? 'lazy' : 'eager'\}/.test(composant),
+    lignesAvec(composant, 'loading'));
+  verifier('mais pas pour l en-tête, qui reste immédiat', /differe = false/.test(composant),
+    lignesAvec(composant, 'differe ='));
 }
 
 bilan('Les attaques de l audit du 26 octobre');
