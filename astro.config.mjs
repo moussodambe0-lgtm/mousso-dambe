@@ -54,6 +54,18 @@ export default defineConfig({
     },
   },
 
+  // Pas d'optimisation d'images par Astro : ce projet n'utilise nulle part
+  // `astro:assets` (ni <Image>, ni <Picture>, ni getImage). Les illustrations
+  // sont deja en WebP, preparees a la main, et servies depuis public/.
+  //
+  // Sans ce reglage, Astro embarque sharp par defaut : 19 Mo sur les 25 Mo
+  // envoyes a Vercel, pour rien. Surtout, sharp est la seule dependance du
+  // paquet qui porte des binaires propres au systeme. C'est le suspect
+  // principal du FUNCTION_INVOCATION_FAILED du 26 octobre 2026 : le meme
+  // paquet se chargeait sans erreur sur ce PC (binaires Windows) et plantait a
+  // chaque invocation sur Vercel (Linux).
+  image: { service: { entrypoint: 'astro/assets/services/noop' } },
+
   devToolbar: { enabled: false },
   markdown: { syntaxHighlight: false },
 
