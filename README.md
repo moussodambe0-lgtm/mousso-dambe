@@ -159,3 +159,59 @@ donnée réelle n'est touchée. **À lancer avant toute migration.**
 | `outils/` | Le faux Supabase local et le script de captures |
 | `atelier-motion/` | Les sources de Motion (hors Git, déjà copiées dans le projet) |
 | `DESIGN.md` | La direction visuelle : couleurs, polices, mouvement |
+
+---
+
+## La mise en ligne (26 octobre 2026)
+
+Tout est en ligne sur des comptes **dédiés à ce projet**, séparés de ceux des
+autres projets d'Arthur, à sa demande : « je veux m'inscrire comme nouvel
+utilisateur pour ne pas mélanger les dossiers ».
+
+| Où | Quoi |
+|---|---|
+| GitHub | `moussodambe0-lgtm/mousso-dambe`, dépôt **privé** |
+| Supabase | projet `vnbaojckbhcjczdnjdjh`, région Londres |
+| Vercel | projet `mousso-dambe`, fonctions en région `lhr1` (Londres) |
+
+Les jetons et les clés vivent dans le coffre (`secrets/.env`, hors du dépôt),
+et `outils/coffre.mjs` les lit. Trois outils parlent aux services :
+
+- `node outils/migrer.mjs` dit ce qui serait appliqué, `--appliquer` applique.
+- `node outils/poser-reglages.mjs --appliquer` pose la clé serveur et l'adresse
+  de l'administrateur.
+- `node outils/vercel.mjs etat | variables | journaux | redeployer | region`.
+
+### Trois pièges qui ont coûté une demi-journée
+
+**1. L'auteur du commit décide si Vercel accepte de déployer.** Le plan gratuit
+n'autorise les déploiements que par le propriétaire du compte, et Vercel lit
+l'auteur du dernier commit. Les commits portaient l'identité d'un autre compte
+GitHub, et le déploiement passait en `BLOCKED`, sans message ni journal. D'où
+l'identité posée **dans ce dépôt seulement** :
+
+```
+git config user.name "moussodambe0-lgtm"
+git config user.email "348124437+moussodambe0-lgtm@users.noreply.github.com"
+```
+
+**2. Le gestionnaire d'identifiants de Windows répond avant tout helper ajouté
+en ligne de commande.** Il renvoyait les identifiants de l'ancien compte, et
+GitHub répondait « Repository not found » pour un dépôt privé qui existait. Il
+faut vider la liste avant d'ajouter le sien : `git -c credential.helper=
+-c credential.helper='!bash mon-aide.sh' push`.
+
+**3. Sharp partait dans la fonction sans servir à rien.** Ce projet n'utilise
+nulle part `astro:assets`, mais faute de réglage `image`, Astro embarquait
+sharp : 19 Mo sur 25. C'est aussi la seule dépendance du paquet qui porte des
+binaires propres au système, donc la seule qui puisse marcher sur Windows et
+échouer sur le Linux de Vercel. Réglé par
+`image: { service: { entrypoint: 'astro/assets/services/noop' } }`.
+
+### Ce qui n'est pas prêt pour de vraies utilisatrices
+
+- **Le mot de passe oublié n'existe pas**, et **aucun email ne part** : une
+  femme qui perd son mot de passe perd son compte. Bloquant avant l'ouverture.
+- Le plan gratuit de Vercel **interdit l'usage commercial**.
+- Le rappel « 2 jours avant » s'enregistre mais rien ne l'envoie.
+- Les numéros d'urgence du Burkina sont absents, faute d'en avoir un vérifié.
