@@ -536,6 +536,51 @@ titre('8. Les pages ne proposent plus ce que la base refuse');
     lignesAvec(composant, 'loading'));
   verifier('mais pas pour l en-tête, qui reste immédiat', /differe = false/.test(composant),
     lignesAvec(composant, 'differe ='));
+
+  // ---------------------------------------------------------------------------
+  // La boucle du 26 octobre 2026 : deux comptes crees a la meme seconde
+  // ---------------------------------------------------------------------------
+  // Arthur, sur son telephone : « je finis de remplir mes informations, au lieu
+  // que ca m'envoie sur l'application, ca me renvoie pour que je renseigne
+  // encore mes informations ». La base de production en gardait la trace : deux
+  // comptes anonymes a 21:21:55, l'un avec son questionnaire rempli, l'autre
+  // vide. Il avait appuye deux fois sur « Commencer », et son navigateur a garde
+  // le cookie du compte vide.
+  const ouverture = fs.readFileSync(path.join(racine, 'src', 'pages', 'ouverture.astro'), 'utf8');
+  verifier('le formulaire d entrée est marqué « une fois »', /action="\/commencer"[^>]*data-une-fois/.test(ouverture),
+    lignesAvec(ouverture, 'action="/commencer"'));
+  verifier('et la page charge le script qui l arrête', /scripts\/une-fois/.test(ouverture),
+    lignesAvec(ouverture, 'une-fois'));
+  const uneFois = fs.readFileSync(path.join(racine, 'src', 'scripts', 'une-fois.ts'), 'utf8');
+  verifier('le script refuse le deuxième envoi', /if \(parti\)[\s\S]{0,80}preventDefault/.test(uneFois),
+    lignesAvec(uneFois, 'preventDefault'));
+  // Desactiver le bouton AVANT que la requete soit partie l'annulerait.
+  verifier('il attend que la requête soit partie pour désactiver', /setTimeout\([\s\S]{0,400}?disabled = true/.test(uneFois),
+    lignesAvec(uneFois, 'setTimeout'));
+  // Le libelle ne change pas sous le doigt.
+  verifier('le libellé du bouton ne change pas', !/textContent|innerText|innerHTML/.test(uneFois),
+    lignesAvec(uneFois, 'textContent'));
+
+  // Et le silence qui transformait une lecture ratee en questionnaire a refaire.
+  const session = fs.readFileSync(path.join(racine, 'src', 'lib', 'session.ts'), 'utf8');
+  verifier('une lecture de profil ratée est lue, pas jetée', /error: erreurProfil/.test(session),
+    lignesAvec(session, 'erreurProfil'));
+  verifier('et ne renvoie plus au questionnaire', /questionnaireFini: illisible \? true/.test(session),
+    lignesAvec(session, 'questionnaireFini:'));
+  verifier('les pages peuvent le dire', /profilIllisible: illisible/.test(session),
+    lignesAvec(session, 'profilIllisible:'));
+
+  // Le bouton d'effacement porte le nom qu'Arthur a demande le 26 octobre au
+  // soir, et le texte reste franc sur le fait que c'est definitif.
+  const conf = fs.readFileSync(path.join(racine, 'src', 'pages', 'confidentialite.astro'), 'utf8');
+  verifier('le bouton s appelle « Réinitialiser mon compte »', /Réinitialiser mon compte/.test(conf),
+    lignesAvec(conf, 'Réinitialiser'));
+  verifier('et plus « Effacer mes données » à l écran',
+    !/<h2>Effacer mes données<\/h2>/.test(conf), lignesAvec(conf, '<h2>'));
+  verifier('le caractère définitif est toujours écrit', /rien ne pourra être récupéré/.test(conf),
+    lignesAvec(conf, 'récupéré'));
+  verifier('et le non-dit de « réinitialiser » est levé', /Ton compte reste, tout ce qu'il contient s'en va/.test(conf),
+    lignesAvec(conf, 'Ton compte reste'));
 }
 
 bilan('Les attaques de l audit du 26 octobre');

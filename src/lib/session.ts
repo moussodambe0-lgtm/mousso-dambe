@@ -47,6 +47,13 @@ export interface Visiteuse {
    * devant quand les deux existent, mais la base n'en garde jamais deux.
    */
   avatarChoix: ChoixAvatar | null;
+  /**
+   * Vrai quand la ligne du profil n'a pas pu être lue, alors que la session
+   * est valide. Les pages qui montrent ses données peuvent le dire au lieu de
+   * faire comme si le compte était vide. Voir le commentaire de `visiteuse()`
+   * sur la boucle du 26 octobre 2026.
+   */
+  profilIllisible: boolean;
 }
 
 export async function visiteuse(astro: ContexteAstro): Promise<Visiteuse | null> {
@@ -89,17 +96,38 @@ export async function visiteuse(astro: ContexteAstro): Promise<Visiteuse | null>
     return null;
   }
 
-  const { data: profil } = await client
+  const { data: profil, error: erreurProfil } = await client
     .from('profils')
     .select('prenom, questionnaire_fini, rappel_regles, notifications_discretes, code_ouverture, cycle_moyen, duree_regles, telephone, quartier, repere, nom_livraison, position_lat, position_lng, avatar_fichier, avatar_choix')
     .eq('id', compte.user.id)
     .maybeSingle();
 
+  // UNE LECTURE QUI ÉCHOUE N'EST PAS UN QUESTIONNAIRE À REFAIRE.
+  //
+  // Jusqu'au 26 octobre 2026, l'erreur était jetée sans être lue, et
+  // `profil?.questionnaire_fini ?? false` concluait « pas fini ». L'accueil
+  // renvoyait alors au premier écran du questionnaire. Une femme qui l'avait
+  // rempli le refaisait, sans comprendre, et aucune trace n'en disait rien :
+  // le pire genre de panne, celle qui ressemble à un écran normal.
+  //
+  // Le profil VRAIMENT absent (`profil` nul sans erreur) reste un cas légitime
+  // : c'est la fraction de seconde entre la création du compte et celle de sa
+  // ligne. Dans ce cas seulement, le questionnaire s'ouvre, et c'est juste.
+  const illisible = Boolean(erreurProfil);
+  if (erreurProfil) {
+    // Journalisé pour que la panne existe quelque part : les journaux de
+    // Vercel se lisent avec `node outils/vercel.mjs journaux`.
+    console.error('[session] profil illisible pour une visiteuse connectée :', erreurProfil.message);
+  }
+
   return {
     id: compte.user.id,
     email: compte.user.email ?? null,
     prenom: profil?.prenom ?? '',
-    questionnaireFini: profil?.questionnaire_fini ?? false,
+    // En cas de lecture impossible, on répond « fini » : se tromper dans ce
+    // sens affiche un accueil incomplet, l'autre sens lui fait refaire un
+    // questionnaire qu'elle a déjà rempli, en boucle et sans explication.
+    questionnaireFini: illisible ? true : (profil?.questionnaire_fini ?? false),
     rappelRegles: profil?.rappel_regles ?? true,
     notificationsDiscretes: profil?.notifications_discretes ?? true,
     codeOuverture: profil?.code_ouverture ?? false,
@@ -113,6 +141,7 @@ export async function visiteuse(astro: ContexteAstro): Promise<Visiteuse | null>
     positionLng: profil?.position_lng ?? null,
     avatarFichier: profil?.avatar_fichier ?? null,
     avatarChoix: (profil?.avatar_choix as ChoixAvatar | null) ?? null,
+    profilIllisible: illisible,
   };
 }
 

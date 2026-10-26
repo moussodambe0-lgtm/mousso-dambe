@@ -112,8 +112,9 @@ const { data: produitsData } = await clientPublic(Astro)
   .limit(6);
 const produits = produitsData ?? [];
 
-// Le retour de « Effacer mes données ». Jusqu'au 26 octobre 2026, elle appuyait
-// sur « Oui, efface tout », arrivait ici, et RIEN ne lui disait que c'était
+// Le retour de « Réinitialiser mon compte » (nomme « Effacer mes donnees »
+// jusqu'au 26 octobre 2026 au soir, renomme sur demande d'Arthur). Elle appuyait
+// sur le bouton, arrivait ici, et RIEN ne lui disait que c'était
 // fait : l'écran d'après ressemblait à l'écran d'avant. Sur l'action la plus
 // définitive de l'application, et souvent faite dans l'urgence parce que
 // quelqu'un va prendre le téléphone, c'est le pire endroit pour se taire.
@@ -126,10 +127,10 @@ const enRoute = Math.max(0, Math.trunc(Number(Astro.url.searchParams.get('enrout
 const messageEfface = !efface
   ? ''
   : enRoute === 0
-    ? `C'est effacé. Ton journal, tes cycles, tes questions à Dambé, ta conversation avec le médecin et ton adresse ne sont plus là.`
+    ? `C'est fait. Ton journal, tes cycles, tes questions à Dambé, ta conversation avec le médecin et ton adresse ne sont plus là.`
     : enRoute === 1
-      ? `C'est effacé. Ta commande encore en route garde son adresse jusqu'à la livraison, sinon le livreur n'aurait plus où aller. Elle partira dès qu'elle sera livrée.`
-      : `C'est effacé. Tes ${enRoute} commandes encore en route gardent leur adresse jusqu'à la livraison, sinon le livreur n'aurait plus où aller. Elles partiront dès qu'elles seront livrées.`;
+      ? `C'est fait. Ta commande encore en route garde son adresse jusqu'à la livraison, sinon le livreur n'aurait plus où aller. Elle partira dès qu'elle sera livrée.`
+      : `C'est fait. Tes ${enRoute} commandes encore en route gardent leur adresse jusqu'à la livraison, sinon le livreur n'aurait plus où aller. Elles partiront dès qu'elles seront livrées.`;
 ---
 
 <Base titre="Mon compte" nav="compte" panier={panier}>

@@ -107,7 +107,7 @@ const panier = comptePanier(lirePanier(Astro));
             <span>
               Tes messages et tes vocaux au médecin sont lus par la personne qui te répond, et par personne
               d'autre. Un vocal est écouté par un humain : aucun service extérieur ne le reçoit, aucune machine
-              ne le transcrit, et il ne part jamais vers Dambé. « Effacer mes données » efface aussi tes messages et tes vocaux au médecin.
+              ne le transcrit, et il ne part jamais vers Dambé. « Réinitialiser mon compte » efface aussi tes messages et tes vocaux au médecin.
             </span>
           </div>
         </li>
@@ -135,7 +135,7 @@ const panier = comptePanier(lirePanier(Astro));
     </section>
 
     <section class="carte bloc apparait" data-ordre="4">
-      <h2>Effacer mes données</h2>
+      <h2>Réinitialiser mon compte</h2>
       {
         confirmer ? (
           <>
@@ -146,7 +146,7 @@ const panier = comptePanier(lirePanier(Astro));
             <form method="POST" class="marge">
               <input type="hidden" name="confirme" value="oui" />
               <button class="btn btn-plein btn-danger" type="submit">
-                Oui, efface tout
+                Oui, réinitialise tout
               </button>
             </form>
             <a class="btn btn-contour btn-plein marge" href="/confidentialite">Non, garder mes données</a>
@@ -154,13 +154,13 @@ const panier = comptePanier(lirePanier(Astro));
         ) : (
           <>
             <p class="doux">
-              Tu peux effacer ton journal, tes cycles, tes questions à Dambé et ta conversation avec le médecin, vocaux compris, avec ton numéro, ton quartier
+              Ton compte reste, tout ce qu'il contient s'en va. Tu peux effacer ton journal, tes cycles, tes questions à Dambé et ta conversation avec le médecin, vocaux compris, avec ton numéro, ton quartier
               et le point de ta position. Tes commandes déjà passées restent dans ta liste, elles servent de preuve d'achat, mais l'adresse qu'elles gardaient
               s'en va aussi. Une commande encore en route garde la sienne jusqu'à la livraison : sans elle, le livreur n'a plus où aller.
             </p>
             <a class="btn btn-contour btn-plein marge" href="/confidentialite?effacer=1">
               <Icone nom="poubelle" taille={19} />
-              Effacer mes données
+              Réinitialiser mon compte
             </a>
           </>
         )
