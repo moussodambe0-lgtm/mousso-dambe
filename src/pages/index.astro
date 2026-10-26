@@ -61,12 +61,20 @@ const panier = comptePanier(lirePanier(Astro));
 // --- Le catalogue ----------------------------------------------------------
 let produits: any[] = [];
 if (installee) {
+  // Arthur, le 26 octobre 2026 : « au niveau de l'accueil tous les produits en
+  // vente doivent être affichés », alors qu'il n'en voyait que quatre. La limite
+  // était à 4 et le catalogue en compte 5 : un produit ne s'affichait jamais.
+  //
+  // La limite reste, mais haute (50) : sans aucune limite, un catalogue qui
+  // grossit ferait une page d'accueil interminable à charger sur de la 3G
+  // comptée. Au-delà de 50 produits, cette page devra montrer une sélection et
+  // renvoyer vers la boutique, et il faudra en reparler.
   const { data } = await clientPublic(Astro)
     .from('produits')
     .select('slug, nom, prix_cfa, rayon, image, etiquette, stock')
     .eq('publie', true)
     .order('ordre')
-    .limit(4);
+    .limit(50);
   produits = data ?? [];
 }
 
