@@ -94,8 +94,23 @@ export function jetonGitHub(options = {}) {
   });
 }
 
-/** Trois premieres lettres et domaine : ce qui s'imprime finit dans un journal. */
-export function masquer(adresse) {
-  if (!adresse) return '(vide)';
-  return `${adresse.slice(0, 3)}…@${adresse.split('@')[1] ?? ''}`;
+/**
+ * Ne RIEN montrer d'une valeur, jamais.
+ *
+ * Cette fonction rendait les trois premieres lettres et le domaine. Arthur, le
+ * 26 octobre 2026 : « je t'ai dit d'eviter de mettre mes infos ici », « tu
+ * balances carrement mon email ». Il a raison : trois lettres et un domaine
+ * suffisent souvent a reconnaitre quelqu'un, et ce qui s'imprime dans un
+ * terminal finit dans un journal, un commit ou une conversation.
+ *
+ * Elle rend donc seulement de quoi VERIFIER qu'une valeur est la et qu'elle
+ * ressemble a ce qu'on attend : sa longueur, et la forme generale.
+ */
+export function masquer(valeur) {
+  if (!valeur) return '(vide)';
+  const texte = String(valeur);
+  const forme = /^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(texte)
+    ? 'une adresse bien formee'
+    : 'une valeur';
+  return `${forme}, ${texte.length} caracteres`;
 }

@@ -246,7 +246,10 @@ if (emailAdmin) {
   );
   await db.query(`insert into public.administrateurs (profil_id) values ($1)`, [ADMIN_ID]);
 
-  const masque = emailAdmin.slice(0, 3) + '…@' + (emailAdmin.split('@')[1] ?? '');
+  // On ne montre plus aucun fragment de l'adresse (Arthur, le 26 octobre
+  // 2026 : « tu balances carrement mon email »). Trois lettres et un domaine
+  // suffisent a reconnaitre quelqu'un, et un terminal finit dans un journal.
+  const masque = `une adresse de ${emailAdmin.length} caracteres`;
   noteAdmin = `Administrateur : ${masque} / motdepasse (la seule adresse qui entre)`;
 } else {
   // Sur une machine sans le coffre, le banc ne doit pas devenir inutilisable :

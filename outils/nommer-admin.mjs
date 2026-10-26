@@ -53,7 +53,10 @@ if (!base || !cle) {
   process.exit(1);
 }
 
-const masque = email.slice(0, 3) + '…@' + (email.split('@')[1] ?? '');
+// On ne montre plus aucun fragment de l'adresse (Arthur, le 26 octobre
+// 2026 : « tu balances carrement mon email »). Trois lettres et un domaine
+// suffisent a reconnaitre quelqu'un, et un terminal finit dans un journal.
+const masque = `une adresse de ${email.length} caracteres`;
 console.log(`Adresse à autoriser : ${masque}`);
 console.log(`Base visée : ${base}`);
 

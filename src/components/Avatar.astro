@@ -19,23 +19,18 @@
  * sans une ligne de script.
  */
 import Icone from './Icone.astro';
-import { avatar as dessiner, type ChoixAvatar } from '../lib/avatar';
 
 interface Props {
   /** Le fichier choisi dans `avatars_disponibles` (sans le dossier), ou vide
    * tant qu'elle n'a rien choisi. */
   fichier?: string | null;
   /**
-   * Les traits qu'elle a composés elle-même (Arthur, le 26 octobre 2026 : « les
-   * clientes doivent pouvoir personnaliser les avatars, les habiller et tout »).
-   *
-   * Trois cas, dans cet ordre : un portrait de la galerie s'il est choisi, sinon
-   * l'avatar qu'elle a composé, sinon un rond NEUTRE. Le troisième reste la
-   * décision du 13 octobre : « la personne n'aura pas automatiquement une
-   * image », et aucun visage n'est inventé pour qui n'a rien demandé.
+   * Gardés pour que les pages n'aient pas à changer, mais IGNORÉS depuis le
+   * 26 octobre 2026 : « au niveau des avatars garde seulement les portraits ».
+   * Arthur a écarté les avatars dessinés pour la deuxième fois, après les avoir
+   * essayés. Deux cas désormais : un portrait de la galerie, ou un rond neutre.
    */
-  choix?: ChoixAvatar | null;
-  /** La graine du dessin : son identifiant, pour que son avatar soit le sien. */
+  choix?: unknown;
   graine?: string | null;
   prenom?: string;
   taille?: number;
@@ -44,40 +39,18 @@ interface Props {
   titre?: string;
 }
 
-const {
-  fichier,
-  choix = null,
-  graine = null,
-  prenom = '',
-  taille = 48,
-  contour = true,
-  morph = false,
-  titre,
-} = Astro.props;
+const { fichier, prenom = '', taille = 48, contour = true, morph = false, titre } = Astro.props;
 
 const etiquette = titre ?? (prenom ? `Photo de profil de ${prenom}` : 'Photo de profil');
-
-// Le dessin est refait à chaque affichage, sur le serveur : rien n'est stocké
-// comme image, rien ne part sur le réseau. Sans graine, on prend le prénom
-// plutôt que rien : deux femmes du même prénom auront le même air, et c'est
-// sans conséquence puisque les traits choisis, eux, l'emportent.
-const compose = !fichier && choix ? dessiner(graine || prenom || 'mousso', etiquette, choix) : null;
 ---
 
 <span
-  class:list={[
-    'avatar',
-    contour && 'avatar-contour',
-    morph && 'avatar-morph',
-    !fichier && !compose && 'avatar-neutre',
-  ]}
+  class:list={['avatar', contour && 'avatar-contour', morph && 'avatar-morph', !fichier && 'avatar-neutre']}
   data-taille={taille}
 >
   {
     fichier ? (
       <img src={`/avatars/${fichier}`} alt={etiquette} width={taille} height={taille} />
-    ) : compose ? (
-      <Fragment set:html={compose} />
     ) : (
       <Icone nom="compte" taille={Math.round(taille * 0.56)} titre={etiquette} />
     )

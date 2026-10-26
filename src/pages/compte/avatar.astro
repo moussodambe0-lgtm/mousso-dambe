@@ -1,33 +1,27 @@
 ---
 /**
- * Composer sa photo de profil.
+ * Choisir sa photo de profil, parmi les portraits.
  *
- * Arthur, le 26 octobre 2026 : « les clientes doivent pouvoir personnaliser les
- * avatars, les habiller et tout, donc quand on clique sur la photo de profil on
- * doit pouvoir avoir accès à tout ça. »
+ * Arthur, le 26 octobre 2026, après avoir essayé le créateur : « au niveau des
+ * avatars garde seulement les portraits. »
  *
- * L'écran a deux parties :
+ * C'est la DEUXIÈME fois qu'il écarte les avatars dessinés, après le 13 octobre
+ * (« je ne veux pas des dessins bizarres, je veux des vrais avatars comme ma
+ * mascotte »). Cette fois il a vu le créateur fonctionner, avec ses huit peaux,
+ * ses dix coiffures et ses huit vêtements, et il préfère quand même les douze
+ * portraits 3D produits par Motion. La question est donc tranchée pour de bon :
+ * un avatar de Mousso Dambé est une photo, pas un dessin.
  *
- *   1. LE CRÉATEUR. Elle compose son avatar trait par trait : la peau, les
- *      cheveux, la coiffure, le vêtement, sa couleur, le fond. Chaque vignette
- *      montre le résultat avec CE trait-là, les autres inchangés, et le grand
- *      avatar au-dessus suit.
- *   2. LA GALERIE. Les douze portraits 3D produits par Motion le 26 octobre,
- *      pour celle qui préfère un visage tout fait plutôt que le composer.
+ * CE QUI RESTE DU CRÉATEUR, ET POURQUOI : rien dans cette page. En base,
+ * `composer_avatar()` est révoquée et `avatar_choix` est vidée (voir la
+ * migration 20261026150000). Le générateur `src/lib/avatar.ts` reste dans le
+ * dépôt avec ses 23 vérifications, parce que supprimer du code qui marche est
+ * un geste qu'on ne défait pas : à retirer pour de bon si personne n'y revient
+ * une troisième fois.
  *
- * POURQUOI UN DESSIN, ALORS QU'ARTHUR AVAIT REFUSÉ LES DESSINS LE 13 OCTOBRE.
- * Deux choses étaient reprochées ce jour-là : l'avatar imposé au hasard, et les
- * dessins. Le premier reproche tient toujours et rien ne revient là-dessus : sans
- * choix de sa part, elle garde un rond neutre. Le second ne s'applique plus, car
- * habiller un avatar exige des couches qu'on superpose, et des portraits tout
- * faits ne se superposent pas : les cheveux de l'un ne s'alignent pas sur le
- * crâne de l'autre. Le générateur avait d'ailleurs été refait le même jour en
- * portrait façon film d'animation, avec volume et reflets.
- *
- * TOUT MARCHE SANS JAVASCRIPT. Chaque vignette est un vrai bouton d'envoi, et la
- * page revient avec le nouveau dessin. Un aller-retour par choix, assumé : cette
- * application vise des téléphones d'entrée de gamme en 3G, et une page qui
- * marche vaut mieux qu'une page qui scintille.
+ * La décision du 13 octobre tient toujours : « la personne n'aura pas
+ * automatiquement une image. » Tant qu'elle n'a rien choisi, son compte garde
+ * un rond neutre, et « Aucune » permet d'y revenir.
  */
 import Base from '../../layouts/Base.astro';
 import Entete from '../../components/Entete.astro';
@@ -36,7 +30,6 @@ import Alerte from '../../components/Alerte.astro';
 import { clientSession, baseConfiguree } from '../../lib/supabase';
 import { visiteuse, lirePanier, comptePanier } from '../../lib/session';
 import { messageErreur } from '../../lib/format';
-import { CHOIX_POSSIBLES, type ChoixAvatar } from '../../lib/avatar';
 
 export const prerender = false;
 
@@ -47,75 +40,17 @@ if (!moi) return Astro.redirect('/connexion', 302);
 const client = clientSession(Astro)!;
 let erreur = '';
 
-/** Les six traits, dans l'ordre où on les propose. */
-const TRAITS = [
-  { cle: 'teint', mot: 'Peau', combien: CHOIX_POSSIBLES.teint },
-  { cle: 'cheveux', mot: 'Cheveux', combien: CHOIX_POSSIBLES.cheveux },
-  { cle: 'coiffure', mot: 'Coiffure', combien: CHOIX_POSSIBLES.coiffure },
-  { cle: 'haut', mot: 'Vêtement', combien: CHOIX_POSSIBLES.haut },
-  { cle: 'couleurHaut', mot: 'Couleur du vêtement', combien: CHOIX_POSSIBLES.couleurHaut },
-  { cle: 'fond', mot: 'Fond', combien: CHOIX_POSSIBLES.fond },
-] as const;
-
-// Son point de départ : ce qu'elle a déjà composé, sinon le milieu des listes.
-// Commencer au premier de chaque liste donnerait toujours le même avatar à
-// toutes, et n'inviterait pas à essayer.
-const DEPART: Required<ChoixAvatar> = { teint: 2, cheveux: 0, coiffure: 3, haut: 0, couleurHaut: 2, fond: 1 };
-let choix: Required<ChoixAvatar> = { ...DEPART, ...(moi.avatarChoix ?? {}) };
-
 if (Astro.request.method === 'POST') {
   const f = await Astro.request.formData();
-  const action = String(f.get('action') ?? '');
-
-  if (action === 'galerie') {
-    const { data, error } = await client.rpc('choisir_avatar', {
-      p_fichier: String(f.get('fichier') ?? '').trim() || null,
-    });
-    if (error || !data?.ok) erreur = messageErreur(data?.erreur);
-    else return Astro.redirect('/compte', 303);
-  } else if (action === 'retirer') {
-    const { data, error } = await client.rpc('retirer_mon_avatar');
-    if (error || !data?.ok) erreur = messageErreur(data?.erreur);
-    else return Astro.redirect('/compte', 303);
-  } else {
-    // Un trait a changé, ou elle enregistre. Les six valeurs voyagent dans des
-    // champs cachés et on relit tout : garder un état entre deux pages le
-    // perdrait au premier rechargement.
-    const lu = (cle: string, defaut: number) => {
-      const v = Number(f.get(cle));
-      return Number.isFinite(v) ? Math.trunc(v) : defaut;
-    };
-    choix = {
-      teint: lu('teint', choix.teint),
-      cheveux: lu('cheveux', choix.cheveux),
-      coiffure: lu('coiffure', choix.coiffure),
-      haut: lu('haut', choix.haut),
-      couleurHaut: lu('couleurHaut', choix.couleurHaut),
-      fond: lu('fond', choix.fond),
-    };
-
-    if (action === 'enregistrer') {
-      const { data, error } = await client.rpc('composer_avatar', {
-        p_teint: choix.teint,
-        p_cheveux: choix.cheveux,
-        p_coiffure: choix.coiffure,
-        p_haut: choix.haut,
-        p_couleur_haut: choix.couleurHaut,
-        p_fond: choix.fond,
-      });
-      if (error || !data?.ok) erreur = messageErreur(data?.erreur);
-      else return Astro.redirect('/compte', 303);
-    }
-  }
+  const choix = String(f.get('fichier') ?? '').trim();
+  const { data, error } = await client.rpc('choisir_avatar', { p_fichier: choix || null });
+  if (error || !data?.ok) erreur = messageErreur(data?.erreur);
+  else return Astro.redirect('/compte', 303);
 }
 
 const { data: galerieData } = await client.rpc('galerie_avatars');
 const galerie = (galerieData ?? []) as { fichier: string; genre: string }[];
 const panier = comptePanier(lirePanier(Astro));
-
-// La graine du dessin : son prénom, pour que les traits laissés au hasard (le
-// regard, le sourire, les bijoux) restent les mêmes d'une fois sur l'autre.
-const graine = moi.prenom || 'mousso';
 ---
 
 <Base titre="Ma photo de profil" nav="compte" panier={panier}>
@@ -124,67 +59,31 @@ const graine = moi.prenom || 'mousso';
 
     {erreur && <div class="marge-bas"><Alerte type="erreur" texte={erreur} /></div>}
 
-    <form method="POST">
-      {/* Les six valeurs suivent chaque envoi : sans elles, toucher une
-          coiffure perdrait la peau choisie juste avant. */}
-      {TRAITS.map((t) => <input type="hidden" name={t.cle} value={String(choix[t.cle])} />)}
-
-      <div class="scene">
-        <Avatar choix={choix} graine={graine} prenom={moi.prenom} taille={120} contour={false} titre="Ton avatar" />
-      </div>
-
-      <button class="btn btn-rose btn-plein" type="submit" name="action" value="enregistrer">
-        Garder cet avatar
+    <form method="POST" class="grille">
+      {/* « Aucune » d'abord : c'est l'état par défaut, et il doit être aussi
+          facile à reprendre qu'à quitter. */}
+      <button
+        class:list={['case', 'case-vide', !moi.avatarFichier && 'case-actuelle']}
+        type="submit"
+        name="fichier"
+        value=""
+      >
+        <Avatar fichier={null} taille={72} contour={false} titre="Aucune photo" />
+        <span>Aucune</span>
       </button>
 
       {
-        TRAITS.map((t) => (
-          <section class="trait">
-            <h2>{t.mot}</h2>
-            <div class="rangee">
-              {Array.from({ length: t.combien }).map((_, i) => (
-                <button
-                  class:list={['vignette', choix[t.cle] === i && 'vignette-prise']}
-                  type="submit"
-                  name={t.cle}
-                  value={String(i)}
-                  aria-pressed={choix[t.cle] === i}
-                  aria-label={`${t.mot} ${i + 1}`}
-                >
-                  <Avatar choix={{ ...choix, [t.cle]: i }} graine={graine} taille={56} contour={false} titre="" />
-                </button>
-              ))}
-            </div>
-          </section>
+        galerie.map((a) => (
+          <button
+            class:list={['case', a.fichier === moi.avatarFichier && 'case-actuelle']}
+            type="submit"
+            name="fichier"
+            value={a.fichier}
+          >
+            <Avatar fichier={a.fichier} taille={72} contour={false} titre="Choisir ce portrait" />
+          </button>
         ))
       }
-    </form>
-
-    {
-      galerie.length > 0 && (
-        <>
-          <h2 class="titre-galerie">Ou prends un portrait</h2>
-          <form method="POST" class="grille">
-            <input type="hidden" name="action" value="galerie" />
-            {galerie.map((a) => (
-              <button
-                class:list={['case', a.fichier === moi.avatarFichier && 'case-actuelle']}
-                type="submit"
-                name="fichier"
-                value={a.fichier}
-              >
-                <Avatar fichier={a.fichier} taille={72} contour={false} titre="Choisir ce portrait" />
-              </button>
-            ))}
-          </form>
-        </>
-      )
-    }
-
-    <form method="POST" class="retirer">
-      <button class="btn btn-texte btn-plein" type="submit" name="action" value="retirer">
-        N'avoir aucune photo
-      </button>
     </form>
 
     <div class="espace"></div>
@@ -192,91 +91,35 @@ const graine = moi.prenom || 'mousso';
 </Base>
 
 <style>
-  /* L'avatar en grand, posé sur un fond doux : c'est lui qu'on regarde en
-     changeant les traits, il ne doit pas flotter dans le vide. */
-  .scene {
-    display: grid;
-    place-items: center;
-    margin-bottom: var(--e4);
-    padding: var(--e4);
-    border-radius: var(--r-carte);
-    background: var(--surface-douce);
-  }
-
-  .trait {
-    margin-top: var(--e5);
-  }
-
-  .trait h2 {
-    margin-bottom: var(--e2);
-    font-size: 13.5px;
-    font-weight: 700;
-    color: var(--texte-2);
-    letter-spacing: 0.03em;
-    text-transform: uppercase;
-  }
-
-  /* Chaque rangée défile du doigt : dix coiffures ne tiennent pas sur 390 px,
-     et les passer à la ligne ferait sauter la page à chaque choix. */
-  .rangee {
-    display: flex;
-    gap: var(--e2);
-    overflow-x: auto;
-    scrollbar-width: none;
-    padding: 2px var(--e1);
-    margin: 0 calc(var(--e1) * -1);
-  }
-
-  .rangee::-webkit-scrollbar {
-    display: none;
-  }
-
-  .vignette {
-    display: grid;
-    place-items: center;
-    flex: none;
-    padding: 3px;
-    border: 2px solid transparent;
-    border-radius: 50%;
-    background: var(--surface);
-  }
-
-  .vignette-prise {
-    border-color: var(--rose);
-  }
-
-  .vignette:active {
-    transform: scale(0.94);
-  }
-
-  .titre-galerie {
-    margin: var(--e6) 0 var(--e3);
-    font-family: var(--titre);
-    font-size: 18px;
-    font-weight: 800;
-  }
-
   .grille {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
     gap: var(--e3);
   }
 
   .case {
-    display: grid;
-    place-items: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
     padding: var(--e2);
     border: 2px solid transparent;
     border-radius: var(--r-carte);
     background: var(--surface);
   }
 
+  .case:active {
+    transform: scale(0.96);
+  }
+
   .case-actuelle {
     border-color: var(--rose);
   }
 
-  .retirer {
-    margin-top: var(--e5);
+  .case span {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--texte-2);
   }
 
   .espace {

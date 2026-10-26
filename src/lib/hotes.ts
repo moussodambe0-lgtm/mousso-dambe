@@ -36,6 +36,12 @@ export const CHEMINS_PARTAGES = [
   '/deconnexion',
   '/vocal',
   '/404',
+  // Le raccourci de développement qui entre dans l'administration sans rien
+  // taper (Arthur, le 26 octobre 2026 : « fais que si je clique sur le lien
+  // j'ai accès sans mettre mon email [...] c'est en local »). La route
+  // elle-même répond 404 en production : il n'y a donc rien à retirer d'ici
+  // avant un déploiement, et rien à oublier. Voir src/pages/dev/admin.ts.
+  '/dev',
   '/_astro',
   '/_image',
   '/_server-islands',
