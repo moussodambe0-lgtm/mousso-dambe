@@ -20,7 +20,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { valeurUnique } from './coffre.mjs';
+import { valeurUnique, motifMousso } from './coffre.mjs';
 
 const RACINE = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const MIGRATIONS = path.join(RACINE, 'supabase', 'migrations');
@@ -28,15 +28,24 @@ const MIGRATIONS = path.join(RACINE, 'supabase', 'migrations');
 const APPLIQUER = process.argv.includes('--appliquer');
 const ETAT_SEUL = process.argv.includes('--etat');
 
+// Quelle base ? Le defaut est la base d'essai : on ne touche la vraie que
+// lorsqu'on le dit, et en l'ecrivant en entier. Un `--prod` de trois lettres
+// se tape par accident avec une fleche vers le haut dans un terminal ; pas
+// `--vraiment-la-production`.
+const TEST = !process.argv.includes('--vraiment-la-production');
+const CIBLE = TEST ? "la base d'essai" : 'LA BASE DE PRODUCTION';
+
 // --- Ce dont on a besoin, ou on s'arrete -----------------------------------
-const jeton = valeurUnique(/jeton.*supabase.*mousso/i, { quoi: 'le jeton Supabase' });
+const jeton = valeurUnique(motifMousso('jeton.*supabase', { test: TEST }), {
+  quoi: `le jeton Supabase de ${CIBLE}`,
+});
 if (!jeton.valeur) {
   console.error(jeton.erreur);
   process.exit(1);
 }
 
-const refBrut = valeurUnique(/supabase.*identifiant.*projet|ref.*supabase.*mousso/i, {
-  quoi: "l'identifiant du projet Supabase",
+const refBrut = valeurUnique(motifMousso('(identifiant.*projet|ref)', { test: TEST }), {
+  quoi: `l'identifiant du projet de ${CIBLE}`,
 });
 if (!refBrut.valeur) {
   console.error(refBrut.erreur);
@@ -108,6 +117,7 @@ function decouper(nom) {
 }
 
 // --- Marche ----------------------------------------------------------------
+console.log(`cible  : ${CIBLE}`);
 console.log(`projet : ${REF}`);
 console.log(`migrations sur le disque : ${fichiers.length}`);
 

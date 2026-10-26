@@ -60,6 +60,20 @@ export function valeurUnique(motif, { chemin = COFFRE, quoi = 'cette valeur' } =
   return { valeur: trouvees[0].valeur, nom: trouvees[0].nom };
 }
 
+/**
+ * Un motif ancre sur « mousso », et qui exclut ou exige « test ».
+ *
+ * Le 26 octobre 2026, un motif trop large a reconnu la ligne
+ * « JIA_TEST_ANON_KEY », qui appartient a un autre projet, parce que son nom
+ * contient « TEST_ANON ». L'outil a cru avoir trouve la cle de la base d'essai
+ * de Mousso Dambe. Le coffre est partage entre plusieurs projets : un nom de
+ * ligne doit donc nommer le projet, et le motif doit l'exiger.
+ */
+export function motifMousso(sujet, { test = false } = {}) {
+  const source = `(?=.*mousso)${test ? '(?=.*test)' : '(?!.*test)'}${sujet}`;
+  return new RegExp(source, 'i');
+}
+
 /** L'adresse qui a le droit d'etre administratrice de Mousso Dambe. */
 export const MOTIF_EMAIL_ADMIN = /e-?mail.*admin.*mousso/i;
 

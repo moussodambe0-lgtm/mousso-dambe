@@ -215,3 +215,26 @@ binaires propres au système, donc la seule qui puisse marcher sur Windows et
 - Le plan gratuit de Vercel **interdit l'usage commercial**.
 - Le rappel « 2 jours avant » s'enregistre mais rien ne l'envoie.
 - Les numéros d'urgence du Burkina sont absents, faute d'en avoir un vérifié.
+
+### La base d'essai (26 octobre 2026)
+
+Demande d'Arthur, et elle est juste : « pour que si il y a des modifications tu
+ne les fasses pas directement sur la vraie base de donnees ». Un second projet
+Supabase sert de banc d'essai en ligne, avec les memes 26 migrations, 15 tables
+et 56 fonctions que la production.
+
+`outils/migrer.mjs` vise **la base d'essai par defaut**. Pour toucher la vraie,
+il faut ecrire `--vraiment-la-production` en entier : un `--prod` de trois
+lettres se retrouve par accident avec une fleche vers le haut dans un terminal,
+pas celui-la. L'outil annonce sa cible a chaque lancement et previent avant
+d'ecrire en production.
+
+L'ordre a suivre pour toute migration : les suites PGlite (`npm run test:sql`),
+puis la base d'essai, puis la production une fois les deux vertes.
+
+**Piege du coffre partage** : le coffre contient les cles de plusieurs projets.
+Un motif trop large a reconnu la ligne `JIA_TEST_ANON_KEY`, qui appartient a un
+autre projet, parce que son nom contient « TEST_ANON » : l'outil a cru avoir
+trouve la cle de la base d'essai de Mousso Dambe. D'ou `motifMousso()` dans
+`outils/coffre.mjs`, qui exige le mot « mousso » dans le nom de la ligne et
+exclut ou exige « test » selon la base visee.
