@@ -167,6 +167,28 @@ await comme(
 );
 await comme(`select public.changer_telephone('70889900')`, [], claimsAutre);
 
+// Les douze portraits 3D produits par Motion le 26 octobre 2026. La migration
+// du 13 octobre avait vide la galerie en retirant la mascotte (« la mascotte de
+// Mousso Dambe ne doit pas etre disponible comme photo de profil »), et elle
+// annoncait elle-meme qu'il suffirait d'ajouter les fichiers et une ligne par
+// photo. C'est fait ici pour le banc, et par l'outil de migration en ligne.
+{
+  const dossier = path.join(RACINE, 'public', 'avatars');
+  const fichiers = fs.existsSync(dossier)
+    ? fs.readdirSync(dossier).filter((f) => f.endsWith('.webp') && f !== 'infirmiere-visage.webp').sort()
+    : [];
+  let ordre = 0;
+  for (const f of fichiers) {
+    ordre += 1;
+    await db.query(
+      `insert into public.avatars_disponibles (fichier, genre, ordre) values ($1, $2, $3)
+       on conflict (fichier) do nothing`,
+      [f, f.startsWith('homme') ? 'homme' : 'femme', ordre]
+    );
+  }
+  if (fichiers.length) console.log(`[base] ${fichiers.length} portraits dans la galerie des avatars`);
+}
+
 // ---------------------------------------------------------------------------
 // L'administrateur, et lui seul
 // ---------------------------------------------------------------------------

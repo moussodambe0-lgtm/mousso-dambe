@@ -124,7 +124,14 @@ const produits = produitsData ?? [];
           ouvrir la galerie (`/compte/avatar`). Tant qu'elle n'a rien choisi,
           `Avatar` montre un rond neutre, jamais un dessin généré. */}
       <a class="rond-photo" href="/compte/avatar" aria-label="Changer ma photo de profil">
-        <Avatar fichier={moi.avatarFichier} prenom={moi.prenom} taille={88} morph />
+        <Avatar
+          fichier={moi.avatarFichier}
+          choix={moi.avatarChoix}
+          graine={moi.prenom}
+          prenom={moi.prenom}
+          taille={88}
+          morph
+        />
         <span class="rond-photo-crayon"><Icone nom="crayon" taille={14} /></span>
       </a>
       <div class="qui">

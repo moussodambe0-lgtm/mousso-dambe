@@ -115,21 +115,75 @@ function trait(d: string, couleur: string, largeur: number, opacite = 1): string
  * `titre` devient le nom accessible : « Avatar de Awa » plutôt qu'« Avatar »,
  * pour qu'un lecteur d'écran distingue le sien de ceux de la communauté.
  */
-export function avatar(graine: string, titre = 'Avatar'): string {
+/**
+ * Ce qu'une utilisatrice choisit elle-même.
+ *
+ * Arthur, le 26 octobre 2026 : « les clientes doivent pouvoir personnaliser les
+ * avatars, les habiller et tout, donc quand on clique sur la photo de profil on
+ * doit pouvoir avoir accès à tout ça. »
+ *
+ * Chaque champ est un NUMÉRO dans la liste correspondante, pas une valeur :
+ * c'est ce qui se range le mieux en base, et un numéro hors liste est ramené
+ * dedans plutôt que de casser le dessin.
+ *
+ * Les traits absents d'ici (regard, sourire, bijoux, lunettes, inclinaison)
+ * restent tirés de la graine : ils donnent à chaque avatar son air, et les
+ * proposer tous ferait un écran de réglages au lieu d'un portrait.
+ */
+export interface ChoixAvatar {
+  teint?: number;
+  cheveux?: number;
+  coiffure?: number;
+  haut?: number;
+  couleurHaut?: number;
+  fond?: number;
+}
+
+/** Combien d'options par trait, pour que l'écran les propose sans les recopier. */
+export const CHOIX_POSSIBLES = {
+  teint: TEINTS.length,
+  cheveux: CHEVEUX.length,
+  coiffure: COIFFURES.length,
+  haut: HAUTS.length,
+  couleurHaut: COULEURS_HAUT.length,
+  fond: FONDS.length,
+} as const;
+
+export function avatar(graine: string, titre = 'Avatar', choix: ChoixAvatar = {}): string {
   const r = tirage(graine);
   const prendre = <T>(liste: readonly T[]): T => liste[Math.floor(r() * liste.length)];
   const id = `av${empreinte(graine).toString(36)}`;
 
-  const [peau, ombre] = prendre(TEINTS);
+  /**
+   * Le trait choisi, ou celui du hasard.
+   *
+   * Le tirage est TOUJOURS consommé, même quand le choix l'écrase. Sans cela,
+   * choisir un seul trait décalerait tous les tirages suivants : on croirait
+   * avoir changé de coiffure et on se retrouverait aussi avec un autre regard
+   * et une autre bouche.
+   */
+  const dans = <T>(liste: readonly T[], numero: number | undefined): T => {
+    const tire = prendre(liste);
+    if (numero === undefined) return tire;
+    return liste[((numero % liste.length) + liste.length) % liste.length];
+  };
+
+  const [peau, ombre] = dans(TEINTS, choix.teint);
   const lumiere = melange(peau, '#FFE7D6', 0.28);
-  const cheveux = prendre(CHEVEUX);
+  const cheveux = dans(CHEVEUX, choix.cheveux);
   const cheveuxO = melange(cheveux, '#000000', 0.45);
   const cheveuxL = melange(cheveux, '#C8A08A', 0.4);
-  const [fond1, fond2] = prendre(FONDS);
-  // le foulard wax sort une fois sur huit environ : souvent, sans dominer
-  const coiffure: string = r() < 0.13 ? 'foulard' : prendre(COIFFURES);
-  const haut = prendre(HAUTS);
-  const couleurHaut = prendre(COULEURS_HAUT);
+  const [fond1, fond2] = dans(FONDS, choix.fond);
+  // Le foulard wax sort une fois sur huit environ : souvent, sans dominer. Un
+  // choix explicite prend le pas, mais le tirage est consommé quand même.
+  const foulard = r() < 0.13;
+  const coiffureTiree: string = foulard ? 'foulard' : prendre(COIFFURES);
+  const coiffure: string =
+    choix.coiffure === undefined
+      ? coiffureTiree
+      : COIFFURES[((choix.coiffure % COIFFURES.length) + COIFFURES.length) % COIFFURES.length];
+  const haut = dans(HAUTS, choix.haut);
+  const couleurHaut = dans(COULEURS_HAUT, choix.couleurHaut);
   const wax = prendre(WAX);
   const levres = prendre(LEVRES);
   const forme = Math.floor(r() * 3); // 0 rond, 1 ovale, 2 menton fin

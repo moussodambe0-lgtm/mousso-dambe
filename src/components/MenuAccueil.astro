@@ -23,13 +23,16 @@
  */
 import Icone from './Icone.astro';
 import Avatar from './Avatar.astro';
+import type { ChoixAvatar } from '../lib/avatar';
 
 interface Props {
   prenom: string;
   avatarFichier: string | null;
+  /** Les traits qu'elle a composes, s'il y en a (26 octobre 2026). */
+  avatarChoix?: ChoixAvatar | null;
 }
 
-const { prenom, avatarFichier } = Astro.props;
+const { prenom, avatarFichier, avatarChoix = null } = Astro.props;
 
 // Les trois choses qu'on vient faire dans Mousso Dambé, dites avec les mots
 // d'Arthur. Pas une liste de pages : une liste d'intentions.
@@ -54,7 +57,7 @@ const ENTREES = [
 
   <div class="menu-panneau">
     <a class="menu-compte" href="/compte">
-      <Avatar fichier={avatarFichier} prenom={prenom} taille={48} />
+      <Avatar fichier={avatarFichier} choix={avatarChoix} graine={prenom} prenom={prenom} taille={48} />
       <span class="menu-compte-mots">
         <b>{prenom || 'Mon compte'}</b>
         <span>Voir mon compte</span>

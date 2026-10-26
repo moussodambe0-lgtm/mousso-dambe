@@ -15,6 +15,7 @@ import {
   baseConfiguree,
   type ContexteAstro,
 } from './supabase';
+import type { ChoixAvatar } from './avatar';
 
 export interface Visiteuse {
   id: string;
@@ -39,6 +40,13 @@ export interface Visiteuse {
    * 13 octobre 2026 : plus d'avatar automatique).
    */
   avatarFichier: string | null;
+  /**
+   * Les traits qu'elle a choisis pour son avatar dessine, ou null si elle n'a
+   * rien compose (Arthur, le 26 octobre 2026 : « les clientes doivent pouvoir
+   * personnaliser les avatars, les habiller et tout »). `avatarFichier` passe
+   * devant quand les deux existent, mais la base n'en garde jamais deux.
+   */
+  avatarChoix: ChoixAvatar | null;
 }
 
 export async function visiteuse(astro: ContexteAstro): Promise<Visiteuse | null> {
@@ -83,7 +91,7 @@ export async function visiteuse(astro: ContexteAstro): Promise<Visiteuse | null>
 
   const { data: profil } = await client
     .from('profils')
-    .select('prenom, questionnaire_fini, rappel_regles, notifications_discretes, code_ouverture, cycle_moyen, duree_regles, telephone, quartier, repere, nom_livraison, position_lat, position_lng, avatar_fichier')
+    .select('prenom, questionnaire_fini, rappel_regles, notifications_discretes, code_ouverture, cycle_moyen, duree_regles, telephone, quartier, repere, nom_livraison, position_lat, position_lng, avatar_fichier, avatar_choix')
     .eq('id', compte.user.id)
     .maybeSingle();
 
@@ -104,6 +112,7 @@ export async function visiteuse(astro: ContexteAstro): Promise<Visiteuse | null>
     positionLat: profil?.position_lat ?? null,
     positionLng: profil?.position_lng ?? null,
     avatarFichier: profil?.avatar_fichier ?? null,
+    avatarChoix: (profil?.avatar_choix as ChoixAvatar | null) ?? null,
   };
 }
 
