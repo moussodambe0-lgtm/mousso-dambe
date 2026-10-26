@@ -29,6 +29,13 @@ if (bloc) {
   const lng = document.querySelector<HTMLInputElement>('.position-lng');
   const quartierBloc = document.querySelector<HTMLElement>('.position-quartier');
   const champQuartier = quartierBloc?.querySelector<HTMLInputElement>('input');
+  // Le point de repère disparaît lui aussi quand la position est partagée
+  // (Arthur, le 26 octobre 2026 : « quand j'appuie sur partager ma position, la
+  // partie ton quartier, point de repère, doivent disparaître »). Avant, le
+  // quartier devenait seulement facultatif et restait à l'écran : deux champs
+  // à remplir pour rien, juste après avoir donné sa position exacte.
+  const repereBloc = document.querySelector<HTMLElement>('.position-repere');
+  const champRepere = repereBloc?.querySelector<HTMLInputElement>('input');
   // Le mot du bouton vit dans son propre `span` : écrire dans le bouton
   // entier effacerait l'icône de lieu qu'il contient.
   const mot = bloc.querySelector<HTMLElement>('.position-mot');
@@ -43,7 +50,16 @@ if (bloc) {
     // mieux qu'une option invisible.
     bouton.hidden = false;
 
-    bouton.addEventListener('click', () => {
+    bouton.addEventListener('click', (evenement) => {
+      // Ce bouton est `type="button"`, il ne devrait donc jamais envoyer le
+      // formulaire. On le dit quand même explicitement : Arthur a vu sa saisie
+      // disparaître en appuyant dessus (« le nom disparaît, le numéro de
+      // téléphone disparaît aussi »), ce qui est le symptôme d'une page
+      // rechargée. Si un navigateur ou une webview traite ce clic comme un
+      // envoi, cette ligne l'arrête. Perdre ce qu'elle vient de taper est le
+      // pire défaut d'un formulaire de livraison.
+      evenement.preventDefault();
+
       if (!navigator.geolocation) {
         dit.hidden = false;
         dit.textContent =
@@ -64,9 +80,19 @@ if (bloc) {
           bouton.classList.add('position-ok');
           dit.textContent = 'Ta position est partagée. Le quartier n’est plus obligatoire.';
 
-          // Le quartier n'est plus exigé : elle peut le laisser vide.
-          if (champQuartier) champQuartier.required = false;
+          // Le quartier et le point de repère disparaissent : sa position
+          // exacte les remplace. On retire aussi `required` AVANT de masquer,
+          // sinon le navigateur refuserait d'envoyer le formulaire en se
+          // plaignant d'un champ obligatoire devenu invisible, et elle n'aurait
+          // aucun moyen de comprendre pourquoi.
+          if (champQuartier) {
+            champQuartier.required = false;
+            champQuartier.value = '';
+          }
+          if (champRepere) champRepere.value = '';
           quartierBloc?.classList.add('position-quartier-facultatif');
+          if (quartierBloc) quartierBloc.hidden = true;
+          if (repereBloc) repereBloc.hidden = true;
         },
         (erreur) => {
           bouton.disabled = false;

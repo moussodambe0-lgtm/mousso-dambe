@@ -106,7 +106,10 @@ const panier = comptePanier(lirePanier(Astro));
         </p>
       </div>
 
-      <div class:list={['champ-bloc', 'position-quartier', aUnePosition && 'position-quartier-facultatif']}>
+      <div
+        class:list={['champ-bloc', 'position-quartier', aUnePosition && 'position-quartier-facultatif']}
+        hidden={aUnePosition}
+      >
         <label class="libelle" for="quartier">Ton quartier</label>
         <input
           class="champ"
@@ -124,7 +127,7 @@ const panier = comptePanier(lirePanier(Astro));
         </datalist>
       </div>
 
-      <div class="champ-bloc">
+      <div class="champ-bloc position-repere" hidden={aUnePosition}>
         <label class="libelle" for="repere">Un point de repère</label>
         <input
           class="champ"
@@ -135,7 +138,6 @@ const panier = comptePanier(lirePanier(Astro));
           value={repere}
           placeholder="À côté de la pharmacie, après le marché…"
         />
-        <p class="aide">C'est ce qui sert vraiment au livreur, plus qu'un numéro de rue.</p>
       </div>
 
       <button class="btn btn-rose btn-plein marge" type="submit">Enregistrer</button>

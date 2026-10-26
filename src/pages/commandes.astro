@@ -75,7 +75,15 @@ const panier = comptePanier(lirePanier(Astro));
             <section class="carte bloc commande apparait">
               <div class="haut-commande">
                 <div>
-                  <div class="numero chiffre">{c.numero}</div>
+                  {/* Le numéro de commande ne s'affiche plus (Arthur, le
+                      26 octobre 2026 : « au niveau des commandes il y a ces
+                      numéros là, supprime ça »). Il continue d'exister et de
+                      voyager dans le champ caché du bouton d'annulation, juste
+                      en dessous : c'est lui qui dit à la base QUELLE commande
+                      annuler. Seul l'affichage disparaît.
+
+                      La date reste, et c'est elle qui permet désormais de
+                      reconnaître une commande parmi plusieurs. */}
                   <div class="gris">{dateLongue(c.cree_le)}</div>
                 </div>
                 <span class:list={['pastille', ETATS[c.etat]?.classe ?? 'pastille-neutre']}>
@@ -132,10 +140,6 @@ const panier = comptePanier(lirePanier(Astro));
     align-items: flex-start;
     justify-content: space-between;
     gap: var(--e3);
-  }
-
-  .numero {
-    font-size: 17px;
   }
 
   .gris {

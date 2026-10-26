@@ -19,18 +19,80 @@ if (!baseConfiguree()) return Astro.redirect('/', 302);
 const moi = await visiteuse(Astro);
 if (!moi) return Astro.redirect('/connexion', 302);
 
-const numero = Astro.url.searchParams.get('numero') ?? '';
+// Le numéro de commande n'est plus affiché ici depuis le 26 octobre 2026 (la
+// phrase entière a été retirée à la demande d'Arthur), donc on ne le lit plus.
+// Il continue d'arriver dans l'adresse, et « Mes commandes » le montre.
+
+// Les confettis de la fête. Posés ici plutôt qu'écrits douze fois dans la page,
+// comme pour ceux de l'écran d'ouverture. Chacun a sa classe : la politique de
+// sécurité du contenu interdit tout attribut `style=`, donc position, couleur et
+// retard vivent dans la feuille de style.
+const CONFETTIS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
 ---
 
 <Base titre="Commande confirmée" pleinEcran>
   <main class="confirmee">
+    {/* La décoration, demandée par Arthur le 26 octobre 2026 : « je veux que la
+        page soit décorée ». L'écran venait d'être vidé de sa phrase et ne
+        gardait qu'un titre et deux boutons.
+
+        Esprit tenu depuis DESIGN.md : rose vif et rose clair sur du blanc,
+        « aucun rose bonbon infantile ». Les confettis tombent UNE SEULE FOIS,
+        ils ne tournent pas en boucle : c'est une commande passée, pas une fête
+        foraine. Et sous `prefers-reduced-motion`, tout est posé d'emblée, sans
+        mouvement, comme l'exige la direction visuelle. */}
+    <div class="fete" aria-hidden="true">
+      <span class="halo"></span>
+      {CONFETTIS.map((c) => <span class={`confetti confetti-${c}`}></span>)}
+    </div>
+
     <MascotteEntiere hauteur="petite" />
 
     <h1>Commande confirmée</h1>
-    <p>
-      {numero && <>Ta commande <b>{numero}</b> est enregistrée. </>}
-      On t'appelle pour confirmer, et le colis part aujourd'hui ou demain.
-    </p>
+
+    {/* La phrase « Ta commande MD-… est enregistrée. On t'appelle pour
+        confirmer, et le colis part aujourd'hui ou demain. » a été retirée le
+        26 octobre 2026, à la demande d'Arthur.
+
+        Conséquence : le numéro de commande n'apparaît plus sur cet écran. Il
+        reste dans « Mes commandes », juste en dessous. Et le délai annoncé
+        disparaît aussi, ce qui est plus prudent : rien ne garantissait
+        « aujourd'hui ou demain ». */}
+
+    {/* Les trois étapes, demandées par Arthur le 26 octobre 2026 : « on doit
+        montrer 1, 2, 3 les étapes qui vont se passer ».
+
+        Elles reprennent les ÉTATS RÉELS d'une commande dans la base (préparée,
+        en livraison, livrée), donc elles ne promettent rien que le système ne
+        sache faire. Aucun délai n'est annoncé : c'était justement le défaut de
+        la phrase retirée juste avant, et il n'y a pas encore d'équipe
+        logistique pour tenir un « aujourd'hui ou demain ».
+
+        Le colis neutre et le paiement à la remise sont deux décisions d'Arthur
+        du 12 octobre, et ce sont les deux choses qui rassurent vraiment ici. */}
+    <ol class="etapes">
+      <li>
+        <span class="etape-numero">1</span>
+        <span class="etape-corps">
+          <b>On prépare ton colis</b>
+          <small>Emballage neutre. Rien n'est écrit dessus.</small>
+        </span>
+      </li>
+      <li>
+        <span class="etape-numero">2</span>
+        <span class="etape-corps">
+          <b>Un livreur te l'apporte</b>
+          <small>À l'adresse que tu viens de donner.</small>
+        </span>
+      </li>
+      <li>
+        <span class="etape-numero">3</span>
+        <span class="etape-corps">
+          <b>Tu paies à la remise</b>
+          <small>Rien à payer avant de l'avoir entre les mains.</small>
+        </span>
+      </li>
+    </ol>
 
     <div class="boutons">
       <a class="btn btn-rose btn-plein" href="/commandes">Voir mes commandes</a>
@@ -70,6 +132,178 @@ const numero = Astro.url.searchParams.get('numero') ?? '';
     gap: var(--e2);
     width: 100%;
     max-width: 340px;
-    margin-top: var(--e6);
+    margin-top: var(--e5);
+  }
+
+  /* --- La fête : un halo derrière la mascotte, et des confettis --- */
+
+  /* Le décor ne doit jamais gêner le doigt : il est posé derrière, et il
+     n'intercepte rien. */
+  .fete {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .confirmee > :not(.fete) {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Le halo pose la mascotte au lieu de la laisser flotter sur du blanc. Un
+     dégradé qui s'éteint, pas un cercle net : on ne doit pas voir son bord. */
+  .halo {
+    position: absolute;
+    top: -14%;
+    left: 50%;
+    width: 150vw;
+    max-width: 560px;
+    aspect-ratio: 1;
+    transform: translateX(-50%);
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--rose-clair) 0%, transparent 68%);
+    opacity: 0.85;
+  }
+
+  .confetti {
+    position: absolute;
+    top: -24px;
+    width: 9px;
+    height: 9px;
+    border-radius: 2px;
+    opacity: 0;
+    animation: confetti-tombe 2.6s cubic-bezier(0.3, 0.7, 0.6, 1) forwards;
+  }
+
+  /* Trois couleurs seulement, celles de l'application : le rose agit, le rose
+     clair accompagne, l'encre tient l'ensemble. Un confetti multicolore ferait
+     exactement le « rose bonbon infantile » que DESIGN.md écarte. */
+  .confetti-0,
+  .confetti-4,
+  .confetti-8 {
+    background: var(--rose);
+  }
+
+  .confetti-1,
+  .confetti-5,
+  .confetti-9 {
+    background: var(--rose-clair);
+  }
+
+  .confetti-2,
+  .confetti-6,
+  .confetti-10 {
+    background: var(--encre);
+  }
+
+  .confetti-3,
+  .confetti-7,
+  .confetti-11 {
+    background: var(--rose-fonce);
+  }
+
+  /* Un rond sur trois, pour que ce ne soit pas une pluie de carrés. */
+  .confetti-2,
+  .confetti-5,
+  .confetti-8,
+  .confetti-11 {
+    border-radius: 50%;
+  }
+
+  .confetti-0 { left: 6%; animation-delay: 0.05s; }
+  .confetti-1 { left: 16%; animation-delay: 0.38s; }
+  .confetti-2 { left: 26%; animation-delay: 0.14s; }
+  .confetti-3 { left: 36%; animation-delay: 0.52s; }
+  .confetti-4 { left: 46%; animation-delay: 0.22s; }
+  .confetti-5 { left: 55%; animation-delay: 0.6s; }
+  .confetti-6 { left: 64%; animation-delay: 0.3s; }
+  .confetti-7 { left: 72%; animation-delay: 0.08s; }
+  .confetti-8 { left: 80%; animation-delay: 0.46s; }
+  .confetti-9 { left: 88%; animation-delay: 0.18s; }
+  .confetti-10 { left: 94%; animation-delay: 0.56s; }
+  .confetti-11 { left: 2%; animation-delay: 0.68s; }
+
+  /* Ils tombent UNE FOIS et s'arrêtent (`forwards`, pas `infinite`) : la
+     commande est passée, l'écran n'a pas à continuer de s'agiter. */
+  @keyframes confetti-tombe {
+    0% {
+      opacity: 0;
+      transform: translateY(0) rotate(0);
+    }
+    8% {
+      opacity: 1;
+    }
+    80% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+      transform: translateY(78vh) rotate(420deg);
+    }
+  }
+
+  /* --- Les trois étapes --- */
+  .etapes {
+    display: flex;
+    flex-direction: column;
+    gap: var(--e3);
+    width: 100%;
+    max-width: 340px;
+    margin-top: var(--e5);
+    padding: 0;
+    list-style: none;
+    text-align: left;
+  }
+
+  .etapes li {
+    display: flex;
+    gap: var(--e3);
+    align-items: flex-start;
+  }
+
+  .etape-numero {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--rose);
+    color: #fff;
+    font-family: var(--titre);
+    font-size: 15px;
+    font-weight: 800;
+    /* Le chiffre est une image ici, pas un mot à lire : il ne doit pas sauter
+       d'une ligne à l'autre si la police charge en retard. */
+    line-height: 1;
+  }
+
+  .etape-corps {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .etape-corps b {
+    font-size: 15.5px;
+    font-weight: 700;
+  }
+
+  .etape-corps small {
+    font-size: 13.5px;
+    line-height: 1.45;
+    color: var(--texte-2);
+  }
+
+  /* DESIGN.md : « prefers-reduced-motion : tout est posé d'emblée, sans
+     mouvement. » Les confettis ne tombent donc pas ; ils ne clignotent pas non
+     plus en restant visibles, ils ne s'affichent simplement pas. Le halo, lui,
+     ne bouge pas et reste : c'est du décor, pas du mouvement. */
+  @media (prefers-reduced-motion: reduce) {
+    .confetti {
+      display: none;
+    }
   }
 </style>
