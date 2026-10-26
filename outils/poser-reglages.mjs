@@ -20,6 +20,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import { valeurUnique, emailAdmin, masquer, COFFRE } from './coffre.mjs';
+import { baseAttendue } from './projets.mjs';
 
 const APPLIQUER = process.argv.includes('--appliquer');
 
@@ -34,6 +35,16 @@ for (const r of [jeton, refBrut]) {
   }
 }
 const REF = (/([a-z0-9]{20})/i.exec(refBrut.valeur) ?? [null, refBrut.valeur.trim()])[1];
+
+let BASE;
+try {
+  BASE = baseAttendue(REF);
+} catch (e) {
+  console.error(`
+${e.message}
+`);
+  process.exit(1);
+}
 
 async function sql(requete) {
   const r = await fetch(`https://api.supabase.com/v1/projects/${REF}/database/query`, {
@@ -94,7 +105,7 @@ if (!etat.ok) {
 }
 const posees = new Map((etat.lignes ?? []).map((l) => [l.cle, l.apercu]));
 
-console.log(`projet : ${REF}`);
+console.log(`projet : ${REF}` + ` (${BASE.nom})`);
 console.log(`empreinte de la cle serveur : ${posees.has('cle_serveur_sha256') ? 'deja posee' : 'ABSENTE'}`);
 console.log(
   `adresse de l'administrateur : ${

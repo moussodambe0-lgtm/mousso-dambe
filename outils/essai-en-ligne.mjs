@@ -21,6 +21,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import { spawn } from 'node:child_process';
 import { valeurUnique, motifMousso, masquer, COFFRE } from './coffre.mjs';
+import { baseAttendue } from './projets.mjs';
 
 const PORT = 4323;
 
@@ -38,6 +39,17 @@ const idBrut = duCoffre('(identifiant.*projet|ref)', "l'identifiant du projet d'
 const cleAnon = duCoffre('(cle.*publiable|anon)', "la clé publiable de l'essai");
 
 const REF = (/([a-z0-9]{20})/i.exec(idBrut.valeur) ?? [null, idBrut.valeur.trim()])[1];
+// Cet outil ne doit JAMAIS tomber sur la production : il pose des reglages et
+// sert a essayer. On exige donc la base d'essai, nommement.
+try {
+  baseAttendue(REF, 'essai');
+} catch (e) {
+  console.error(`
+${e.message}
+`);
+  process.exit(1);
+}
+
 const URL_BASE = `https://${REF}.supabase.co`;
 
 async function sql(requete) {

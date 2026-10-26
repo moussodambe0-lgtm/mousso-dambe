@@ -21,6 +21,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { valeurUnique, motifMousso } from './coffre.mjs';
+import { baseAttendue } from './projets.mjs';
 
 const RACINE = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const MIGRATIONS = path.join(RACINE, 'supabase', 'migrations');
@@ -53,6 +54,19 @@ if (!refBrut.valeur) {
 }
 // Accepte un identifiant seul ou une URL collee entiere.
 const REF = (/([a-z0-9]{20})/i.exec(refBrut.valeur) ?? [null, refBrut.valeur.trim()])[1];
+
+// La garantie qui ne depend pas du nom des lignes du coffre : la base visee
+// doit etre l'une des deux bases de ce projet, et celle que l'outil croit
+// viser. Sinon on s'arrete avant d'ecrire une seule ligne.
+let BASE;
+try {
+  BASE = baseAttendue(REF, TEST ? 'essai' : 'production');
+} catch (e) {
+  console.error(`
+${e.message}
+`);
+  process.exit(1);
+}
 
 const ENTETES = {
   authorization: `Bearer ${jeton.valeur}`,
@@ -117,8 +131,9 @@ function decouper(nom) {
 }
 
 // --- Marche ----------------------------------------------------------------
-console.log(`cible  : ${CIBLE}`);
+console.log(`cible  : ${BASE.nom}`);
 console.log(`projet : ${REF}`);
+console.log(`en jeu : ${BASE.danger}`);
 console.log(`migrations sur le disque : ${fichiers.length}`);
 
 const prepare = await preparerLeSuivi();
