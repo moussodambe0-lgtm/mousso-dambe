@@ -134,11 +134,16 @@ const { hauteur = 'normale' } = Astro.props;
     63% { transform: rotate(-3deg); }
     65% { transform: none; }
 
-    /* 7. Un tour sur elle-même : elle tourne comme une figurine. */
-    70% { transform: scaleX(0.05); }
-    75% { transform: scaleX(-1); }
-    80% { transform: scaleX(0.05); }
-    85% { transform: scaleX(1); }
+    /* 7. Elle change d'appui, tranquillement.
+          Elle faisait ici un tour sur elle-même, par un aplatissement suivi
+          d'un retournement (scaleX de 0.05 à -1). Retiré le 26 octobre 2026 :
+          « au niveau de la mascotte, page 2, elle ne doit pas tourner sur elle
+          même ». Remplacé plutôt que simplement supprimé, sinon elle restait
+          figée près de quatre secondes au milieu de sa boucle. */
+    70% { transform: translateX(-2%) scale(1.01, 0.99); }
+    76% { transform: translateX(-2%) scale(1.01, 0.99); }
+    82% { transform: translateX(2%) scale(1.01, 0.99); }
+    85% { transform: none; }
 
     /* 8. Un dernier petit saut, puis elle se pose. */
     89% { transform: scale(0.97, 1.05) translateY(-8%); }

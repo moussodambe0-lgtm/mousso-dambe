@@ -174,7 +174,14 @@ const CONFETTIS = [0, 1, 2, 3, 4, 5, 6, 7];
         <button class="commencer" type="submit">Commencer</button>
       </form>
 
-      <a class="deja" href="/connexion">J’ai déjà un compte</a>
+      {/* Le lien « J'ai déjà un compte » a été retiré le 26 octobre 2026, à la
+          demande d'Arthur : un seul bouton sur cet écran.
+
+          Conséquence connue : celle qui a attaché une adresse à son identité et
+          qui perd sa session (téléphone changé, navigateur nettoyé) n'a plus de
+          chemin visible vers /connexion depuis ici. La page existe toujours et
+          répond, mais il faut en connaître l'adresse. À rouvrir si des femmes
+          se retrouvent dehors sans pouvoir rentrer. */}
     </div>
   </main>
 </Base>
@@ -523,12 +530,6 @@ const CONFETTIS = [0, 1, 2, 3, 4, 5, 6, 7];
 
   .commencer:active {
     transform: scale(0.98);
-  }
-
-  .deja {
-    color: var(--texte-2);
-    font-size: 15px;
-    font-weight: 600;
   }
 
   /* --- Les animations --- */

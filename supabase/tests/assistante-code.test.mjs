@@ -200,4 +200,49 @@ titre('Un ancien échange rejoué ne devient pas une consigne');
   verifier('la question du jour est le dernier message', messages[messages.length - 1].content === 'et donc ?');
 }
 
+titre("Dambe appelle les gens par leur nom, jamais « ma soeur »");
+{
+  // Arthur, le 26 octobre 2026 : « dis a IA Dambe d'eviter de dire ma soeur ou
+  // mon frere, qu'elle appelle les gens par leur nom ».
+  //
+  // Les consignes sont la seule chose qui tienne ce ton : si quelqu'un les
+  // reecrit un jour sans y penser, ces verifications le rattrapent.
+  const vide = {
+    jour_du_cycle: null,
+    phase: null,
+    cycle_moyen: null,
+    duree_regles: null,
+    jours_restants: null,
+    catalogue: [],
+    echanges: [],
+  };
+  const avecNom = consignes({ ...vide, prenom: 'Awa' });
+  const sansNom = consignes({ ...vide, prenom: null });
+
+  for (const [quoi, texte] of [['avec un nom', avecNom], ['sans nom', sansNom]]) {
+    verifier(
+      `${quoi} : les mots de parente sont interdits`,
+      /JAMAIS[^.]*soeur|JAMAIS[^.]*sœur/i.test(texte)
+    );
+    verifier(
+      `${quoi} : « mon frere » est nomme aussi`,
+      /fr[eè]re/i.test(texte)
+    );
+    verifier(
+      `${quoi} : la comparaison ne dit plus « grande soeur »`,
+      !/comme une grande s(oeur|œur)/i.test(texte)
+    );
+  }
+
+  verifier(
+    "avec un nom, elle recoit l'ordre de l'appeler par son nom",
+    /appelle-la par son nom/i.test(avecNom)
+  );
+  verifier(
+    "sans nom, elle ne doit inventer aucun nom",
+    /ne lui donne aucun nom/i.test(sansNom)
+  );
+}
+
 bilan('Dambé, côté code');
+

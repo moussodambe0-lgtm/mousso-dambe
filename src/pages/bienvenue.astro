@@ -186,7 +186,10 @@ const TITRES: Record<number, string> = {
 };
 
 const AIDES: Record<number, string> = {
-  1: 'Ton prénom suffit, ou un surnom. Il ne sert qu’à te parler, et à personne d’autre.',
+  // Arthur, le 26 octobre 2026 : « remplace cette phrase par nom ou prénom ».
+  // La phrase disait « Ton prénom suffit, ou un surnom. Il ne sert qu'à te
+  // parler, et à personne d'autre. »
+  1: 'Nom ou prénom.',
   2: 'Le premier jour de saignement, pas le dernier. C’est la seule date dont j’ai besoin pour calculer la suite.',
   3: 'Du premier jour de saignement au dernier. Si ça change d’un mois à l’autre, donne une moyenne.',
   4: 'Du premier jour de tes règles au premier jour des suivantes. Chez beaucoup de femmes c’est entre 25 et 32 jours.',
@@ -207,7 +210,14 @@ const REGULARITES = [
 // ('suivre', 'jetables', aucun ressenti), pour le jour où elles reviendraient.
 
 const DUREES_REGLES = [3, 4, 5, 6, 7];
-const DUREES_CYCLE = [26, 28, 30, 32];
+// Arthur, le 26 octobre 2026 : « il doit avoir des propositions 26 27 28 29,
+// donc enlève 30 32 ». Les propositions se suivent maintenant jour par jour
+// autour de 28, au lieu de sauter de deux en deux jusqu'à 32. Une femme dont
+// le cycle fait 27 ou 29 jours trouve son chiffre sans passer par la saisie.
+// Au-delà de 29, la saisie libre reste là : elle accepte de 21 à 45 jours
+// (vérifié dans le champ de l'étape 4), donc un cycle de 30, 32 ou 35 jours
+// s'enregistre toujours, en tapant le nombre.
+const DUREES_CYCLE = [26, 27, 28, 29];
 
 const prenomFini = Astro.url.searchParams.get('prenom') ?? moi.prenom;
 ---
@@ -313,6 +323,25 @@ const prenomFini = Astro.url.searchParams.get('prenom') ?? moi.prenom;
           {/* --- 2. La date --- */}
           {etape === 2 && (
             <div class="corps">
+              {/* La saisie de la date vient AVANT les propositions (Arthur, le
+                  26 octobre 2026 : « la partie pour taper la date doit venir
+                  avant les propositions aujourd'hui samedi »), comme à l'étape
+                  suivante.
+
+                  Ce n'est pas qu'une question d'ordre à l'écran. Les deux
+                  portent le même nom, et `derniereReponse()` garde la dernière
+                  valeur non vide de la page. Dans l'ordre d'avant, une femme
+                  qui tapait une date puis touchait « Hier » voyait sa date
+                  tapée l'emporter sur le bouton qu'elle venait de toucher.
+                  Maintenant le bouton gagne, ce qui est ce qu'elle vient de
+                  dire. Et une saisie laissée vide est ignorée dans les deux
+                  cas. */}
+              <label class="libelle" for="d">
+                La date de tes dernières règles
+              </label>
+              <input class="champ" id="d" name="dernieres" type="date" max={aujourdhui()} value={reponses.dernieres} />
+
+              <span class="libelle-petit marge">Ou choisis</span>
               <div class="jours">
                 {joursRecents.map((j) => (
                   <button
@@ -321,19 +350,16 @@ const prenomFini = Astro.url.searchParams.get('prenom') ?? moi.prenom;
                     name="dernieres"
                     value={j.iso}
                     aria-pressed={reponses.dernieres === j.iso}
+                    formnovalidate
                   >
                     {j.libelle}
                   </button>
                 ))}
               </div>
-              <label class="libelle marge" for="d">
-                Ou une autre date
-              </label>
-              <input class="champ" id="d" name="dernieres" type="date" max={aujourdhui()} value={reponses.dernieres} />
               <button class="btn btn-rose btn-plein marge" type="submit">
                 Continuer
               </button>
-              <button class="btn btn-texte btn-plein" type="submit" name="sait" value="non">
+              <button class="btn btn-texte btn-plein" type="submit" name="sait" value="non" formnovalidate>
                 Je ne m'en souviens pas
               </button>
             </div>
@@ -456,6 +482,33 @@ const prenomFini = Astro.url.searchParams.get('prenom') ?? moi.prenom;
     </Base>
   )
 }
+
+{/* Un confort, pas une béquille : toucher une proposition vide la date commencée.
+
+    Arthur, le 26 octobre 2026 : « si quelqu'un commence à taper une date, il ne
+    finit pas et il décide de cliquer sur par exemple aujourd'hui, on ne doit pas
+    l'obliger à continuer à saisir la date, la date qu'il a commencé à saisir
+    doit disparaître ».
+
+    Le vrai blocage était ailleurs et il est corrigé sans JavaScript : une date
+    incomplète est jugée invalide par le navigateur, qui refusait d'envoyer le
+    formulaire. Les propositions portent maintenant `formnovalidate`, donc elles
+    partent quand même, et le serveur garde la dernière valeur non vide, c'est-à
+    -dire le bouton touché.
+
+    Ce script ne sert qu'à l'oeil : sans lui, elle verrait sa saisie inachevée le
+    temps que la page change, ce qui est long sur une connexion lente. Si le
+    JavaScript ne tourne pas, tout marche pareil. */}
+<script>
+  const champ = document.getElementById('d') as HTMLInputElement | null;
+  if (champ) {
+    for (const puce of document.querySelectorAll('.jours .puce')) {
+      puce.addEventListener('click', () => {
+        champ.value = '';
+      });
+    }
+  }
+</script>
 
 <style>
   .questionnaire {
