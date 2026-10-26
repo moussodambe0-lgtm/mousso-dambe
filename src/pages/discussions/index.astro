@@ -19,6 +19,7 @@ import Mascotte from '../../components/Mascotte.astro';
 import { clientSession, baseConfiguree } from '../../lib/supabase';
 import { visiteuse, lirePanier, comptePanier } from '../../lib/session';
 import { quandCourt } from '../../lib/format';
+import { MEDECIN_DISPONIBLE, MEDECIN_BIENTOT } from '../../lib/medecin';
 
 if (!baseConfiguree()) return Astro.redirect('/', 302);
 const moi = await visiteuse(Astro);
@@ -76,40 +77,8 @@ const nonLus = Number(data?.non_lus ?? 0);
         </a>
       </li>
 
-      {/* --- Le médecin --- */}
-      <li class="apparait" data-ordre="2">
-        <a class="causerie" href="/discussions/medecin">
-          <span class="causerie-visage causerie-visage-medecin">
-            <Icone nom="coeur" taille={24} />
-          </span>
-          <span class="causerie-corps">
-            <span class="causerie-haut">
-              <span class="causerie-nom">Le médecin</span>
-              {medecin?.quand && <span class="causerie-heure">{quandCourt(medecin.quand)}</span>}
-            </span>
-            <span class="causerie-bas">
-              <span class:list={['causerie-apercu', medecin && medecin.non_lus > 0 && 'causerie-apercu-gras']}>
-                {
-                  medecin?.apercu
-                    ? `${medecin.apercu_de === 'elle' ? 'Toi : ' : ''}${medecin.apercu}`
-                    : 'Une douleur, un retard, une question que tu n’oses poser. Un conseil, pas un diagnostic.'
-                }
-              </span>
-              {
-                medecin && medecin.non_lus > 0 && (
-                  <span class="causerie-nombre">
-                    {medecin.non_lus}
-                    <span class="lecture-seule">messages non lus</span>
-                  </span>
-                )
-              }
-            </span>
-          </span>
-        </a>
-      </li>
-
       {/* --- La boutique --- */}
-      <li class="apparait" data-ordre="3">
+      <li class="apparait" data-ordre="2">
         <a class="causerie" href="/discussions/boutique">
           <span class="causerie-visage causerie-visage-boutique">
             {/* Le logo de Mousso Dambé comme photo de profil de la boutique
@@ -141,6 +110,69 @@ const nonLus = Number(data?.non_lus ?? 0);
             </span>
           </span>
         </a>
+      </li>
+
+      {/* --- Le médecin, en dernier et pas encore ouvert ---
+
+           Arthur, le 26 octobre 2026 : « pour le médecin on va mettre bientôt
+           disponible », et « il doit être en bas de Boutique Mousso Dambé
+           aussi ». Il était au-dessus de la boutique ; il passe après elle.
+
+           La carte reste visible pour annoncer ce qui arrive, mais ce n'est
+           plus un lien : tant que personne ne répond de l'autre côté, laisser
+           une femme écrire serait lui faire attendre une réponse qui ne
+           viendrait jamais, sur une question qu'elle n'ose peut-être poser à
+           personne d'autre. Pour ouvrir : voir src/lib/medecin.ts. */}
+      <li class="apparait" data-ordre="3">
+        {
+          MEDECIN_DISPONIBLE ? (
+            <a class="causerie" href="/discussions/medecin">
+              <span class="causerie-visage causerie-visage-medecin">
+                <Icone nom="coeur" taille={24} />
+              </span>
+              <span class="causerie-corps">
+                <span class="causerie-haut">
+                  <span class="causerie-nom">Le médecin</span>
+                  {medecin?.quand && <span class="causerie-heure">{quandCourt(medecin.quand)}</span>}
+                </span>
+                <span class="causerie-bas">
+                  <span class:list={['causerie-apercu', medecin && medecin.non_lus > 0 && 'causerie-apercu-gras']}>
+                    {
+                      medecin?.apercu
+                        ? `${medecin.apercu_de === 'elle' ? 'Toi : ' : ''}${medecin.apercu}`
+                        : 'Une douleur, un retard, une question que tu n’oses poser. Un conseil, pas un diagnostic.'
+                    }
+                  </span>
+                  {
+                    medecin && medecin.non_lus > 0 && (
+                      <span class="causerie-nombre">
+                        {medecin.non_lus}
+                        <span class="lecture-seule">messages non lus</span>
+                      </span>
+                    )
+                  }
+                </span>
+              </span>
+            </a>
+          ) : (
+            <div class="causerie causerie-bientot" aria-disabled="true">
+              <span class="causerie-visage causerie-visage-medecin">
+                <Icone nom="coeur" taille={24} />
+              </span>
+              <span class="causerie-corps">
+                <span class="causerie-haut">
+                  <span class="causerie-nom">Le médecin</span>
+                  <span class="causerie-etiquette">{MEDECIN_BIENTOT}</span>
+                </span>
+                <span class="causerie-bas">
+                  <span class="causerie-apercu">
+                    Tu pourras poser une question à un médecin, pour un conseil. Pas encore ouvert.
+                  </span>
+                </span>
+              </span>
+            </div>
+          )
+        }
       </li>
     </ul>
 
@@ -187,6 +219,35 @@ const nonLus = Number(data?.non_lus ?? 0);
 
   .causerie:active {
     transform: scale(0.98);
+  }
+
+  /* La carte du médecin, tant que le fil n'est pas ouvert. Elle s'annonce mais
+     ne s'ouvre pas : donc ni geste au toucher, ni couleur d'encre pleine, et un
+     fond sans relief. Elle reste lisible, elle n'invite pas à appuyer.
+     `pointer-events: none` serait de trop : ce n'est pas un lien, il n'y a rien
+     à neutraliser. */
+  .causerie-bientot {
+    border-style: dashed;
+    background: transparent;
+    color: var(--texte-2);
+    transition: none;
+  }
+
+  .causerie-bientot .causerie-visage {
+    opacity: 0.55;
+  }
+
+  /* L'étiquette prend la place de l'heure, à droite du nom : c'est là que l'oeil
+     va chercher l'état de la conversation. */
+  .causerie-etiquette {
+    flex: none;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--surface-douce);
+    color: var(--texte-2);
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
   }
 
   /* La conversation épinglée se distingue par son fond, pas par un cadre de
