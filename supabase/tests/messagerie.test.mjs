@@ -29,6 +29,14 @@ const patronne = await nouveauCompte(db, 'patronne', 'Arthur');
 await commeServeur(db, `insert into public.administrateurs (profil_id) values ($1)`, [patronne]);
 await commeServeur(db, `update public.profils set telephone = '70112233' where id = $1`, [awa]);
 
+// Le fil du médecin est FERMÉ par défaut depuis le 26 octobre 2026 (Arthur :
+// « pour le médecin on va mettre bientôt disponible »), et ces vérifications-ci
+// portent justement sur son fonctionnement : deux sujets, deux fils, deux
+// compteurs. On l'ouvre donc ici, comme le fera une ligne de SQL le jour où un
+// médecin répondra. La fermeture elle-même est vérifiée ailleurs, dans
+// supabase/tests/medecin-bientot.test.mjs.
+await commeServeur(db, `update public.reglages set valeur = 'oui' where cle = 'medecin_actif'`);
+
 // Un produit publié et un produit retiré de la vente.
 await commeServeur(
   db,

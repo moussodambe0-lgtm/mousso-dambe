@@ -28,6 +28,14 @@ const bintou = await nouveauCompte(db, 'bintou', 'Bintou');
 const patronne = await nouveauCompte(db, 'patronne', 'Arthur');
 await commeServeur(db, `insert into public.administrateurs (profil_id) values ($1)`, [patronne]);
 
+// Le fil du médecin est fermé par défaut depuis le 26 octobre 2026, et ce
+// fichier l'emprunte à sept endroits pour vérifier les messages vocaux. On
+// l'ouvre donc, comme le fera une ligne de SQL quand un médecin répondra. Sans
+// cela, le refus « medecin_bientot » arrive AVANT les contrôles testés ici et
+// les masque tous : c'est ainsi qu'un contrôle du message vide s'est retrouvé
+// en échec sans que le message vide y soit pour quoi que ce soit.
+await commeServeur(db, `update public.reglages set valeur = 'oui' where cle = 'medecin_actif'`);
+
 const elle = (sub) => ({ role: 'authenticated', sub });
 
 // Un « enregistrement » : 800 octets reconnaissables, pour vérifier à
