@@ -5,6 +5,12 @@
  * Le message d'erreur est le même que l'adresse existe ou non : dire « cette
  * adresse n'a pas de compte » révélerait à un mari curieux si sa femme utilise
  * l'application. Ce n'est pas une précaution théorique ici.
+ *
+ * Cette phrase était fausse pour un cas, jusqu'à l'audit du 26 octobre 2026 :
+ * une adresse non confirmée recevait « ton adresse n'est pas encore
+ * confirmée », donc l'aveu qu'un compte existe. Il n'y a plus qu'un seul
+ * texte, et un garde-fou dans supabase/tests/connexion.test.mjs tombe si un
+ * second réapparaît.
  */
 import Base from '../layouts/Base.astro';
 import Symbole from '../components/Symbole.astro';
@@ -53,9 +59,16 @@ if (Astro.request.method === 'POST') {
       password: motDePasse,
     });
     if (error || !data.session) {
-      erreur = /not confirmed/i.test(error?.message ?? '')
-        ? "Ton adresse n'est pas encore confirmée. Ouvre l'email qu'on t'a envoyé."
-        : 'Email ou mot de passe incorrect.';
+      // LE MÊME TEXTE DANS TOUS LES CAS. Il y en avait deux : « ton adresse
+      // n'est pas encore confirmée » confirmait qu'un compte existe à cette
+      // adresse, et c'est exactement ce que l'en-tête de ce fichier promet de
+      // ne jamais dire. Un mari qui essaie l'adresse de sa femme avec
+      // n'importe quel mot de passe apprenait qu'elle a un compte ici (Cyber,
+      // 26 octobre 2026). Le texte unique dit les deux causes possibles, pour
+      // ne pas laisser sans secours celle qui n'a pas encore confirmé.
+      erreur =
+        'Email ou mot de passe incorrect. Si tu viens de créer ton compte, ' +
+        "ouvre d'abord l'email de confirmation.";
     } else {
       poserSession(Astro, {
         access_token: data.session.access_token,

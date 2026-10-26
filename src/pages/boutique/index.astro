@@ -14,6 +14,7 @@ import Icone from '../../components/Icone.astro';
 import CarteProduit from '../../components/CarteProduit.astro';
 import { clientPublic, baseConfiguree, jetonDeSession } from '../../lib/supabase';
 import { visiteuse, lirePanier, comptePanier } from '../../lib/session';
+import { enteteCatalogue } from '../../lib/cache';
 import { motCherche, filtreRecherche } from '../../lib/recherche';
 
 const RAYONS = [
@@ -49,11 +50,13 @@ const moi = await visiteuse(Astro);
 const panier = comptePanier(lirePanier(Astro));
 
 // Catalogue sans rien de personnel : le réseau peut le garder deux minutes.
-if (!moi && !avaitUnCookie) {
-  Astro.response.headers.set('Cache-Control', 'public, s-maxage=120, stale-while-revalidate=600');
-} else {
-  Astro.response.headers.set('Cache-Control', 'private, no-store');
-}
+// Le compteur du panier compte comme personnel : il est écrit dans la page, et
+// un cache partagé le servirait à la visiteuse suivante (Cyber, 26 octobre
+// 2026). La décision vit dans src/lib/cache.ts pour être testable.
+Astro.response.headers.set(
+  'Cache-Control',
+  enteteCatalogue({ connectee: !!moi, avaitUnCookie, articlesAuPanier: panier })
+);
 ---
 
 <Base titre="Boutique" nav="boutique" panier={panier}>

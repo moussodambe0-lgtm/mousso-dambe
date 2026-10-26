@@ -13,11 +13,19 @@
  * un avatar de Mousso Dambé est une photo, pas un dessin.
  *
  * CE QUI RESTE DU CRÉATEUR, ET POURQUOI : rien dans cette page. En base,
- * `composer_avatar()` est révoquée et `avatar_choix` est vidée (voir la
- * migration 20261026150000). Le générateur `src/lib/avatar.ts` reste dans le
- * dépôt avec ses 23 vérifications, parce que supprimer du code qui marche est
- * un geste qu'on ne défait pas : à retirer pour de bon si personne n'y revient
- * une troisième fois.
+ * `composer_avatar()` est révoquée et `avatar_choix` est vidée par la migration
+ * 20261026190000. Le générateur `src/lib/avatar.ts` reste dans le dépôt avec
+ * ses 23 vérifications, parce que supprimer du code qui marche est un geste
+ * qu'on ne défait pas : à retirer pour de bon si personne n'y revient une
+ * troisième fois.
+ *
+ * Ce paragraphe disait « voir la migration 20261026150000 », et cette migration
+ * n'existait pas : la fonction est restée ouverte à tout compte connecté
+ * jusqu'à l'audit de Cyber du 26 octobre 2026. Un commentaire qui décrit une
+ * protection absente est plus dangereux qu'un commentaire absent, parce que le
+ * prochain lecteur ne vérifie plus. La galerie était vide par la même occasion :
+ * les douze portraits étaient sur le disque et dans la mise en ligne, mais
+ * aucune ligne ne les déclarait en base.
  *
  * La décision du 13 octobre tient toujours : « la personne n'aura pas
  * automatiquement une image. » Tant qu'elle n'a rien choisi, son compte garde

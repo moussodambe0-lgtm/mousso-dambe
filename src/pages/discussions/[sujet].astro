@@ -41,6 +41,7 @@ import { clientSession, baseConfiguree } from '../../lib/supabase';
 import { visiteuse, lirePanier, comptePanier } from '../../lib/session';
 import { prixComplet, heureCourte, dateLongue, messageErreur } from '../../lib/format';
 import { alerte } from '../../lib/assistante';
+import { MEDECIN_DISPONIBLE } from '../../lib/medecin';
 
 if (!baseConfiguree()) return Astro.redirect('/', 302);
 const moi = await visiteuse(Astro);
@@ -51,6 +52,18 @@ if (!moi) return Astro.redirect('/connexion', 302);
 const sujet: 'boutique' | 'medecin' = Astro.params.sujet === 'medecin' ? 'medecin' : 'boutique';
 if (Astro.params.sujet !== sujet) return Astro.redirect(`/discussions/${sujet}`, 302);
 const estMedecin = sujet === 'medecin';
+
+// LE FIL DU MÉDECIN N'EST PAS ENCORE OUVERT (Cyber, 26 octobre 2026).
+//
+// La liste des discussions cache déjà le lien quand `MEDECIN_DISPONIBLE` est
+// faux, mais CETTE page continuait de s'ouvrir à qui tapait l'adresse ou
+// gardait un signet : écran complet, champ de saisie, et bouton
+// d'enregistrement vocal. Une femme pouvait donc enregistrer quatre-vingt-dix
+// secondes sur une question intime avant d'apprendre que personne n'écoute.
+// La base refuse maintenant le texte ET la voix (migrations 20261026130000 et
+// 20261026150000), mais elle les refuse APRÈS l'enregistrement : il ne faut
+// pas lui faire parler pour rien.
+if (estMedecin && !MEDECIN_DISPONIBLE) return Astro.redirect('/discussions', 302);
 
 const client = clientSession(Astro)!;
 const panier = comptePanier(lirePanier(Astro));

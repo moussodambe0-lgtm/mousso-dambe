@@ -77,11 +77,58 @@ titre('Le prix envoyé par le navigateur est ignoré');
 
 titre('Le stock est respecté');
 {
+  // RÉÉCRIT LE 26 OCTOBRE 2026, et il faut dire pourquoi.
+  //
+  // Ce test envoyait DEUX FOIS le même panier à la même adresse, et attendait
+  // « stock insuffisant » au second. Depuis la migration
+  // 20261026160000, deux envois du même geste à moins de deux minutes sont
+  // reconnus comme un double appui : le second rend la première commande au
+  // lieu d'en créer une deuxième. Le second envoi ne touchait donc plus le
+  // stock du tout, et ce test est devenu rouge.
+  //
+  // Le test avait raison sur son INTENTION (le stock doit tenir) et son
+  // mécanisme était devenu ambigu : il ne distinguait pas « on vérifie le
+  // stock » de « on appuie deux fois ». Il vérifie maintenant les deux
+  // séparément, et c'est plus fort qu'avant :
+  //   - une AUTRE femme se fait refuser ce qui n'est plus en stock ;
+  //   - un panier DIFFÉRENT se fait refuser aussi ;
+  //   - et le double appui est bien reconnu comme tel.
+  const lea = await nouveauCompte(db, 'lea-stock', 'Lea');
   const avant = await rpc(`select stock from public.produits where slug = 'serviettes-lavables-3'`);
   const trop = JSON.stringify([{ slug: 'serviettes-lavables-3', quantite: 20 }]);
-  await rpc(`select public.passer_commande($1::jsonb, 'Awa', '70123456', 'Dassasgho', '') as x`, [trop]);
-  const r = await rpc(`select public.passer_commande($1::jsonb, 'Awa', '70123456', 'Dassasgho', '') as x`, [trop]);
-  verifier('on ne commande pas plus que le stock', r.x.ok === false && r.x.erreur.includes('stock_insuffisant'), JSON.stringify(r.x));
+
+  const premier = await rpc(`select public.passer_commande($1::jsonb, 'Awa', '70123456', 'Dassasgho', '') as x`, [trop]);
+  verifier('la première commande passe', premier.x.ok === true, JSON.stringify(premier.x));
+
+  // 1. Une autre femme, le même produit : le stock est parti, elle est refusée.
+  const autre = await rpc(
+    `select public.passer_commande($1::jsonb, 'Lea', '71000000', 'Tanghin', '') as x`,
+    [trop],
+    { role: 'authenticated', sub: lea }
+  );
+  verifier(
+    'une autre femme ne commande pas plus que le stock',
+    autre.x.ok === false && String(autre.x.erreur).includes('stock_insuffisant'),
+    JSON.stringify(autre.x)
+  );
+
+  // 2. Un panier différent, la même femme : refusé aussi, le stock décide.
+  const unPeuMoins = JSON.stringify([{ slug: 'serviettes-lavables-3', quantite: 19 }]);
+  const encore = await rpc(`select public.passer_commande($1::jsonb, 'Awa', '70123456', 'Dassasgho', '') as x`, [unPeuMoins]);
+  verifier(
+    'un panier différent ne commande pas plus que le stock',
+    encore.x.ok === false && String(encore.x.erreur).includes('stock_insuffisant'),
+    JSON.stringify(encore.x)
+  );
+
+  // 3. Le double appui, lui, est reconnu : même numéro, et rien de plus.
+  const double = await rpc(`select public.passer_commande($1::jsonb, 'Awa', '70123456', 'Dassasgho', '') as x`, [trop]);
+  verifier(
+    'le même geste répété rend la même commande',
+    double.x.ok === true && double.x.numero === premier.x.numero && double.x.rejouee === true,
+    JSON.stringify(double.x)
+  );
+
   const apres = await rpc(`select stock from public.produits where slug = 'serviettes-lavables-3'`);
   verifier('le stock a baissé une seule fois', apres.stock === avant.stock - 20, `stock ${apres.stock}`);
 }

@@ -71,10 +71,19 @@ const canonique = new URL(Astro.url.pathname, Astro.site ?? 'http://localhost:43
     <link rel="preload" href="/fonts/figtree.woff2" as="font" type="font/woff2" crossorigin />
 
     <!-- Rien de tout ça ne doit sortir d'ici : une page de cycle n'a aucune
-         raison d'être indexée ni partagée. Seule la boutique l'est. -->
+         raison d'être indexée ni partagée. Seule la boutique l'est.
+         L'ACCUEIL EN A ÉTÉ RETIRÉ le 26 octobre 2026 (audit de Cyber) : « / »
+         se déclarait « index,follow » alors que, connectée, il affiche son jour
+         de cycle, sa phase et la date de ses prochaines règles. C'était
+         justement la faille la plus grave de l'audit du 12 octobre, et la
+         phrase juste au-dessus disait déjà le contraire de la ligne.
+         Rien ne fuyait, parce que « / » sans session redirige vers
+         « /ouverture » et qu'un robot n'a donc jamais de page à lire ; mais
+         c'était une invitation à suivre les liens vers /cycle et /journal, et
+         un en-tête qui contredit son propre commentaire finit par être cru. -->
     <meta
       name="robots"
-      content={Astro.url.pathname.startsWith('/boutique') || Astro.url.pathname === '/' ? 'index,follow' : 'noindex,nofollow'}
+      content={Astro.url.pathname.startsWith('/boutique') ? 'index,follow' : 'noindex,nofollow'}
     />
 
     <meta property="og:title" content={titreComplet} />

@@ -12,7 +12,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { verifier, bilan, titre } from './banc.mjs';
-import { cheminPublic, gardableParLeTelephone, CHEMINS_PUBLICS } from '../../src/lib/cache.ts';
+import {
+  cheminPublic,
+  gardableParLeTelephone,
+  catalogueGardable,
+  enteteCatalogue,
+  CHEMINS_PUBLICS,
+} from '../../src/lib/cache.ts';
 import { defautDeConfiguration, CLE_DU_BANC_LOCAL } from '../../src/lib/configuration.ts';
 import { motCherche, filtreRecherche } from '../../src/lib/recherche.ts';
 
@@ -126,6 +132,108 @@ titre('La liste des chemins publics ne contient aucune page personnelle');
   verifier("la liste PRIVE du service worker contient l'accueil", /const PRIVE = \[\s*'\/'/.test(swSource));
   verifier('le service worker exige s-maxage', swSource.includes("includes('s-maxage')"));
   verifier('le service worker refuse no-store', swSource.includes("includes('no-store')"));
+}
+
+titre('GARDE-FOU : aucune page ne peut etre oubliee de la liste PRIVE');
+{
+  // Nee de l'audit du 26 octobre 2026. Neuf chemins crees depuis le 12 octobre
+  // manquaient a la liste PRIVE du service worker (/discussions, /parametres,
+  // /recherche, /vocal, /commande-confirmee, et les autres). Aucun n'etait
+  // reellement garde, parce que la deuxieme serrure tient. Mais une liste qu'on
+  // oublie de completer est une serrure qui s'ouvre toute seule.
+  //
+  // Ce garde-fou relit le dossier des pages et exige que CHAQUE chemin soit
+  // couvert, soit par la liste des chemins publics, soit par la liste PRIVE.
+  // Il tombera le jour ou quelqu'un ajoutera une page sans y penser.
+  const swSource = fs.readFileSync(path.join(RACINE, 'public', 'sw.js'), 'utf8');
+  const bloc = /const PRIVE = \[([^\]]*)\]/.exec(swSource);
+  const PRIVE = bloc ? [...bloc[1].matchAll(/'([^']+)'/g)].map((m) => m[1]) : [];
+  verifier('la liste PRIVE se relit depuis le service worker', PRIVE.length > 10, `${PRIVE.length} chemins`);
+
+  const couvert = (chemin) =>
+    PRIVE.some((p) => chemin === p || chemin.startsWith(`${p}/`)) ||
+    CHEMINS_PUBLICS.some((p) => chemin === p || chemin.startsWith(`${p}/`));
+
+  // Les chemins des pages, deduits des fichiers : src/pages/cycle/index.astro
+  // devient /cycle, src/pages/commandes/[etat].astro devient /commandes/x.
+  const pages = path.join(RACINE, 'src', 'pages');
+  const chemins = [];
+  const parcourir = (dossier, prefixe) => {
+    for (const entree of fs.readdirSync(dossier, { withFileTypes: true })) {
+      const complet = path.join(dossier, entree.name);
+      if (entree.isDirectory()) {
+        parcourir(complet, `${prefixe}/${entree.name}`);
+        continue;
+      }
+      if (!/\.(astro|ts)$/.test(entree.name)) continue;
+      const base = entree.name.replace(/\.(astro|ts)$/, '');
+      if (base === '404') continue; // la page introuvable ne parle de personne
+      const nom = base.replace(/^\[.*\]$/, 'exemple');
+      chemins.push(base === 'index' ? prefixe || '/' : `${prefixe}/${nom}`);
+    }
+  };
+  parcourir(pages, '');
+
+  const oubliees = chemins.filter((c) => !couvert(c));
+  verifier(
+    `les ${chemins.length} chemins de l'application sont tous classes`,
+    oubliees.length === 0,
+    oubliees.join(' ')
+  );
+
+  // Et le piege qui a produit la trouvaille : un prefixe n'est pas un parent.
+  const estPrive = (chemin) => PRIVE.some((p) => chemin === p || chemin.startsWith(`${p}/`));
+  verifier('/commande-confirmee est bien prive', estPrive('/commande-confirmee'));
+  verifier('/discussions/medecin est bien prive', estPrive('/discussions/medecin'));
+  verifier('/parametres/informations est bien prive', estPrive('/parametres/informations'));
+  verifier('/vocal/un-identifiant est bien prive', estPrive('/vocal/un-identifiant'));
+  verifier('/recherche est bien prive', estPrive('/recherche'));
+  verifier('/boutique n est PAS prive', estPrive('/boutique') === false);
+}
+
+titre('Le catalogue ne se garde que s il ne parle de personne');
+{
+  // Ne par l'audit du 26 octobre 2026. La boutique sortait avec
+  // « public, s-maxage=120 » alors que le compteur du panier etait ecrit dedans :
+  // rejoue sur le site local, une page portant « Mon panier, 3 articles » etait
+  // declaree gardable par un cache PARTAGE, sans Vary. La visiteuse suivante
+  // heritait du compteur de la precedente.
+  const cas = (connectee, avaitUnCookie, articlesAuPanier) =>
+    catalogueGardable({ connectee, avaitUnCookie, articlesAuPanier });
+
+  verifier('visiteuse sans compte et sans panier : on garde', cas(false, false, 0) === true);
+  verifier('visiteuse avec 1 article au panier : on ne garde pas', cas(false, false, 1) === false);
+  verifier('visiteuse avec 3 articles : on ne garde pas', cas(false, false, 3) === false);
+  verifier('connectee : on ne garde pas', cas(true, false, 0) === false);
+  verifier('cookie de session perime : on ne garde pas', cas(false, true, 0) === false);
+  verifier('connectee avec un panier : on ne garde pas', cas(true, true, 5) === false);
+
+  verifier(
+    "l'en-tete du catalogue vide annonce s-maxage",
+    enteteCatalogue({ connectee: false, avaitUnCookie: false, articlesAuPanier: 0 }).includes('s-maxage')
+  );
+  verifier(
+    "l'en-tete d'une page avec un panier dit no-store",
+    enteteCatalogue({ connectee: false, avaitUnCookie: false, articlesAuPanier: 2 }) === 'private, no-store'
+  );
+  // Et les deux regles se tiennent : ce que le catalogue annonce quand il parle
+  // de quelqu'un ne doit jamais etre gardable par le telephone non plus.
+  verifier(
+    'ce qui parle de quelqu un n est gardable nulle part',
+    gardableParLeTelephone(enteteCatalogue({ connectee: false, avaitUnCookie: false, articlesAuPanier: 1 })) === false
+  );
+
+  // Les deux pages de la boutique passent bien par ce module, et plus par un
+  // test ecrit a la main dans la page.
+  for (const page of ['index.astro', '[slug].astro']) {
+    const source = fs.readFileSync(path.join(RACINE, 'src', 'pages', 'boutique', page), 'utf8');
+    verifier(`boutique/${page} appelle enteteCatalogue`, source.includes('enteteCatalogue('), page);
+    verifier(
+      `boutique/${page} n ecrit plus s-maxage a la main`,
+      !source.includes("'public, s-maxage"),
+      page
+    );
+  }
 }
 
 titre('La règle de mise en réserve, cas par cas');

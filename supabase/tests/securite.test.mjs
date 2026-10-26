@@ -160,10 +160,20 @@ titre('Les quotas tiennent, et ne se contournent pas en changeant d\'adresse');
 {
   const mimi = await nouveauCompte(db, 'mimi', 'Mariam');
   const s = { role: 'authenticated', sub: mimi, ip: '41.78.1.1' };
-  const panier = JSON.stringify([{ slug: 'serviettes-jour-10', quantite: 1 }]);
+  // CHAQUE TENTATIVE EST UN PANIER DIFFÉRENT, depuis le 26 octobre 2026.
+  // Ce test envoyait sept fois le MÊME panier. Depuis la migration
+  // 20261026160000, deux envois du même geste à moins de deux minutes sont
+  // reconnus comme un double appui : le second rend la première commande sans
+  // rien créer et SANS consommer le quota (c'est voulu : sinon cinq doubles
+  // appuis fermeraient la boutique à une cliente pour une heure). Les sept
+  // envois identiques ne comptaient donc plus que pour un.
+  // Une robote qui veut vider le stock passe de vraies commandes différentes :
+  // c'est ce qu'on éprouve ici, et le quota doit tenir pareil.
+  const panierDe = (i) => JSON.stringify([{ slug: 'serviettes-jour-10', quantite: 1 + i }]);
+  const panier = panierDe(0);
   let refusee = 0;
   for (let i = 0; i < 7; i += 1) {
-    const r = await rpc(`select public.passer_commande($1::jsonb, 'Mariam', '76000000', 'Tanghin', '') as x`, [panier], s);
+    const r = await rpc(`select public.passer_commande($1::jsonb, 'Mariam', '76000000', 'Tanghin', '') as x`, [panierDe(i)], s);
     if (r.x.ok === false && r.x.erreur === 'trop_de_commandes') refusee += 1;
   }
   verifier('au-delà de 5 commandes par heure, on refuse', refusee === 2, `${refusee} refus`);
@@ -177,7 +187,9 @@ titre('Les quotas tiennent, et ne se contournent pas en changeant d\'adresse');
   let passees = 0;
   for (let i = 0; i < 12; i += 1) {
     const autre = { role: 'authenticated', sub: mimi, ip: `41.78.9.${i}` };
-    const r = await rpc(`select public.passer_commande($1::jsonb, 'Mariam', '76000000', 'Tanghin', '') as x`, [panier], autre);
+    // Un panier différent à chaque coup, sinon c'est le double appui qu'on
+    // éprouve et non le quota (voir plus haut).
+    const r = await rpc(`select public.passer_commande($1::jsonb, 'Mariam', '76000000', 'Tanghin', '') as x`, [panierDe(10 + i)], autre);
     if (r.x.ok === true) passees += 1;
   }
   verifier("changer d'adresse ne rouvre pas le droit de commander", passees === 0, `${passees} commandes passées`);

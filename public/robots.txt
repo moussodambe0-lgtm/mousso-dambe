@@ -1,0 +1,19 @@
+# Mousso Dambé : ce que les moteurs de recherche ont le droit de regarder.
+#
+# Ajouté le 26 octobre 2026 par l'audit de Cyber. Ce fichier n'existait pas, et
+# /robots.txt rendait la page « introuvable » de l'application.
+#
+# La règle est celle que le code appliquait déjà page par page (voir la balise
+# « robots » dans src/layouts/Base.astro) : seule la boutique a une raison
+# d'être trouvée sur un moteur. Le cycle, le journal, les discussions et la
+# gestion n'en ont aucune, et le fichier le dit maintenant à l'entrée plutôt
+# que page par page.
+#
+# Ce n'est PAS une protection : un robot peut l'ignorer, et surtout toutes ces
+# adresses renvoient déjà vers la connexion quand on n'a pas de session. C'est
+# une politesse qui évite qu'une adresse privée apparaisse dans un journal de
+# robot ou dans une suggestion de recherche.
+
+User-agent: *
+Allow: /boutique
+Disallow: /

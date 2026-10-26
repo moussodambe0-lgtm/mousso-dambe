@@ -29,6 +29,20 @@ const SOCLE = ['/fonts/figtree.woff2', '/fonts/bricolage.woff2', '/manifest.webm
 // son jour de cycle, sa phase et la date de ses prochaines règles. Une copie
 // gardée se rouvrait hors connexion, après la déconnexion, pour qui tient le
 // téléphone. C'était la faille la plus grave de l'audit de Cyber.
+// Complétée le 26 octobre 2026 par l'audit de Cyber : neuf chemins nés depuis
+// le 12 octobre n'y étaient pas (`/discussions`, `/parametres`, `/recherche`,
+// `/vocal`, `/favoris`, `/commande-confirmee`, `/ouverture`, `/auth`, et les
+// deux chemins de la gestion). Aucun n'était réellement gardé, parce que la
+// deuxième serrure tient : le site leur pose `private, no-store`, et
+// `gardable()` refuse tout ce qui n'annonce pas `s-maxage`. Mais le 12 octobre
+// on s'était donné DEUX serrures indépendantes, et une seule était encore
+// fermée. `/commande-confirmee` est l'exemple du piège : il ne commence pas par
+// `/commande/`, donc `/commande` ne le couvrait pas.
+//
+// Un garde-fou dans supabase/tests/cache.test.mjs relit maintenant les pages du
+// dossier src/pages et tombe si l'une d'elles n'est couverte ni par cette liste
+// ni par la liste des chemins publics. La liste ne peut donc plus vieillir en
+// silence.
 const PRIVE = [
   '/',
   '/cycle',
@@ -36,13 +50,25 @@ const PRIVE = [
   '/dambe',
   '/compte',
   '/commande',
+  '/commande-confirmee',
   '/commandes',
   '/panier',
+  '/discussions',
+  '/parametres',
+  '/recherche',
+  '/favoris',
+  '/vocal',
   '/confidentialite',
   '/connexion',
   '/inscription',
+  '/commencer',
   '/bienvenue',
+  '/ouverture',
   '/deconnexion',
+  '/auth',
+  '/admin',
+  '/vendeur',
+  '/dev',
 ];
 
 const estPrive = (url) => PRIVE.some((p) => url.pathname === p || url.pathname.startsWith(`${p}/`));
