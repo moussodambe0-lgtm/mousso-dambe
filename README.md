@@ -238,3 +238,16 @@ autre projet, parce que son nom contient « TEST_ANON » : l'outil a cru avoir
 trouve la cle de la base d'essai de Mousso Dambe. D'ou `motifMousso()` dans
 `outils/coffre.mjs`, qui exige le mot « mousso » dans le nom de la ligne et
 exclut ou exige « test » selon la base visee.
+
+### Trois façons d'essayer, de la plus fausse à la plus vraie
+
+| Commande | Quoi | Quand |
+|---|---|---|
+| `npm run demo` | banc local PGlite, en mémoire, port 4322 | tous les jours, hors ligne, rapide |
+| `npm run dev:essai` | **le vrai Supabase, base d'essai**, port 4323 | avant de croire qu'une chose marche |
+| rien | la production | jamais pour essayer |
+
+Le banc local est une imitation de Supabase : il ne reproduit fidèlement ni
+l'authentification, ni PostgREST, ni certaines règles d'accès. `dev:essai`
+parle au vrai Supabase, sur la base d'essai, avec sa propre clé serveur tirée
+au hasard. Aucune donnée d'utilisatrice n'est en jeu.
