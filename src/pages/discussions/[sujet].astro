@@ -41,7 +41,8 @@ import { clientSession, baseConfiguree } from '../../lib/supabase';
 import { visiteuse, lirePanier, comptePanier } from '../../lib/session';
 import { prixComplet, heureCourte, dateLongue, messageErreur } from '../../lib/format';
 import { alerte } from '../../lib/assistante';
-import { MEDECIN_DISPONIBLE } from '../../lib/medecin';
+import { MEDECIN_DISPONIBLE, MEDECIN_BIENTOT } from '../../lib/medecin';
+import { PHOTOS_MEDECIN } from '../../lib/photos-medecin';
 
 if (!baseConfiguree()) return Astro.redirect('/', 302);
 const moi = await visiteuse(Astro);
@@ -53,17 +54,26 @@ const sujet: 'boutique' | 'medecin' = Astro.params.sujet === 'medecin' ? 'medeci
 if (Astro.params.sujet !== sujet) return Astro.redirect(`/discussions/${sujet}`, 302);
 const estMedecin = sujet === 'medecin';
 
-// LE FIL DU MÉDECIN N'EST PAS ENCORE OUVERT (Cyber, 26 octobre 2026).
+// LE FIL DU MÉDECIN N'EST PAS ENCORE OUVERT.
 //
-// La liste des discussions cache déjà le lien quand `MEDECIN_DISPONIBLE` est
-// faux, mais CETTE page continuait de s'ouvrir à qui tapait l'adresse ou
-// gardait un signet : écran complet, champ de saisie, et bouton
-// d'enregistrement vocal. Une femme pouvait donc enregistrer quatre-vingt-dix
-// secondes sur une question intime avant d'apprendre que personne n'écoute.
-// La base refuse maintenant le texte ET la voix (migrations 20261026130000 et
-// 20261026150000), mais elle les refuse APRÈS l'enregistrement : il ne faut
-// pas lui faire parler pour rien.
-if (estMedecin && !MEDECIN_DISPONIBLE) return Astro.redirect('/discussions', 302);
+// Première version (Cyber, 26 octobre 2026) : cette page renvoyait à la liste
+// des discussions. Elle s'ouvrait en entier à qui tapait l'adresse ou gardait
+// un signet, avec champ de saisie et bouton d'enregistrement vocal : une femme
+// pouvait enregistrer quatre-vingt-dix secondes sur une question intime avant
+// d'apprendre que personne n'écoute. La base refuse maintenant le texte ET la
+// voix (migrations 20261026130000 et 20261026150000), mais elle les refuse
+// APRÈS l'enregistrement, et il ne faut pas la faire parler pour rien.
+//
+// Deuxième version, et c'est celle-ci. Arthur, le 26 octobre 2026 : « quand on
+// clique là-bas, ça doit nous envoyer sur la page médecin, on doit pouvoir
+// entrer dans la discussion médecin, et dans la discussion médecin on ne
+// pourra pas écrire le message parce qu'on va juste écrire bientôt
+// disponible ». Renvoyer à la liste avait un effet qu'il a vu tout de suite et
+// que je n'avais pas vu : on atterrissait sur l'écran où Dambé est en haut,
+// avec son visage, et on croyait que le médecin ÉTAIT Dambé.
+//
+// La page s'ouvre donc, et c'est l'écriture qui est retirée, pas la page.
+const ferme = estMedecin && !MEDECIN_DISPONIBLE;
 
 const client = clientSession(Astro)!;
 const panier = comptePanier(lirePanier(Astro));
@@ -73,7 +83,7 @@ let erreur = '';
 // disent une urgence.
 let orientation = '';
 
-if (Astro.request.method === 'POST') {
+if (Astro.request.method === 'POST' && !ferme) {
   const f = await Astro.request.formData();
   const texte = String(f.get('texte') ?? '').trim();
   const slug = String(f.get('produit') ?? '').trim() || null;
@@ -184,8 +194,30 @@ const dit = QUI[sujet];
       <a class="retour" href="/discussions" aria-label="Retour aux discussions">
         <Icone nom="retour" taille={22} />
       </a>
+      {/* Chez le médecin, un VISAGE, et pas un cœur ni la mascotte : c'est un
+          humain qui répond, et l'écran doit le dire avant la première ligne de
+          texte. La fleur reste chez la boutique, où c'est bien Mousso Dambé qui
+          parle. */}
       <span class:list={['visage', estMedecin ? 'visage-medecin' : 'visage-boutique']}>
-        {estMedecin ? <Icone nom={dit.icone} taille={20} /> : <Symbole forme="fleur" taille={38} titre="Mousso Dambé" />}
+        {
+          estMedecin ? (
+            PHOTOS_MEDECIN[0] ? (
+              <img
+                class="visage-photo"
+                src={PHOTOS_MEDECIN[0].src}
+                srcset={PHOTOS_MEDECIN[0].jeu}
+                sizes="38px"
+                alt="Illustration"
+                width="38"
+                height="38"
+              />
+            ) : (
+              <Icone nom={dit.icone} taille={20} />
+            )
+          ) : (
+            <Symbole forme="fleur" taille={38} titre="Mousso Dambé" />
+          )
+        }
       </span>
       <span class="qui">
         <b>{dit.titre}</b>
@@ -296,7 +328,41 @@ const dit = QUI[sujet];
 
     {erreur && <div class="dans-la-page"><Alerte type="erreur" texte={erreur} /></div>}
 
-    <form class="ecrire" method="post">
+    {
+      ferme ? (
+        /* Pas de champ, pas de micro, pas de bouton d'envoi : rien à remplir
+           tant que personne ne répond de l'autre côté. Ce qui prend leur place
+           dit qui répondra, et que ce sera un humain. */
+        <div class="attente">
+          <div class="attente-visages">
+            {PHOTOS_MEDECIN.map((photo, i) => (
+              <img
+                class="attente-visage"
+                src={photo.src}
+                srcset={photo.jeu}
+                sizes="72px"
+                alt={`Illustration, photo ${i + 1} sur ${PHOTOS_MEDECIN.length}`}
+                width="72"
+                height="72"
+                loading="lazy"
+                decoding="async"
+              />
+            ))}
+          </div>
+          <p class="attente-etiquette">{MEDECIN_BIENTOT}</p>
+          <p class="attente-texte">
+            Un vrai médecin répondra ici, une personne, pas une machine. Ce
+            n'est pas encore ouvert : tu ne peux donc pas encore écrire, pour ne
+            pas poser une question qui resterait sans réponse.
+          </p>
+          <p class="attente-texte attente-doux">
+            En attendant, Dambé peut répondre à tes questions sur ton cycle.
+            Elle, c'est une machine, et elle ne remplace pas un médecin.
+          </p>
+          <a class="btn btn-contour" href="/dambe">Parler à Dambé</a>
+        </div>
+      ) : (
+      <form class="ecrire" method="post">
       {
         produit && (
           <div class="jointe-brouillon">
@@ -340,7 +406,9 @@ const dit = QUI[sujet];
           <Icone nom="envoyer" taille={20} />
         </button>
       </div>
-    </form>
+      </form>
+      )
+    }
   </main>
 </Base>
 
@@ -350,6 +418,60 @@ const dit = QUI[sujet];
 </script>
 
 <style>
+  /* La photo d'en-tête remplit le rond du visage, sans le déborder. */
+  .visage-photo {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+
+  /* L'écran du médecin tant qu'il n'est pas ouvert. Posé, sans mouvement : on
+     annonce une attente, on ne fait pas une réclame. */
+  .attente {
+    display: grid;
+    justify-items: center;
+    gap: var(--e2);
+    padding: var(--e4) var(--e4) calc(var(--e5) + env(safe-area-inset-bottom, 0px));
+    text-align: center;
+    border-top: 1px solid var(--bordure);
+    background: var(--surface-douce);
+  }
+
+  .attente-visages {
+    display: flex;
+    /* Les visages se chevauchent un peu : trois personnes, un seul groupe. */
+    padding-left: 14px;
+  }
+
+  .attente-visage {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: var(--surface);
+    margin-left: -14px;
+    box-shadow: 0 0 0 2px var(--surface-douce);
+  }
+
+  .attente-etiquette {
+    margin: 0;
+    font-weight: 600;
+    color: var(--texte-2);
+  }
+
+  .attente-texte {
+    margin: 0;
+    max-width: 34ch;
+    color: var(--texte-2);
+    line-height: 1.5;
+  }
+
+  .attente-doux {
+    color: var(--texte-3);
+    font-size: 14px;
+  }
+
   .conversation {
     display: flex;
     flex-direction: column;

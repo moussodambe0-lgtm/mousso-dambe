@@ -155,7 +155,12 @@ const nonLus = Number(data?.non_lus ?? 0);
               </span>
             </a>
           ) : (
-            <div class="causerie causerie-bientot" aria-disabled="true">
+            /* Un lien, meme fermee. Arthur, le 26 octobre 2026 : « on doit
+               pouvoir entrer dans la discussion medecin, et dans la discussion
+               medecin on ne pourra pas ecrire ». Une ligne morte ici renvoyait
+               a l'ecran ou Dambe est en haut, et on croyait que le medecin
+               etait Dambe. */
+            <a class="causerie causerie-bientot" href="/discussions/medecin">
               <span class="causerie-visage causerie-visage-medecin">
                 <Icone nom="coeur" taille={24} />
               </span>
@@ -170,7 +175,7 @@ const nonLus = Number(data?.non_lus ?? 0);
                   </span>
                 </span>
               </span>
-            </div>
+            </a>
           )
         }
       </li>

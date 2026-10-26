@@ -25,6 +25,10 @@ const Z = api(zara);
 const L = api(lea);
 const j = (v) => JSON.stringify(v);
 
+/** Les lignes d'un fichier qui contiennent un mot, pour expliquer un echec. */
+const lignesAvec = (texte, mot) =>
+  texte.split(String.fromCharCode(10)).filter((x) => x.includes(mot)).join(' | ').slice(0, 120);
+
 const SANS_TAILLE = 'serviettes-jour-10';
 const panier = (q = 1, slug = SANS_TAILLE, taille = null) =>
   JSON.stringify([taille ? { slug, quantite: q, taille } : { slug, quantite: q }]);
@@ -506,8 +510,42 @@ titre('8. Les pages ne proposent plus ce que la base refuse');
   // répond, sinon elle enregistre sa voix avant d'apprendre que c'est fermé.
   const fil = lire('src', 'pages', 'discussions', '[sujet].astro');
   verifier('la page du fil regarde MEDECIN_DISPONIBLE', fil.includes('MEDECIN_DISPONIBLE'), 'la page ne consulte pas le réglage');
-  verifier('et renvoie à la liste quand c est fermé',
-    /estMedecin\s*&&\s*!MEDECIN_DISPONIBLE[\s\S]{0,60}redirect/.test(fil), 'pas de renvoi');
+  // Le renvoi a la liste, pose ici le 26 octobre au matin, a ete RETIRE le soir
+  // sur demande d'Arthur : « on doit pouvoir entrer dans la discussion medecin,
+  // et dans la discussion medecin on ne pourra pas ecrire ». Renvoyer a la
+  // liste avait un effet que je n'avais pas vu : on atterrissait sur l'ecran ou
+  // Dambe est en haut avec son visage, et on croyait que le medecin etait
+  // Dambe. Ce qui est verifie n'est donc plus le renvoi, mais que la page
+  // s'ouvre SANS un seul moyen d'ecrire.
+  verifier('la page ne renvoie plus a la liste',
+    !/estMedecin\s*&&\s*!MEDECIN_DISPONIBLE[\s\S]{0,40}redirect/.test(fil), 'elle renvoie encore');
+  verifier('elle calcule plutot un etat « ferme »', /const ferme = estMedecin && !MEDECIN_DISPONIBLE/.test(fil),
+    lignesAvec(fil, 'const ferme'));
+  verifier('le formulaire d ecriture est remplace quand c est ferme',
+    /ferme \?[\s\S]{0,400}class="attente"/.test(fil), lignesAvec(fil, 'class="attente"'));
+  verifier('ni champ ni micro ni bouton dans l attente',
+    /ferme \? \([\s\S]{0,1600}?\) : \(/.test(fil) &&
+      !/class="attente"[\s\S]{0,1600}?(textarea|VocalSaisie|class="envoyer")/.test(fil),
+    'un moyen d ecrire subsiste dans le panneau d attente');
+  verifier('et un POST n est plus traite quand c est ferme',
+    /method === 'POST' && !ferme/.test(fil), lignesAvec(fil, "method === 'POST'"));
+  // Un visage humain, pas un coeur ni la mascotte : c'est un humain qui repond.
+  verifier('l en-tete du fil montre une photo de medecin',
+    /estMedecin \?[\s\S]{0,200}PHOTOS_MEDECIN\[0\]/.test(fil), lignesAvec(fil, 'PHOTOS_MEDECIN[0]'));
+  verifier('et les trois illustrations sont dans l attente',
+    /PHOTOS_MEDECIN\.map/.test(fil), lignesAvec(fil, 'PHOTOS_MEDECIN.map'));
+  // Les fichiers existent vraiment, sinon l'ecran montre des carres casses.
+  const photosMedecin = lire('src', 'lib', 'photos-medecin.ts');
+  const poses = [...photosMedecin.matchAll(/'(medecin-[a-z0-9-]+)'/g)].map((x) => x[1]);
+  verifier('trois poses sont declarees', poses.length >= 3, poses.join(' '));
+  const accueil = fs.readdirSync(path.join(racine, 'public', 'accueil'));
+  const trouvees = poses.filter((n) => accueil.includes(`${n}-600.webp`));
+  verifier('au moins trois photos existent sur le disque', trouvees.length >= 3, trouvees.join(' '));
+  // Et la ligne de la liste redevient un lien, meme fermee.
+  const listeDisc = lire('src', 'pages', 'discussions', 'index.astro');
+  verifier('la ligne du medecin est un lien meme fermee',
+    /<a class="causerie causerie-bientot" href="\/discussions\/medecin">/.test(listeDisc),
+    lignesAvec(listeDisc, 'causerie-bientot'));
 
   // L'accueil ne se déclare plus indexable : connectée, il montre son cycle.
   const base = lire('src', 'layouts', 'Base.astro');
@@ -526,8 +564,6 @@ titre('8. Les pages ne proposent plus ce que la base refuse');
   // Motion. Sur un forfait compté en 3G, les charger tous à l'ouverture de la
   // page serait indéfendable : le navigateur doit pouvoir s'arrêter à ce qui
   // est visible. Lu dans le code, parce qu'un rendu ne prouve pas l'attribut.
-  const lignesAvec = (texte, mot) =>
-    texte.split(/\r?\n/).filter((l) => l.includes(mot)).join(' | ').slice(0, 120);
   const galeriePage = fs.readFileSync(path.join(racine, 'src', 'pages', 'compte', 'avatar.astro'), 'utf8');
   verifier('la galerie demande le chargement différé', /differe\s*(\/>|=)/.test(galeriePage),
     lignesAvec(galeriePage, '<Avatar'));
