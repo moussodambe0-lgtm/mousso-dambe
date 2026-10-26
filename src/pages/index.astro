@@ -84,7 +84,6 @@ let aDesDonnees = false;
 let infoAujourdhui: ReturnType<typeof infoDuJour> | null = null;
 let prochaines: string | null = null;
 let confirmes = new Set<string>();
-let noteDuJour = false;
 
 if (moi) {
   const client = clientSession(Astro)!;
@@ -114,9 +113,6 @@ if (moi) {
       .select('jour, flux')
       .gte('jour', plusDeJours(hui, -21))
       .lte('jour', hui);
-    // A-t-elle déjà noté aujourd'hui ? Le bouton de la carte le dit, pour ne
-    // pas lui demander de refaire ce qu'elle vient de faire.
-    noteDuJour = (notes ?? []).some((n: { jour: string }) => n.jour === hui);
     for (const n of (notes ?? []) as { jour: string; flux: string }[]) {
       if (n.flux !== 'rien') confirmes.add(n.jour);
     }
@@ -353,9 +349,19 @@ const photoDe = (i: number) => photos[i] ?? photos[photos.length - 1] ?? null;
                     L'écrire serait afficher un faux sur une application de
                     santé, là où la confiance est tout ce qu'on a. Le jour où
                     il y aura du monde, ce compte sera vrai, et il reviendra. */}
+                {/* Arthur, le 26 octobre 2026 : « enlève "noter ma journée"
+                    là, ça sert à rien. Au lieu de noter ma journée, tu écris
+                    "suivre mon cycle", et quand la personne clique là-bas ça
+                    l'envoie au niveau du calendrier. »
+
+                    Il a raison sur le fond : ce panneau dit où elle en est
+                    dans son cycle, et ce qu'on attend après avoir lu ça, c'est
+                    de voir la suite, pas de remplir un formulaire. Noter sa
+                    journée reste possible depuis le calendrier, en touchant un
+                    jour, ce qui est l'endroit logique pour le faire. */}
                 <div class="acc-carte-pied">
-                  <a class="acc-bouton-pilule" href="/journal">
-                    {noteDuJour ? 'Modifier ma journée' : 'Noter ma journée'}
+                  <a class="acc-bouton-pilule" href="/cycle/calendrier">
+                    Suivre mon cycle
                     <Icone nom="avant" taille={16} epaisseur={2.4} />
                   </a>
                 </div>

@@ -244,8 +244,13 @@ verifier('Awa ne peut pas se livrer elle-même', r.rows[0].j.erreur === 'acces_r
 r = await commeApi(db, elle(patronne), `select public.changer_etat_commande($1, $2) as j`, [cmd.id, 'volee']);
 verifier('un état inventé est refusé', r.rows[0].j.erreur === 'etat_inconnu');
 
-r = await commeApi(db, elle(patronne), `select public.changer_etat_commande($1, $2) as j`, [cmd.id, 'envoyee']);
+// Depuis le 26 octobre 2026 au soir, expedier exige de nommer le livreur :
+// confier un colis, c'est dire a qui, et c'est ce nom qui s'affiche chez la
+// cliente avec le numero a appeler. Voir livraison-et-avis.test.mjs.
+r = await commeApi(db, elle(patronne),
+  `select public.changer_etat_commande($1, $2, 'Issa', '70112233') as j`, [cmd.id, 'envoyee']);
 verifier('la patronne met la commande en livraison', r.rows[0].j.etat === 'envoyee');
+verifier('en nommant le livreur', r.rows[0].j.ok === true, JSON.stringify(r.rows[0].j));
 
 r = await commeApi(db, elle(patronne), `select public.changer_etat_commande($1, $2) as j`, [cmd.id, 'annulee']);
 verifier('elle annule', r.rows[0].j.etat === 'annulee');
