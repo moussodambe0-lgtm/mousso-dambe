@@ -6,6 +6,7 @@
  *   node outils/vercel.mjs journaux    montre les erreurs d'execution
  *   node outils/vercel.mjs redeployer  relance le dernier deploiement
  *   node outils/vercel.mjs region      met les fonctions a Londres
+ *   node outils/vercel.mjs domaines    liste les noms de domaine et leur etat
  *
  * Le jeton est lu dans le coffre et jamais affiche. Les valeurs des variables
  * ne sont jamais affichees non plus, seulement leurs noms.
@@ -184,7 +185,31 @@ async function region() {
   console.log(r.ok ? 'region des fonctions : Londres (lhr1)' : `echec ${r.statut} : ${JSON.stringify(r.corps).slice(0, 200)}`);
 }
 
-const actions = { etat, variables: poserVariables, journaux, redeployer, region };
+/**
+ * Les noms de domaine du projet, et ce qu'il leur manque.
+ *
+ * Ajoute le 27 octobre 2026, quand Arthur a achete moussodambe.com : avant de
+ * poser SITE_URL, il faut savoir si le domaine est attache et verifie. Un
+ * SITE_URL qui pointe vers un domaine non verifie fabrique des liens morts
+ * dans les emails de connexion, ce que personne ne voit avant qu'une cliente
+ * s'en plaigne.
+ */
+async function domaines() {
+  const liste = await api(`/v9/projects/${PROJET}/domains`);
+  const noms = liste.domains ?? [];
+  if (!noms.length) {
+    console.log('Aucun domaine attache a ce projet : il ne repond que sur son adresse vercel.app.');
+    return;
+  }
+  console.log('domaines du projet :');
+  for (const d of noms) {
+    const etat = d.verified ? 'verifie' : 'EN ATTENTE DE VERIFICATION';
+    const vers = d.redirect ? ` -> redirige vers ${d.redirect}` : '';
+    console.log(`  ${d.name}  ${etat}${vers}`);
+  }
+}
+
+const actions = { etat, variables: poserVariables, journaux, redeployer, region, domaines };
 const choisie = actions[action];
 if (!choisie) {
   console.error(`action inconnue : ${action}. Attendu : ${Object.keys(actions).join(', ')}`);
