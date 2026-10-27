@@ -227,8 +227,11 @@ Astro.response.headers.set(
                   ))}
                 </span>
                 <b class="chiffre">{String(avis.moyenne ?? 0).replace('.', ',')}</b>
+                {/* « 5 sur 1 avis » se lisait comme une note sur 1. La note
+                    d'abord, le nombre d'avis ensuite et à part : ce sont deux
+                    choses différentes, elles ne tiennent pas dans une phrase. */}
                 <span class="avis-combien">
-                  sur {avis.nombre} avis
+                  sur 5 · {avis.nombre} avis
                 </span>
               </p>
 
@@ -582,8 +585,15 @@ Astro.response.headers.set(
     color: var(--bordure);
   }
 
+  /* REMPLIE, et pas seulement d une autre couleur : les icones du site sont
+     dessinees au trait, et deux teintes d orange se confondent dans un rond de
+     15 px. Le plein contre le vide se lit meme de loin, meme en plein soleil. */
   .etoile-pleine {
     color: #e8a33d;
+  }
+
+  .etoile-pleine :global(svg) {
+    fill: currentColor;
   }
 
   .avis-liste {

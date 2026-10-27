@@ -102,6 +102,7 @@ const ECRANS = [
   { nom: '11-boutique', url: '/boutique', connectee: true },
   { nom: '11b-recherche', url: '/recherche?q=serviettes+lavables', connectee: true },
   { nom: '12-produit', url: '/boutique/culotte-flux-abondant', connectee: true },
+  { nom: '12b-produit-avis', url: '/boutique/serviettes-jour-10', connectee: true },
   { nom: '13-panier', url: '/panier', connectee: true },
   { nom: '14-commande', url: '/commande', connectee: true },
   { nom: '15-commandes', url: '/commandes', connectee: true },
@@ -119,11 +120,15 @@ const ECRANS = [
   { nom: '25-gestion-tableau', url: '/vendeur', connectee: true, admin: true },
   { nom: '26-gestion-produits', url: '/vendeur/produits', connectee: true, admin: true },
   { nom: '27-gestion-commandes', url: '/vendeur/commandes', connectee: true, admin: true },
+  { nom: '27b-gestion-en-route', url: '/vendeur/commandes?etat=envoyee', connectee: true, admin: true },
   { nom: '28-gestion-messages', url: '/vendeur/messages', connectee: true, admin: true },
   // Les ecrans de la livraison et des avis (27 octobre 2026).
   { nom: '30-livreur-lien-mort', url: '/livreur/abc', connectee: false },
+  { nom: '30b-livreur-course', url: '/livreur/850ce0420e6b42f78a83b4bcc6a0144f1fb2f9289a1840f3', connectee: false },
+  { nom: '33-avis-depot', url: '/avis/MD-2610-00004/serviettes-jour-10', connectee: true },
   { nom: '31-commandes-livrees', url: '/commandes/livrees', connectee: true },
   { nom: '32-commandes-en-livraison', url: '/commandes/en-livraison', connectee: true },
+  { nom: '32b-suivre-en-route', url: '/commandes/suivre/MD-2610-00003', connectee: true },
   // Ce qu'une cliente voit si elle devine l'adresse de la gestion.
   { nom: '29-gestion-introuvable', url: '/vendeur', connectee: true },
 ];

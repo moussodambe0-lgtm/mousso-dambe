@@ -294,8 +294,15 @@ const panier = comptePanier(lirePanier(Astro));
     color: var(--bordure);
   }
 
+  /* REMPLIE, et pas seulement d une autre couleur : les icones du site sont
+     dessinees au trait, et deux teintes d orange se confondent dans un rond de
+     15 px. Le plein contre le vide se lit meme de loin, meme en plein soleil. */
   .etoile-pleine {
     color: #e8a33d;
+  }
+
+  .etoile-pleine :global(svg) {
+    fill: currentColor;
   }
 
   .note-mot {
