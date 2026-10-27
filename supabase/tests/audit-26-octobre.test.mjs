@@ -449,7 +449,14 @@ titre('7. Le créateur d avatars est bien révoqué, et la galerie n est plus vi
   const surDisque = fs.readdirSync(path.join(racine, 'public', 'avatars'));
   // La mascotte est sur le disque mais n'entre pas dans la galerie : c'est le
   // visage de Dambé, pas une photo de profil à prendre (décision du 13 octobre).
-  const portraits = surDisque.filter((f) => f.endsWith('.webp') && f !== 'infirmiere-visage.webp');
+  //
+  // Quatre portraits sont eux aussi sur le disque sans être proposés, et c'est
+  // voulu : Motion les signale comme juvéniles, et sur une application de santé
+  // féminine le doute ne vaut pas le risque (migration du 27 octobre). Ils sont
+  // nommés ici pour que personne ne les réintroduise par inadvertance, et pour
+  // que ces tests continuent d'attraper un vrai oubli.
+  const ECARTES = ['femme-foulard-09.webp', 'femme-locks-06.webp', 'femme-tresses-11.webp', 'femme-twists-06.webp'];
+  const portraits = surDisque.filter((f) => f.endsWith('.webp') && f !== 'infirmiere-visage.webp' && !ECARTES.includes(f));
   verifier('il y a des portraits sur le disque', portraits.length > 50, `n=${portraits.length}`);
 
   const n = Number((await commeServeur(db, `select count(*)::int n from public.avatars_disponibles`)).rows[0].n);
@@ -482,6 +489,10 @@ titre('7. Le créateur d avatars est bien révoqué, et la galerie n est plus vi
   verifier('chaque portrait déclaré existe sur le disque', manquants.length === 0, manquants.join(' '));
   const oublies = portraits.filter((f) => !galerie.some((a) => a.fichier === f));
   verifier('et chaque portrait du disque est déclaré', oublies.length === 0, oublies.join(' '));
+  const revenus = ECARTES.filter((f) => galerie.some((a) => a.fichier === f));
+  verifier('les quatre portraits juvéniles restent hors de la galerie', revenus.length === 0, revenus.join(' '));
+  const perdus = ECARTES.filter((f) => !surDisque.includes(f));
+  verifier('mais leurs fichiers sont gardés, au cas où', perdus.length === 0, perdus.join(' '));
 
   // On peut choisir un portrait, et revenir au rond neutre.
   const choix = await Z(`select public.choisir_avatar($1) r`, ['femme-afro-01.webp']);

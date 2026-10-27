@@ -22,10 +22,16 @@
  * retirée le 13 octobre 2026, à la demande d'Arthur (deux fois) ; elle reste
  * dans le texte alternatif de chaque image, donc lue par un lecteur d'écran.
  *
- * RÉSERVE À LEVER. La provenance de l'une de ces photos n'est pas vérifiée
- * (notée par Juriste). Une photo d'une personne réelle sans autorisation est un
- * risque de droit à l'image, et il ne se règle pas dans le code. Des portraits
- * fabriqués, qui ne représentent personne, sont demandés à Motion.
+ * RÉSERVE LEVÉE LE 27 OCTOBRE 2026. La provenance de l'une des anciennes photos
+ * n'était pas vérifiée (notée par Juriste) : une photo d'une personne réelle
+ * sans autorisation est un risque de droit à l'image, et il ne se règle pas
+ * dans le code. Motion a livré trois portraits fabriqués, photoréalistes, qui
+ * ne représentent personne. Ils passent donc EN PREMIER dans chaque pose. Les
+ * anciennes restent en second, comme filet si un fichier venait à manquer.
+ *
+ * POURQUOI PHOTORÉALISTES ET PAS EN DESSIN. Motion a écarté le style des
+ * avatars : un portrait façon film d'animation aurait recréé exactement la
+ * confusion avec la mascotte qu'on cherche à éviter.
  *
  * On regarde si le fichier existe vraiment, au lieu d'écrire son adresse en
  * dur : une image manquante laisserait une icône cassée en plein milieu de
@@ -41,9 +47,11 @@ export interface PhotoMedecin {
 }
 
 const POSES = [
-  ['medecin-detoure'],
-  ['medecin-homme-detoure'],
-  ['medecin-autre-detoure', 'medecin-pose3-detoure'],
+  // Motion a placé la n° 1 en tête : c'est elle qui a le plus grand visage,
+  // donc la seule qui reste lisible dans le rond de 38 px de l'en-tête.
+  ['medecin-fabrique-1-detoure', 'medecin-fabrique-1', 'medecin-detoure'],
+  ['medecin-fabrique-2-detoure', 'medecin-fabrique-2', 'medecin-homme-detoure'],
+  ['medecin-fabrique-3-detoure', 'medecin-fabrique-3', 'medecin-autre-detoure', 'medecin-pose3-detoure'],
 ];
 
 const dossierPublic = new URL('../../public', import.meta.url);
