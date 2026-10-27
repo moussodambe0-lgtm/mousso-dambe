@@ -152,6 +152,61 @@ await comme(
   claimsDemo
 );
 
+// TROIS COMMANDES DE PLUS, UNE PAR ÉTAT (27 octobre 2026). Sans elles, le banc
+// n'avait qu'une commande « nouvelle » : le formulaire du livreur, le bloc de
+// course, le bouton d'avis et la page du livreur n'apparaissaient nulle part,
+// et on ne pouvait donc pas les regarder. Un écran qu'on ne peut pas afficher
+// est un écran qu'on livre sans l'avoir vu.
+//
+// L'état est posé directement dans la table plutôt que par
+// `changer_etat_commande` : cette fonction exige `est_admin()` et
+// `appel_du_site()`, deux conditions qui n'ont pas de sens dans un script
+// d'amorçage. Ses garde-fous sont vérifiés par les tests, pas par ces lignes.
+const ETATS_DEMO = [
+  { etat: 'preparee', panier: [{ slug: 'serviettes-lavables-3', quantite: 1 }] },
+  { etat: 'envoyee', panier: [{ slug: 'serviettes-nuit-10', quantite: 2 }] },
+  { etat: 'livree', panier: [{ slug: 'serviettes-jour-10', quantite: 1 }] },
+];
+
+for (const { etat, panier } of ETATS_DEMO) {
+  // Avec un point GPS (le centre de Ouagadougou) : c'est lui que le livreur
+  // ouvre dans sa carte, et sans lui cette moitié de l'écran reste invisible.
+  const { rows } = await comme(
+    `select public.passer_commande($1::jsonb, 'Awa Ouédraogo', '70123456', 'Dassasgho',
+       'À côté de la pharmacie Nabi', 12.3686, -1.5275) r`,
+    [JSON.stringify(panier)],
+    claimsDemo
+  );
+  const numero = rows[0]?.r?.numero;
+  if (!numero) continue;
+
+  if (etat === 'envoyee') {
+    // Avec son livreur et son jeton, comme après un vrai passage par l'écran
+    // du vendeur : c'est ce qui fait vivre /livreur/<jeton>.
+    await db.query(
+      `update public.commandes
+          set etat = 'envoyee', livreur_nom = 'Issa Sawadogo', livreur_telephone = '76554433',
+              livreur_jeton = left(replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', ''), 48),
+              livreur_jeton_le = now()
+        where numero = $1`,
+      [numero]
+    );
+    const { rows: j } = await db.query(
+      `select livreur_jeton from public.commandes where numero = $1`,
+      [numero]
+    );
+    console.log(`Lien du livreur, pour le regarder : /livreur/${j[0].livreur_jeton}`);
+  } else {
+    await db.query(
+      `update public.commandes
+          set etat = $2::public.etat_commande,
+              livree_le = case when $2 = 'livree' then now() else null end
+        where numero = $1`,
+      [numero, etat]
+    );
+  }
+}
+
 // Une deuxième femme, pour que la boîte de réception d'Arthur ait deux fils
 // et qu'on voie tout de suite ce que c'est que de répondre à quelqu'un.
 const AUTRE_ID = randomUUID();

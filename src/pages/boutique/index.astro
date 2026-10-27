@@ -12,7 +12,8 @@
 import Base from '../../layouts/Base.astro';
 import Icone from '../../components/Icone.astro';
 import CarteProduit from '../../components/CarteProduit.astro';
-import { clientPublic, baseConfiguree, jetonDeSession } from '../../lib/supabase';
+import BandeauCommandes from '../../components/BandeauCommandes.astro';
+import { clientPublic, clientSession, baseConfiguree, jetonDeSession } from '../../lib/supabase';
 import { visiteuse, lirePanier, comptePanier } from '../../lib/session';
 import { enteteCatalogue } from '../../lib/cache';
 import { motCherche, filtreRecherche } from '../../lib/recherche';
@@ -49,6 +50,18 @@ const avaitUnCookie = !!jetonDeSession(Astro);
 const moi = await visiteuse(Astro);
 const panier = comptePanier(lirePanier(Astro));
 
+// Le bandeau « Mes commandes », sous la barre de recherche (Arthur, 26 octobre
+// 2026 : « on met ça en haut, juste en dessous de la barre de recherche »).
+// Seulement pour une femme connectée : une visiteuse de passage n'a aucune
+// commande, et quatre compteurs à zéro ne lui diraient rien. Cela garde aussi
+// la page cachable pour elle, puisque `connectee` est alors faux et que rien de
+// personnel n'est écrit dedans (voir `catalogueGardable`).
+const clienteConnectee = moi ? clientSession(Astro) : null;
+const { data: mesCommandes } = clienteConnectee
+  ? await clienteConnectee.rpc('mes_commandes')
+  : { data: null };
+const commandes = (mesCommandes ?? []) as { etat: string }[];
+
 // Catalogue sans rien de personnel : le réseau peut le garder deux minutes.
 // Le compteur du panier compte comme personnel : il est écrit dans la page, et
 // un cache partagé le servirait à la visiteuse suivante (Cyber, 26 octobre
@@ -72,6 +85,8 @@ Astro.response.headers.set(
         {panier > 0 && <span class="nav-pastille">{panier}</span>}
       </a>
     </form>
+
+    {moi && <BandeauCommandes commandes={commandes} classe="apparait" serre />}
 
     <nav class="rayons" aria-label="Rayons">
       {

@@ -68,6 +68,14 @@ const toutes = (brutes ?? []) as {
 const commandes = toutes.filter((c) => page.etats.includes(c.etat));
 const compteur = (cles: string[]) => toutes.filter((c) => cles.includes(c.etat)).length;
 
+// Ce qu'elle peut encore noter. Demandé seulement sur la page des livrées : les
+// autres états n'ont rien à évaluer, et la requête serait payée pour rien. La
+// base ne rend que les produits reçus ET pas encore notés, donc un bouton
+// disparaît de lui-même une fois l'avis donné.
+const { data: aNoter } =
+  page.cle === 'livrees' ? await client.rpc('mes_avis_a_donner') : { data: null };
+const aEvaluer = (aNoter ?? []) as { numero: string; slug: string; nom: string }[];
+
 // Ce que chaque état dit, sans annoncer de délai : il n'y a pas encore d'équipe
 // logistique pour tenir une promesse d'heure ou de jour.
 const DIT: Record<string, string> = {
@@ -156,6 +164,19 @@ const panier = comptePanier(lirePanier(Astro));
               </div>
 
               <p class="dit">{DIT[c.etat] ?? ''}</p>
+
+              {/* Un bouton par produit reçu et pas encore noté. Par produit et
+                  non par commande : une commande peut contenir deux articles
+                  très différents, et une seule note pour les deux ne dirait
+                  rien à celle qui lit la fiche de l'un ou de l'autre. */}
+              {aEvaluer
+                .filter((a) => a.numero === c.numero)
+                .map((a) => (
+                  <a class="btn btn-contour btn-plein evaluer" href={`/avis/${c.numero}/${a.slug}`}>
+                    <Icone nom="etoile" taille={17} />
+                    Donner mon avis sur {a.nom}
+                  </a>
+                ))}
             </section>
           ))}
         </div>
@@ -314,6 +335,12 @@ const panier = comptePanier(lirePanier(Astro));
   }
 
   .etat-vide .btn {
+    margin-top: var(--e3);
+  }
+
+  /* Le bouton d avis prend toute la largeur, sous le reste de la carte :
+     c est une proposition, pas l action principale de la page. */
+  .evaluer {
     margin-top: var(--e3);
   }
 </style>

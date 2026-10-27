@@ -1,0 +1,173 @@
+---
+/**
+ * Le bandeau « Mes commandes » : quatre états d'un coup d'œil.
+ *
+ * Il vivait dans la page Compte depuis le 13 octobre 2026. Arthur, le
+ * 26 octobre : « au niveau de boutique, je pense qu'on va mettre une partie mes
+ * commandes [...] On met ça en haut, juste en dessous de la barre de recherche.
+ * [...] La personne clique là-bas, la personne va voir toutes les commandes
+ * qu'elle a faites. » Deux pages l'affichent donc, et il devient un composant
+ * plutôt qu'un copier-coller : deux copies qui divergent, c'est un compteur
+ * juste d'un côté et faux de l'autre.
+ *
+ * LES COMPTEURS SONT PASSÉS, PAS CALCULÉS ICI. La page a déjà appelé
+ * `mes_commandes` pour ses propres besoins ; refaire la requête dans le
+ * composant la ferait partir deux fois à chaque affichage.
+ *
+ * CE QUE « À PAYER » N'EST PAS. Arthur avait cité « à payer, avec le logo d'un
+ * portefeuille » dans sa liste. Il n'y a rien à payer dans l'application : on
+ * paie au livreur, en main propre, à la remise du colis. Un onglet « À payer »
+ * toujours vide ferait croire qu'un paiement en ligne existe et qu'il est en
+ * panne. La page de suivi dit déjà le montant à préparer. À rouvrir le jour où
+ * le paiement mobile entrera dans l'application.
+ */
+import Icone from './Icone.astro';
+import { ETATS_CLIENTE } from '../lib/etats-commande';
+
+interface Props {
+  /** Les commandes de la visiteuse, telles que `mes_commandes` les rend. */
+  commandes: { etat: string }[];
+  /** Le titre au-dessus. `null` pour un bandeau posé sous un titre existant. */
+  titre?: string | null;
+  /** Classes supplémentaires, pour l'animation d'apparition de la page hôte. */
+  classe?: string;
+  /**
+   * Moins d'air au-dessus du titre. Sur la page Compte, le bandeau ouvre une
+   * nouvelle section après une autre, et l'espace sépare. Sur la boutique il
+   * suit directement la barre de recherche, et le même espace ferait un trou.
+   */
+  serre?: boolean;
+}
+
+const { commandes, titre = 'Mes commandes', classe = '', serre = false } = Astro.props;
+
+// Les icônes viennent des références envoyées par Arthur le 13 octobre 2026.
+// « En livraison » (un livreur en scooter) et « Livrées » (une coche cerclée)
+// sont SES images, détourées et passées en noir foncé par
+// `outils/icone-depuis-image.py` : il a demandé de les coller telles quelles
+// plutôt que de les redessiner. Les deux autres sont dessinées au trait dans
+// `Icone.astro` ; sa croix d'annulation à lui était une image de banque
+// filigranée, donc inutilisable telle quelle.
+const DESSINS: Record<string, { icone: string | null; image: string | null }> = {
+  'en-preparation': { icone: 'carton', image: null },
+  'en-livraison': { icone: null, image: '/icones/en-livraison.png' },
+  livrees: { icone: null, image: '/icones/livree.png' },
+  annulees: { icone: 'croix-cercle', image: null },
+};
+
+const ETATS = ETATS_CLIENTE.map((e) => ({
+  cle: e.cle,
+  mot: e.mot,
+  icone: DESSINS[e.cle]?.icone ?? null,
+  image: DESSINS[e.cle]?.image ?? null,
+  nombre: commandes.filter((c) => e.etats.includes(c.etat)).length,
+}));
+---
+
+{titre && <h2 class:list={['bandeau-titre', serre && 'bandeau-titre-serre', classe]}>{titre}</h2>}
+<section class:list={['etats', classe]} aria-label="Mes commandes">
+  {
+    ETATS.map((e) => (
+      <a class="etat" href={`/commandes/${e.cle}`}>
+        <span class="etat-rond">
+          {e.image ? (
+            <img class="etat-image" src={e.image} alt="" width="28" height="28" decoding="async" />
+          ) : (
+            <Icone nom={e.icone!} taille={28} epaisseur={2} />
+          )}
+        </span>
+        {e.nombre > 0 && <span class="etat-nombre">{e.nombre}</span>}
+        <span class="etat-mot">{e.mot}</span>
+      </a>
+    ))
+  }
+</section>
+
+<style>
+  /* Le même titre que sur la page Compte, où ce bandeau est né. Il est redit
+     ici plutôt qu'emprunté à la page : un composant qui compte sur une classe
+     de son hôte se décoiffe dès qu'on le pose ailleurs. */
+  .bandeau-titre {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--e3);
+    margin: var(--e5) 0 var(--e2);
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  .bandeau-titre-serre {
+    margin-top: var(--e3);
+  }
+
+  /* Ce qui N'EST PAS touché : la taille des dessins (28 px) et des mots
+     (14,5 px), ni leur noir profond. Arthur les avait demandés « encore plus
+     grand et plus foncé » le 13 octobre, et rapetisser le contenu pour gagner
+     de la hauteur reviendrait à défaire cette demande-là. */
+  .etats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--e2);
+    padding: var(--e3) var(--e2);
+    border: 1px solid var(--bordure);
+    border-radius: var(--r-carte);
+    background: var(--surface);
+  }
+
+  .etat {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    padding: 2px;
+    border-radius: var(--r-champ);
+    text-align: center;
+  }
+
+  .etat:active {
+    transform: scale(0.94);
+  }
+
+  /* Les dessins et les mots du bandeau sont en noir foncé, pas en rose, et
+     plus grands que le reste de la page (Arthur, 13 octobre 2026 : « les
+     écritures doivent être en noir foncé, les dessins aussi », puis « encore
+     plus grand [...] et plus foncé »). Ce noir est plus profond que l'encre
+     du texte courant, qui tire sur le prune. */
+  .etat-rond {
+    display: grid;
+    place-items: center;
+    color: #0d0a0c;
+  }
+
+  .etat-image {
+    display: block;
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+  }
+
+  .etat-nombre {
+    position: absolute;
+    top: -4px;
+    right: 6px;
+    display: grid;
+    place-items: center;
+    min-width: 17px;
+    height: 17px;
+    padding: 0 4px;
+    border-radius: 999px;
+    background: var(--rose);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .etat-mot {
+    font-size: 14.5px;
+    font-weight: 700;
+    color: #0d0a0c;
+    line-height: 1.25;
+  }
+</style>

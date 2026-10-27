@@ -105,6 +105,23 @@ const ERREURS: Record<string, string> = {
   vocal_abime: "L'enregistrement est arrivé abîmé, souvent à cause de la connexion. Recommence.",
   vocal_vide: "On n'a rien entendu dans cet enregistrement. Rapproche-toi du téléphone et recommence.",
   vocal_inconnu: "Ce vocal n'est plus disponible.",
+  // Confier un colis à un livreur, et le lien qu'il reçoit.
+  livreur_nom_manquant: 'Écris le nom du livreur avant de lui donner le colis.',
+  livreur_telephone_invalide:
+    'Le numéro du livreur doit être un numéro burkinabè à 8 chiffres, qui commence par 5, 6 ou 7.',
+  lien_invalide: "Ce lien n'est pas valable.",
+  lien_expire: 'Ce lien a expiré. Demande-en un nouveau à la boutique.',
+  course_terminee: 'Cette course est terminée.',
+  position_hors_zone: "Cette position n'est pas au Burkina Faso.",
+  // Les avis, après la livraison.
+  commande_non_livree: 'Tu pourras donner ton avis quand tu auras reçu ta commande.',
+  produit_hors_commande: "Ce produit n'était pas dans cette commande.",
+  note_invalide: 'Donne une note de 1 à 5 étoiles.',
+  avis_inconnu: 'Cet avis est introuvable.',
+  trop_de_photos: 'Tu peux joindre trois photos au maximum.',
+  image_trop_lourde: 'Cette photo est trop lourde. Prends-en une plus petite.',
+  image_illisible: "Cette photo n'a pas pu être lue. Essaie avec une autre.",
+  type_refuse: 'Joins une photo (JPEG, PNG ou WebP).',
 };
 
 export function messageErreur(code: string | null | undefined): string {

@@ -120,6 +120,10 @@ const ECRANS = [
   { nom: '26-gestion-produits', url: '/vendeur/produits', connectee: true, admin: true },
   { nom: '27-gestion-commandes', url: '/vendeur/commandes', connectee: true, admin: true },
   { nom: '28-gestion-messages', url: '/vendeur/messages', connectee: true, admin: true },
+  // Les ecrans de la livraison et des avis (27 octobre 2026).
+  { nom: '30-livreur-lien-mort', url: '/livreur/abc', connectee: false },
+  { nom: '31-commandes-livrees', url: '/commandes/livrees', connectee: true },
+  { nom: '32-commandes-en-livraison', url: '/commandes/en-livraison', connectee: true },
   // Ce qu'une cliente voit si elle devine l'adresse de la gestion.
   { nom: '29-gestion-introuvable', url: '/vendeur', connectee: true },
 ];

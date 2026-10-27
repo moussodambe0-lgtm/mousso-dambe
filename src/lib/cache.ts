@@ -27,6 +27,9 @@ export const CHEMINS_PUBLICS = [
   '/manifest.webmanifest',
   '/fonts',
   '/icone',
+  // Les photos jointes aux avis : publiques comme l'avis qu'elles
+  // accompagnent, et immuables, donc faites pour etre gardees.
+  '/photo-avis',
 ];
 
 /** Un chemin qui ne parle de personne, et qu'un cache partagé peut garder. */

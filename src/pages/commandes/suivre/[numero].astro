@@ -9,15 +9,23 @@
  * remplies et celles qui restent. »
  *
  * CE QUI EST FAIT ICI : les étapes franchies et celles qui restent, écrire à la
- * boutique, annuler.
+ * boutique, annuler, et depuis le 27 octobre 2026 le livreur par son nom et son
+ * numéro, plus le bouton qui précise sa position pendant que le colis roule
+ * (Arthur : « la personne peut toujours envoyer sa localisation »). Le cas est
+ * réel : elle commande depuis le marché, et c'est chez elle qu'il faut livrer.
  *
- * CE QUI N'EST PAS FAIT, ET POURQUOI : la carte du livreur. Il n'existe aucune
- * notion de livreur dans Mousso Dambé, ni table, ni position : le mot
- * n'apparaît que dans des commentaires. Il faudrait d'abord qu'un livreur
- * existe et partage sa position. Et une bibliothèque de cartes pèse environ
- * 140 Ko quand toute l'application en envoie 2,4 Ko au navigateur, sur de la 3G
- * comptée. Le jour venu, le chemin le plus honnête sera un lien qui ouvre
- * l'application de cartes du téléphone, pas une carte embarquée.
+ * CE QUI N'EST TOUJOURS PAS FAIT : la carte dessinée dans la page. Elle demande
+ * un service de cartes extérieur, donc un choix qui coûte (bande passante,
+ * conditions d'usage) et qui, mal fait, enverrait l'adresse du domicile d'une
+ * femme à un tiers à chaque ouverture de cette page. Question posée à Arthur le
+ * 27 octobre 2026. En attendant on ne fait pas semblant avec une image figée :
+ * son point s'ouvre dans l'application de cartes du téléphone, qui sait y aller
+ * mieux que nous et qui est déjà installée.
+ *
+ * CE QU'ON NE MONTRERA PAS POUR AUTANT : où se trouve le livreur. Rien ne relève
+ * sa position, et une carte qui promettrait de « suivre le livreur » sans le
+ * suivre serait un mensonge à l'écran. Ce qu'on sait, c'est qui il est et
+ * comment l'appeler.
  *
  * La commande est lue parmi les siennes (`mes_commandes`), pas par une requête
  * ouverte sur un numéro : les règles d'accès de la base font qu'elle ne voit
@@ -40,14 +48,38 @@ if (!moi) return Astro.redirect('/connexion', 302);
 
 const client = clientSession(Astro)!;
 let erreur = '';
+let message = '';
 
 if (Astro.request.method === 'POST') {
   const f = await Astro.request.formData();
-  const { data, error } = await client.rpc('annuler_ma_commande', {
-    p_numero: String(f.get('numero') ?? ''),
-  });
-  if (error || !data?.ok) erreur = messageErreur(data?.erreur);
-  else return Astro.redirect('/commandes/annulees?ok=annule', 303);
+  const numero = String(f.get('numero') ?? '');
+
+  if (String(f.get('geste') ?? '') === 'position') {
+    const lat = Number(f.get('lat'));
+    const lng = Number(f.get('lng'));
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || (lat === 0 && lng === 0)) {
+      // Le bouton « Partager ma position » n'a pas été appuyé, ou le navigateur
+      // a refusé. Dire quoi faire vaut mieux qu'un « position hors zone » venu
+      // de la base, qui serait vrai mais incompréhensible.
+      erreur = "Appuie d'abord sur « Partager ma position », puis envoie.";
+    } else {
+      const { data, error } = await client.rpc('preciser_ma_position', {
+        p_numero: numero,
+        p_lat: lat,
+        p_lng: lng,
+      });
+      if (error || !data?.ok) erreur = messageErreur(data?.erreur ?? error?.message);
+      else return Astro.redirect(`/commandes/suivre/${encodeURIComponent(numero)}?ok=position`, 303);
+    }
+  } else {
+    const { data, error } = await client.rpc('annuler_ma_commande', { p_numero: numero });
+    if (error || !data?.ok) erreur = messageErreur(data?.erreur);
+    else return Astro.redirect('/commandes/annulees?ok=annule', 303);
+  }
+}
+
+if (Astro.url.searchParams.get('ok') === 'position') {
+  message = 'Ta position est enregistrée. Le livreur la verra.';
 }
 
 const { data: brutes } = await client.rpc('mes_commandes');
@@ -57,6 +89,10 @@ const toutes = (brutes ?? []) as {
   total: number;
   cree_le: string;
   quartier: string;
+  lat: number | null;
+  lng: number | null;
+  livreur_nom: string | null;
+  livreur_telephone: string | null;
   articles: { nom: string; taille: string | null; quantite: number; total: number }[];
 }[];
 
@@ -89,6 +125,7 @@ const panier = comptePanier(lirePanier(Astro));
     <Entete titre="Suivre ma commande" retour={`/commandes/${page?.cle ?? ETATS_CLIENTE[0].cle}`} />
 
     {erreur && <div class="marge-bas"><Alerte type="erreur" texte={erreur} /></div>}
+    {message && <div class="marge-bas"><Alerte type="reussite" texte={message} /></div>}
 
     <p class="quand">Commandée le {dateLongue(commande.cree_le)}</p>
 
@@ -161,9 +198,66 @@ const panier = comptePanier(lirePanier(Astro));
 
     {
       commande.etat === 'envoyee' && (
-        /* La carte du livreur viendra ici. En attendant, on ne fait pas semblant
-           avec une image de carte figée : on dit ce qu'on sait. */
-        <p class="bientot">Le suivi du livreur sur une carte arrive bientôt.</p>
+        <section class="course">
+          <h2 class="course-titre">Ta livraison</h2>
+
+          {commande.livreur_nom ? (
+            <>
+              <p class="course-qui">
+                <b>{commande.livreur_nom}</b> apporte ton colis.
+              </p>
+              {commande.livreur_telephone && (
+                <a class="btn btn-contour btn-plein" href={`tel:${commande.livreur_telephone}`}>
+                  <Icone nom="telephone" taille={18} />
+                  Appeler {commande.livreur_nom}
+                </a>
+              )}
+            </>
+          ) : (
+            <p class="course-qui">Ton colis est parti. Le livreur va t'appeler.</p>
+          )}
+
+          {/* Son point, ouvert dans l'application de cartes du téléphone. Ce
+              n'est pas la position du livreur : c'est la sienne, celle que le
+              livreur cherche, et elle doit pouvoir vérifier qu'elle est juste. */}
+          {commande.lat && commande.lng ? (
+            <a
+              class="btn btn-contour btn-plein"
+              href={`https://www.google.com/maps/search/?api=1&query=${commande.lat},${commande.lng}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Icone nom="lieu" taille={18} />
+              Voir le point que le livreur reçoit
+            </a>
+          ) : (
+            <p class="course-sans">
+              Tu n'as pas partagé de position. Le livreur a ton quartier et ton
+              numéro.
+            </p>
+          )}
+
+          {/* Repréciser sa position pendant que le colis roule. Le bloc est
+              caché tant que le script n'a pas tourné : sans JavaScript, aucun
+              navigateur ne sait donner une position, et un bouton qui ne peut
+              rien faire vaut moins que pas de bouton. */}
+          <form class="repointer" method="POST" data-position>
+            <input type="hidden" name="geste" value="position" />
+            <input type="hidden" name="numero" value={commande.numero} />
+            <input type="hidden" class="position-lat" name="lat" />
+            <input type="hidden" class="position-lng" name="lng" />
+            <button class="btn btn-contour btn-plein position-bouton" type="button" hidden>
+              <Icone nom="lieu" taille={18} />
+              <span class="position-mot">
+                {commande.lat ? 'Corriger ma position' : 'Partager ma position'}
+              </span>
+            </button>
+            <p class="position-dit" hidden></p>
+            <button class="btn btn-rose btn-plein repointer-envoi" type="submit">
+              Envoyer au livreur
+            </button>
+          </form>
+        </section>
       )
     }
   </main>
@@ -338,10 +432,59 @@ const panier = comptePanier(lirePanier(Astro));
     margin-top: var(--e4);
   }
 
-  .bientot {
-    margin-top: var(--e3);
+  /* --- Ta livraison, pendant que le colis roule --------------------------- */
+  .course {
+    display: grid;
+    gap: var(--e2);
+    margin-top: var(--e4);
+    padding: var(--e4);
+    border: 1px solid var(--bordure);
+    border-radius: var(--r-carte);
+    background: var(--surface-douce);
+  }
+
+  .course-titre {
+    margin: 0;
+    font-size: 12.5px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--texte-2);
+  }
+
+  .course-qui {
+    margin: 0;
+    font-size: 16px;
+  }
+
+  .course-sans {
+    margin: 0;
     font-size: 13.5px;
-    color: var(--texte-3);
-    text-align: center;
+    color: var(--texte-2);
+  }
+
+  /* Caché tant que le script de position n'a pas tourné : sans JavaScript,
+     aucun navigateur ne sait donner une position, et ce formulaire ne pourrait
+     rien envoyer d'autre que du vide. Le script pose l'attribut sur <html>. */
+  .repointer {
+    display: none;
+  }
+
+  :global(html[data-position='pret']) .repointer {
+    display: grid;
+    gap: var(--e2);
+    margin-top: var(--e2);
+    padding-top: var(--e3);
+    border-top: 1px solid var(--bordure);
+  }
+
+  .position-dit {
+    margin: 0;
+    font-size: 13.5px;
+    color: var(--texte-2);
   }
 </style>
+
+<script>
+  import '../../../scripts/position';
+</script>

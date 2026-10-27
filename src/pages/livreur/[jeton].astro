@@ -1,0 +1,270 @@
+---
+/**
+ * La course, telle que le livreur la voit.
+ *
+ * Arthur, le 26 octobre 2026 : « lorsque la personne va taper marquer expédier,
+ * ça va générer un lien. Et en fait, on envoie le lien au livreur. Et lorsque
+ * le livreur clique sur le lien, il peut suivre directement la localisation de
+ * la personne. »
+ *
+ * PAS DE COMPTE. Le livreur n'en a pas, et lui en demander un le jour d'une
+ * course serait le plus sûr moyen qu'il n'ouvre jamais le lien. Le jeton de 48
+ * caractères EST l'autorisation : il naît à l'expédition, meurt à l'arrivée, et
+ * expire de toute façon au bout de deux jours. C'est la base qui tient ces
+ * règles (`suivi_livreur`), pas cette page.
+ *
+ * CE QUE CETTE PAGE NE MONTRE PAS. Ni le prix des articles un par un, ni quoi
+ * que ce soit d'autre que cette commande. Il porte un colis et encaisse un
+ * total ; la marge de la boutique et les autres clientes ne le regardent pas.
+ *
+ * POURQUOI PAS DE CARTE DESSINÉE ICI. Une bibliothèque de cartes pèse environ
+ * 140 Ko, et le livreur est dehors, sur un téléphone d'entrée de gamme, avec un
+ * forfait compté. Surtout, il ne veut pas regarder une carte : il veut que son
+ * application de navigation s'ouvre et lui dise où tourner. Le bouton fait donc
+ * exactement cela, en une fois.
+ *
+ * LES BOUTONS SONT GROS parce qu'on appuie dessus debout, à moto arrêtée, au
+ * soleil, souvent d'une main.
+ */
+import Base from '../../layouts/Base.astro';
+import Icone from '../../components/Icone.astro';
+import { clientPublic, baseConfiguree } from '../../lib/supabase';
+import { prix, messageErreur } from '../../lib/format';
+
+export const prerender = false;
+
+const jeton = String(Astro.params.jeton ?? '');
+
+let course: any = null;
+let erreur = '';
+
+if (!baseConfiguree()) {
+  erreur = messageErreur('lien_invalide');
+} else {
+  const { data, error } = await clientPublic(Astro).rpc('suivi_livreur', { p_jeton: jeton });
+  if (error || !data?.ok) erreur = messageErreur(data?.erreur ?? error?.message);
+  else course = data;
+}
+
+// Une seule adresse de carte, construite une fois. `google.com/maps` ouvre
+// l'application installée sur un Android, et le site sur tout le reste.
+const lienCarte =
+  course?.lat && course?.lng
+    ? `https://www.google.com/maps/search/?api=1&query=${course.lat},${course.lng}`
+    : '';
+
+const titre = course ? `Commande ${course.numero}` : 'Course';
+---
+
+<Base titre={titre} description="La course à livrer." pleinEcran>
+  <main class="page">
+    {
+      erreur ? (
+        <section class="ratee">
+          <p class="ratee-mot">{erreur}</p>
+          <p class="ratee-quoi">
+            Appelle la boutique pour qu'elle t'en envoie un nouveau.
+          </p>
+        </section>
+      ) : (
+        <>
+          <header class="haut">
+            <p class="numero chiffre">{course.numero}</p>
+            {course.livreur_nom && <p class="pour">Pour {course.livreur_nom}</p>}
+          </header>
+
+          <section class="bloc">
+            <h2 class="bloc-titre">Chez qui</h2>
+            <p class="qui">{course.nom}</p>
+            <p class="ou">
+              {course.quartier || 'Quartier non donné'}
+              {course.repere ? `, ${course.repere}` : ''}
+            </p>
+          </section>
+
+          <div class="gestes">
+            <a class="geste geste-rose" href={`tel:${course.telephone}`}>
+              <Icone nom="telephone" taille={22} />
+              Appeler {course.nom}
+            </a>
+            {lienCarte ? (
+              <a class="geste" href={lienCarte} target="_blank" rel="noopener noreferrer">
+                <Icone nom="lieu" taille={22} />
+                Ouvrir la position
+              </a>
+            ) : (
+              <p class="sans-point">
+                Elle n'a pas partagé sa position. Appelle-la pour te faire guider.
+              </p>
+            )}
+          </div>
+
+          <section class="bloc">
+            <h2 class="bloc-titre">Ce que tu portes</h2>
+            <ul class="articles">
+              {(course.articles ?? []).map((a: any) => (
+                <li>
+                  <span class="chiffre">{a.quantite} ×</span> {a.nom}
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          <section class="bloc bloc-total">
+            <p class="total-mot">À encaisser à la livraison</p>
+            <p class="total chiffre">{prix(course.total_cfa ?? 0)} FCFA</p>
+          </section>
+
+          <p class="fin">
+            Ce lien ne marche que pendant cette course. Quand la boutique marque
+            la commande livrée, il s'arrête.
+          </p>
+        </>
+      )
+    }
+  </main>
+</Base>
+
+<style>
+  .page {
+    display: grid;
+    gap: var(--e3);
+    max-width: 540px;
+    margin: 0 auto;
+    padding: var(--e4) var(--e4) calc(var(--e5) + env(safe-area-inset-bottom, 0px));
+  }
+
+  .haut {
+    text-align: center;
+  }
+
+  .numero {
+    margin: 0;
+    font-size: 27px;
+    font-weight: 800;
+    color: var(--rose);
+  }
+
+  .pour {
+    margin: 2px 0 0;
+    color: var(--texte-2);
+    font-size: 14px;
+  }
+
+  .bloc {
+    padding: var(--e3) var(--e4);
+    border: 1px solid var(--bordure);
+    border-radius: var(--r-carte);
+    background: var(--surface);
+  }
+
+  .bloc-titre {
+    margin: 0 0 var(--e2);
+    font-size: 12.5px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--texte-2);
+  }
+
+  .qui {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 700;
+  }
+
+  .ou {
+    margin: 4px 0 0;
+    font-size: 16px;
+    color: var(--texte-2);
+  }
+
+  .gestes {
+    display: grid;
+    gap: var(--e2);
+  }
+
+  /* Hauteur bien au-delà des 44 px habituels : on vise ces boutons debout,
+     d'une main, parfois avec des gants. */
+  .geste {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--e2);
+    min-height: 60px;
+    border: 1px solid var(--bordure);
+    border-radius: var(--r-champ);
+    background: var(--surface);
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--texte);
+  }
+
+  .geste-rose {
+    border-color: transparent;
+    background: var(--rose);
+    color: #fff;
+  }
+
+  .sans-point {
+    margin: 0;
+    padding: var(--e3);
+    border: 1px dashed var(--bordure);
+    border-radius: var(--r-champ);
+    font-size: 14px;
+    color: var(--texte-2);
+    text-align: center;
+  }
+
+  .articles {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 6px;
+    font-size: 16px;
+  }
+
+  .bloc-total {
+    text-align: center;
+    background: var(--surface-douce);
+  }
+
+  .total-mot {
+    margin: 0;
+    font-size: 13px;
+    color: var(--texte-2);
+  }
+
+  .total {
+    margin: 2px 0 0;
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--rose);
+  }
+
+  .fin {
+    margin: 0;
+    font-size: 12.5px;
+    color: var(--texte-2);
+    text-align: center;
+  }
+
+  .ratee {
+    padding: var(--e5) var(--e4);
+    border: 1px dashed var(--bordure);
+    border-radius: var(--r-carte);
+    text-align: center;
+  }
+
+  .ratee-mot {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  .ratee-quoi {
+    margin: var(--e2) 0 0;
+    color: var(--texte-2);
+  }
+</style>

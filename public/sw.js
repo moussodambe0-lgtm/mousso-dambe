@@ -43,6 +43,9 @@ const SOCLE = ['/fonts/figtree.woff2', '/fonts/bricolage.woff2', '/manifest.webm
 // dossier src/pages et tombe si l'une d'elles n'est couverte ni par cette liste
 // ni par la liste des chemins publics. La liste ne peut donc plus vieillir en
 // silence.
+// Depuis le 27 octobre 2026 : /avis (son avis, lie a sa commande) et
+// /livreur (le nom, le numero et l adresse d une cliente, sur le telephone
+// d un livreur de passage). Aucun des deux ne se garde hors ligne.
 const PRIVE = [
   '/',
   '/cycle',
@@ -69,6 +72,8 @@ const PRIVE = [
   '/admin',
   '/vendeur',
   '/dev',
+  '/avis',
+  '/livreur',
 ];
 
 const estPrive = (url) => PRIVE.some((p) => url.pathname === p || url.pathname.startsWith(`${p}/`));

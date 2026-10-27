@@ -10,13 +10,26 @@
  * La position partagée par la cliente, quand elle en a donné une, devient un
  * lien vers une carte : c'est ce dont le livreur a besoin, et c'est pour ça
  * qu'elle l'a partagée.
+ *
+ * CONFIER LE COLIS (Arthur, 26 octobre 2026) : « avant de marquer expédier, il
+ * faut mettre le nom du livreur et le numéro du livreur, de sorte que lorsque
+ * la personne va taper marquer expédier, ça va générer un lien. Et en fait, on
+ * envoie le lien au livreur. » Les deux champs sont donc dans la carte de
+ * chaque commande préparée, visibles d'emblée : pas de dépliement à ouvrir, ce
+ * qui demanderait du JavaScript pour une saisie de deux mots, et pas de fenêtre
+ * par-dessus l'écran pour une action qu'on répète toute la journée.
+ *
+ * LE LIEN PART PAR WHATSAPP, parce que c'est par là qu'on joint un livreur ici.
+ * Le bouton ouvre la conversation avec SON numéro, le message déjà écrit : il
+ * n'y a plus qu'à appuyer sur envoyer. Le lien reste écrit en toutes lettres
+ * juste en dessous, pour le cas où WhatsApp n'est pas là.
  */
 import Vendeur from '../../layouts/Vendeur.astro';
 import Icone from '../../components/Icone.astro';
 import Alerte from '../../components/Alerte.astro';
 import { clientSession, baseConfiguree } from '../../lib/supabase';
 import { visiteuse } from '../../lib/session';
-import { prix, dateLongue, messageErreur } from '../../lib/format';
+import { prix, dateLongue, quandCourt, messageErreur } from '../../lib/format';
 
 if (!baseConfiguree()) return Astro.redirect('/', 302);
 const moi = await visiteuse(Astro);
@@ -27,15 +40,31 @@ const { data: admin } = await client.rpc('est_admin');
 if (admin !== true) return Astro.redirect('/admin', 302);
 
 let erreur = '';
+// Quand l'envoi échoue, la saisie du livreur revient à l'écran, sur la bonne
+// commande. Retaper un nom parce qu'un numéro manquait d'un chiffre serait une
+// punition pour une faute de frappe.
+let saisieRatee = { id: '', nom: '', telephone: '' };
 
 if (Astro.request.method === 'POST') {
   const f = await Astro.request.formData();
+  const id = String(f.get('id') ?? '');
+  const nom = String(f.get('livreur_nom') ?? '').slice(0, 80);
+  const telephone = String(f.get('livreur_telephone') ?? '').slice(0, 30);
   const { data, error } = await client.rpc('changer_etat_commande', {
-    p_id: String(f.get('id') ?? ''),
+    p_id: id,
     p_etat: String(f.get('etat') ?? ''),
+    p_livreur_nom: nom || null,
+    p_livreur_telephone: telephone || null,
   });
-  if (error || !data?.ok) erreur = messageErreur(data?.erreur ?? error?.message);
-  else return Astro.redirect(`/vendeur/commandes?etat=${encodeURIComponent(String(f.get('retour') ?? ''))}`, 303);
+  if (error || !data?.ok) {
+    erreur = messageErreur(data?.erreur ?? error?.message);
+    saisieRatee = { id, nom, telephone };
+  } else {
+    // On revient sur la liste « En route » après une expédition : c'est là que
+    // se trouve le lien qu'on vient de créer, et c'est le geste suivant.
+    const retour = data.etat === 'envoyee' ? 'envoyee' : String(f.get('retour') ?? '');
+    return Astro.redirect(`/vendeur/commandes?etat=${encodeURIComponent(retour)}`, 303);
+  }
 }
 
 const ETATS = [
@@ -45,6 +74,26 @@ const ETATS = [
   { id: 'livree', mot: 'Livrées', suivant: null, bouton: '' },
   { id: 'annulee', mot: 'Annulées', suivant: null, bouton: '' },
 ];
+
+// L'adresse du livreur est celle de la BOUTIQUE, jamais celle de la gestion :
+// `/livreur/...` n'existe pas sur le sous-domaine d'administration, et un
+// livreur qui ouvrirait ce lien tomberait sur une page introuvable. `Astro.site`
+// porte le domaine public (SITE_URL, ou l'adresse donnée par Vercel), comme
+// pour le lien « Quitter » de la mise en page du vendeur.
+const adresseBoutique = Astro.site ?? new URL(Astro.url.origin);
+const lienLivreur = (jeton: string) => new URL(`/livreur/${jeton}`, adresseBoutique).href;
+
+/**
+ * La conversation WhatsApp avec le livreur, le message déjà écrit.
+ *
+ * Le numéro est stocké à huit chiffres, sans indicatif (voir
+ * `telephone_burkina`) : WhatsApp le veut avec, et sans le « + ».
+ */
+function lienWhatsApp(telephone: string | null, lien: string, numero: string): string {
+  const chiffres = String(telephone ?? '').replace(/\D/g, '');
+  const texte = `Commande ${numero}. Voici l'adresse de livraison et la position de la cliente : ${lien}`;
+  return `https://wa.me/226${chiffres}?text=${encodeURIComponent(texte)}`;
+}
 
 const filtre = Astro.url.searchParams.get('etat') ?? '';
 const { data } = await client.rpc('commandes_admin', { p_etat: filtre || null });
@@ -117,9 +166,80 @@ const { data: tab } = await client.rpc('tableau_vendeur');
                 ))}
               </ul>
 
+              {c.etat === 'preparee' && (
+                <form class="livreur" method="POST" data-une-fois>
+                  <input type="hidden" name="id" value={c.id} />
+                  <input type="hidden" name="etat" value="envoyee" />
+                  <input type="hidden" name="retour" value={filtre} />
+                  <p class="livreur-titre">Qui emporte ce colis ?</p>
+                  <div class="livreur-champs">
+                    <label class="livreur-champ">
+                      <span class="libelle">Nom du livreur</span>
+                      <input
+                        class="champ"
+                        type="text"
+                        name="livreur_nom"
+                        maxlength="80"
+                        autocomplete="off"
+                        required
+                        value={saisieRatee.id === c.id ? saisieRatee.nom : ''}
+                      />
+                    </label>
+                    <label class="livreur-champ">
+                      <span class="libelle">Son numéro</span>
+                      <input
+                        class="champ"
+                        type="tel"
+                        name="livreur_telephone"
+                        inputmode="numeric"
+                        maxlength="30"
+                        autocomplete="off"
+                        placeholder="70 00 00 00"
+                        required
+                        value={saisieRatee.id === c.id ? saisieRatee.telephone : ''}
+                      />
+                    </label>
+                  </div>
+                  <button class="btn btn-rose" type="submit">Donner au livreur</button>
+                </form>
+              )}
+
+              {c.etat === 'envoyee' && c.livreur_nom && (
+                <div class="course">
+                  <p class="course-qui">
+                    <Icone nom="lieu" taille={15} />
+                    Chez <b>{c.livreur_nom}</b>
+                    {c.livreur_telephone && (
+                      <> · <a href={`tel:${c.livreur_telephone}`}>{c.livreur_telephone}</a></>
+                    )}
+                  </p>
+                  {c.livreur_jeton && (
+                    <>
+                      <a
+                        class="btn btn-rose btn-petit"
+                        href={lienWhatsApp(c.livreur_telephone, lienLivreur(c.livreur_jeton), c.numero)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Envoyer le lien par WhatsApp
+                      </a>
+                      <p class="course-lien">
+                        <span class="course-lien-mot">Son lien de course</span>
+                        <code class="course-adresse">{lienLivreur(c.livreur_jeton)}</code>
+                      </p>
+                    </>
+                  )}
+                  <p class="course-vu">
+                    {c.livreur_vu_le
+                      ? `Il a ouvert le lien à ${quandCourt(c.livreur_vu_le)}.`
+                      : "Il n'a pas encore ouvert le lien."}
+                  </p>
+                </div>
+              )}
+
               <div class="bas">
                 <span class="total chiffre">{prix(c.total_cfa ?? 0)} FCFA</span>
-                {etat?.suivant && (
+                {etat?.suivant && etat.suivant !== 'envoyee' && (
                   <form method="POST">
                     <input type="hidden" name="id" value={c.id} />
                     <input type="hidden" name="etat" value={etat.suivant} />
@@ -293,4 +413,80 @@ const { data: tab } = await client.rpc('tableau_vendeur');
   .marge-bas {
     margin-bottom: var(--e3);
   }
+
+  /* --- Confier le colis, et suivre la course --------------------------- */
+
+  /* Encadré clair dans la carte : la saisie est un moment à part, mais elle
+     reste dans la commande qu'elle concerne. */
+  .livreur,
+  .course {
+    display: grid;
+    gap: var(--e2);
+    margin-top: var(--e3);
+    padding: var(--e3);
+    border: 1px solid var(--bordure);
+    border-radius: var(--r-champ);
+    background: var(--surface-douce);
+  }
+
+  .livreur-titre {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
+  }
+
+  /* Côte à côte dès qu'il y a la place, l'un sous l'autre sur un téléphone
+     étroit : deux champs de cette largeur ne tiennent pas à 320 px. */
+  .livreur-champs {
+    display: grid;
+    gap: var(--e2);
+    grid-template-columns: 1fr;
+  }
+
+  @media (min-width: 420px) {
+    .livreur-champs {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
+  .livreur-champ .libelle {
+    margin-bottom: 4px;
+    font-size: 13.5px;
+  }
+
+  .course-qui,
+  .course-vu,
+  .course-lien {
+    margin: 0;
+    font-size: 14px;
+  }
+
+  .course-vu {
+    color: var(--texte-2);
+  }
+
+  .course-lien {
+    display: grid;
+    gap: 3px;
+  }
+
+  .course-lien-mot {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--texte-2);
+  }
+
+  /* L'adresse est longue et n'a aucune coupure naturelle : sans ceci elle
+     pousse la carte et fait défiler la page de côté. */
+  .course-adresse {
+    overflow-wrap: anywhere;
+    font-family: inherit;
+    font-size: 12.5px;
+    color: var(--texte-2);
+    user-select: all;
+  }
 </style>
+
+<script>
+  import '../../scripts/une-fois';
+</script>

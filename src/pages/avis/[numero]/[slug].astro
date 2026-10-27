@@ -1,0 +1,342 @@
+---
+/**
+ * Donner son avis sur un produit reçu.
+ *
+ * Arthur, le 26 octobre 2026 : « à la fin, si quelqu'un a reçu son colis, qu'il
+ * puisse mettre des avis, avec peut-être des images même du produit ».
+ *
+ * APRÈS RÉCEPTION, ET PAS AVANT. La base refuse un avis sur une commande qui
+ * n'est pas livrée (`commande_non_livree`) : cette page ne fait que l'annoncer
+ * plus tôt et plus gentiment. C'est ce qui fait tenir la mention « Achat
+ * vérifié » sous chaque avis de la fiche produit.
+ *
+ * L'AVIS EST ANONYME, et l'écran le dit avant qu'elle écrive, pas après. Sur
+ * une boutique de protections périodiques, signer son avis revient à dire
+ * publiquement ce qu'on achète et quand on a ses règles.
+ *
+ * LA PHOTO AUSSI EST PUBLIQUE, et l'écran le dit juste au-dessus du bouton qui
+ * ouvre l'appareil : une photo prise chez soi montre aussi chez soi. C'est la
+ * phrase la plus importante de cette page.
+ *
+ * TOUT MARCHE SANS JAVASCRIPT, y compris les photos : le formulaire est envoyé
+ * en `multipart/form-data`, le serveur lit les fichiers et les passe à la base.
+ * La note se donne avec cinq boutons radio, pas avec des étoiles qui écoutent
+ * le doigt : un clavier et un lecteur d'écran y arrivent aussi.
+ */
+import Base from '../../../layouts/Base.astro';
+import Entete from '../../../components/Entete.astro';
+import Icone from '../../../components/Icone.astro';
+import Alerte from '../../../components/Alerte.astro';
+import { clientSession, baseConfiguree } from '../../../lib/supabase';
+import { visiteuse, lirePanier, comptePanier } from '../../../lib/session';
+import { messageErreur } from '../../../lib/format';
+
+export const prerender = false;
+
+if (!baseConfiguree()) return Astro.redirect('/', 302);
+const moi = await visiteuse(Astro);
+if (!moi) return Astro.redirect('/connexion', 302);
+
+const client = clientSession(Astro)!;
+const numero = String(Astro.params.numero ?? '');
+const slug = String(Astro.params.slug ?? '');
+
+/** Ce que la base accepte, et rien d'autre. Même liste qu'elle. */
+const TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const POIDS_MAX = 400 * 1024;
+const PHOTOS_MAX = 3;
+
+let erreur = '';
+let note = 0;
+let texte = '';
+
+if (Astro.request.method === 'POST') {
+  const f = await Astro.request.formData();
+  note = Math.trunc(Number(f.get('note'))) || 0;
+  texte = String(f.get('texte') ?? '').slice(0, 1000);
+
+  const { data, error } = await client.rpc('deposer_avis', {
+    p_numero: numero,
+    p_slug: slug,
+    p_note: note,
+    p_texte: texte || null,
+  });
+
+  if (error || !data?.ok) {
+    erreur = messageErreur(data?.erreur ?? error?.message);
+  } else {
+    // Les photos partent ensuite, une par une, attachées à l'avis qui vient
+    // d'être écrit. Une photo refusée n'annule pas l'avis : il est déjà là, et
+    // le lui reprendre pour une image trop lourde serait absurde. On le dit, et
+    // elle peut revenir en joindre une autre, puisque repasser ici corrige son
+    // avis au lieu d'en créer un second.
+    const fichiers = f.getAll('photos').filter((x): x is File => x instanceof File && x.size > 0);
+    const refusees: string[] = [];
+
+    for (const fichier of fichiers.slice(0, PHOTOS_MAX)) {
+      if (!TYPES.includes(fichier.type)) {
+        refusees.push('type_refuse');
+        continue;
+      }
+      if (fichier.size > POIDS_MAX) {
+        refusees.push('image_trop_lourde');
+        continue;
+      }
+      const base64 = Buffer.from(await fichier.arrayBuffer()).toString('base64');
+      const { data: ajout } = await client.rpc('ajouter_photo_avis', {
+        p_avis: data.avis,
+        p_base64: base64,
+        p_type: fichier.type,
+      });
+      if (!ajout?.ok) refusees.push(String(ajout?.erreur ?? 'image_illisible'));
+    }
+
+    const suite = refusees.length > 0 ? `&photos=${encodeURIComponent(refusees[0]!)}` : '';
+    return Astro.redirect(`/boutique/${encodeURIComponent(slug)}?avis=merci${suite}`, 303);
+  }
+}
+
+// Ce qu'elle peut encore noter : la base ne rend que les produits reçus et pas
+// encore notés. Si ce couple n'y est pas, c'est qu'elle n'a pas reçu ce
+// produit-là, ou qu'elle l'a déjà noté. Dans les deux cas on la renvoie à sa
+// liste plutôt que de lui dire laquelle des deux : un numéro essayé au hasard
+// n'apprend donc rien.
+const { data: aNoter } = await client.rpc('mes_avis_a_donner');
+const attendus = (aNoter ?? []) as { numero: string; slug: string; nom: string; image: string | null }[];
+const quoi = attendus.find((a) => a.numero === numero && a.slug === slug);
+if (!quoi && Astro.request.method !== 'POST') return Astro.redirect('/commandes/livrees', 302);
+
+const NOTES = [
+  { n: 5, mot: 'Très bien' },
+  { n: 4, mot: 'Bien' },
+  { n: 3, mot: 'Correct' },
+  { n: 2, mot: 'Moyen' },
+  { n: 1, mot: 'Mauvais' },
+];
+
+const panier = comptePanier(lirePanier(Astro));
+---
+
+<Base titre="Donner mon avis" nav="compte" panier={panier}>
+  <main class="page">
+    <Entete titre="Donner mon avis" retour="/commandes/livrees" />
+
+    {erreur && <div class="marge-bas"><Alerte type="erreur" texte={erreur} /></div>}
+
+    {quoi && (
+      <section class="objet">
+        {quoi.image && (
+          <img class="objet-image" src={quoi.image} alt="" width="54" height="54" decoding="async" />
+        )}
+        <div>
+          <p class="objet-nom">{quoi.nom}</p>
+          <p class="objet-quand">Reçu avec la commande {quoi.numero}</p>
+        </div>
+      </section>
+    )}
+
+    <form method="POST" enctype="multipart/form-data" data-une-fois>
+      {/* Cinq vrais boutons radio, du meilleur au moins bon. L'ordre part du
+          haut parce que c'est là que va le doigt, et parce que la plupart des
+          avis sont bons : mettre « Mauvais » en premier ferait du pire le
+          choix le plus facile. */}
+      <fieldset class="notes">
+        <legend class="libelle">Ta note</legend>
+        {NOTES.map(({ n, mot }) => (
+          <>
+            <input class="cache" type="radio" name="note" id={`n-${n}`} value={n} required checked={note === n} />
+            <label class="note" for={`n-${n}`}>
+              <span class="note-etoiles" aria-hidden="true">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <span class:list={['etoile', n >= i && 'etoile-pleine']}>
+                    <Icone nom="etoile" taille={18} />
+                  </span>
+                ))}
+              </span>
+              <span class="note-mot">{mot}</span>
+            </label>
+          </>
+        ))}
+      </fieldset>
+
+      <label class="bloc-champ">
+        <span class="libelle">Ce que tu veux dire (facultatif)</span>
+        <textarea
+          class="champ"
+          name="texte"
+          rows="4"
+          maxlength="1000"
+          placeholder="Est-ce que ça tient bien ? Est-ce que la taille est juste ?"
+          set:text={texte}
+        />
+      </label>
+
+      <div class="bloc-champ">
+        <span class="libelle">Des photos (facultatif)</span>
+        {/* La phrase la plus importante de la page, et elle est AVANT le bouton,
+            pas en dessous : après, il est trop tard. */}
+        <p class="prudence">
+          <Icone nom="info" taille={15} />
+          Tes photos seront visibles par tout le monde sur la fiche du produit.
+          Ne montre que le produit, pas ta maison ni ton visage.
+        </p>
+        <input
+          class="champ"
+          type="file"
+          name="photos"
+          accept="image/jpeg,image/png,image/webp"
+          multiple
+        />
+        <p class="aide">Trois photos au maximum, et moins de 400 Ko chacune.</p>
+      </div>
+
+      <p class="anonyme">
+        <Icone nom="cadenas" taille={15} />
+        Ton avis est anonyme. Ni ton prénom, ni ton quartier, ni ta photo
+        n'apparaissent. On écrit seulement « Achat vérifié ».
+      </p>
+
+      <button class="btn btn-rose btn-plein" type="submit">Envoyer mon avis</button>
+    </form>
+  </main>
+</Base>
+
+<style>
+  .page {
+    padding-bottom: calc(var(--e5) + env(safe-area-inset-bottom, 0px));
+  }
+
+  .marge-bas {
+    margin-bottom: var(--e3);
+  }
+
+  .objet {
+    display: flex;
+    align-items: center;
+    gap: var(--e3);
+    margin-bottom: var(--e4);
+    padding: var(--e3);
+    border: 1px solid var(--bordure);
+    border-radius: var(--r-carte);
+    background: var(--surface);
+  }
+
+  .objet-image {
+    display: block;
+    width: 54px;
+    height: 54px;
+    border-radius: var(--r-champ);
+    object-fit: cover;
+    background: var(--surface-douce);
+  }
+
+  .objet-nom {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+  }
+
+  .objet-quand {
+    margin: 2px 0 0;
+    font-size: 13px;
+    color: var(--texte-2);
+  }
+
+  .notes {
+    display: grid;
+    gap: 6px;
+    margin: 0 0 var(--e4);
+    padding: 0;
+    border: 0;
+  }
+
+  .cache {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .note {
+    display: flex;
+    align-items: center;
+    gap: var(--e3);
+    min-height: 52px;
+    padding: 0 var(--e3);
+    border: 1px solid var(--bordure);
+    border-radius: var(--r-champ);
+    background: var(--surface);
+    cursor: pointer;
+  }
+
+  /* La note choisie se voit au cadre ET au fond : la couleur seule ne suffit
+     pas à qui la distingue mal. */
+  .cache:checked + .note {
+    border-color: var(--rose);
+    background: var(--surface-douce);
+    box-shadow: inset 0 0 0 1px var(--rose);
+  }
+
+  .cache:focus-visible + .note {
+    outline: 2px solid var(--rose);
+    outline-offset: 2px;
+  }
+
+  .note-etoiles {
+    display: inline-flex;
+    gap: 1px;
+  }
+
+  .etoile {
+    display: inline-grid;
+    place-items: center;
+    color: var(--bordure);
+  }
+
+  .etoile-pleine {
+    color: #e8a33d;
+  }
+
+  .note-mot {
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  .bloc-champ {
+    display: block;
+    margin-bottom: var(--e4);
+  }
+
+  .prudence,
+  .anonyme,
+  .aide {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    margin: var(--e2) 0 0;
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--texte-2);
+  }
+
+  .prudence {
+    margin: 0 0 var(--e2);
+    padding: var(--e2) var(--e3);
+    border-radius: var(--r-champ);
+    background: var(--surface-douce);
+  }
+
+  .anonyme {
+    margin-bottom: var(--e4);
+  }
+
+  .aide {
+    font-size: 12.5px;
+    color: var(--texte-3);
+  }
+</style>
+
+<script>
+  import '../../../scripts/une-fois';
+</script>

@@ -12,7 +12,8 @@ import Alerte from '../../components/Alerte.astro';
 import { clientPublic, clientSession, baseConfiguree, jetonDeSession } from '../../lib/supabase';
 import { visiteuse, lirePanier, comptePanier } from '../../lib/session';
 import { enteteCatalogue } from '../../lib/cache';
-import { prix } from '../../lib/format';
+import { prixLivraison } from '../../lib/boutique';
+import { prix, dateLongue, messageErreur } from '../../lib/format';
 
 const { slug } = Astro.params;
 
@@ -56,6 +57,43 @@ if (moi) {
 }
 const tailles: string[] = produit.tailles ?? [];
 const erreur = Astro.url.searchParams.get('erreur');
+
+// Retour de l'écran d'avis. Si une photo a été refusée, on le dit avec l'avis :
+// il est bien enregistré, c'est seulement l'image qui n'est pas passée. Taire
+// le refus la laisserait croire que sa photo est en ligne.
+const avisDepose = Astro.url.searchParams.get('avis') === 'merci';
+const photoRefusee = Astro.url.searchParams.get('photos');
+const motAvis = !avisDepose
+  ? ''
+  : photoRefusee
+    ? `Merci pour ton avis. ${messageErreur(photoRefusee)}`
+    : 'Merci pour ton avis. Il est en ligne.';
+
+// Le prix de la livraison, redemandé sur la fiche par Arthur le 26 octobre 2026
+// (« si on clique sur un produit, je veux qu'on puisse mettre livraison 1000
+// francs »). Il revient sur sa décision du 13 octobre, qui avait fait retirer
+// trois encadrés d'un coup ; seule la livraison revient, pas les deux autres.
+// La valeur est LUE, jamais écrite en dur : une fiche qui annonce 1 000 et une
+// base qui en compte 1 500 au moment de payer, c'est un colis refusé à la porte.
+const livraisonCfa = await prixLivraison(clientPublic(Astro));
+
+// Les avis, et ce qu'ils valent ensemble. Ouverts à tout le monde, même sans
+// compte : c'est ce qu'on vient lire avant d'acheter.
+const { data: avisData } = await clientPublic(Astro).rpc('avis_du_produit', {
+  p_slug: produit.slug,
+  p_combien: 10,
+});
+const avis = {
+  nombre: Number(avisData?.nombre ?? 0),
+  moyenne: avisData?.moyenne == null ? null : Number(avisData.moyenne),
+  liste: (avisData?.liste ?? []) as {
+    id: string;
+    note: number;
+    texte: string | null;
+    cree_le: string;
+    photos: string[];
+  }[],
+};
 
 const DESSINS: Record<string, string> = {
   serviettes: 'paquet',
@@ -121,6 +159,7 @@ Astro.response.headers.set(
           vois ce genre de texte, supprime »). Le texte reste en base. */}
 
       {erreur && <div class="marge"><Alerte type="erreur" texte={erreur === 'taille' ? 'Choisis ta taille avant de continuer.' : 'Ce produit ne peut pas être ajouté.'} /></div>}
+      {motAvis && <div class="marge"><Alerte type="reussite" texte={motAvis} /></div>}
 
       <form method="POST" action="/panier">
         <input type="hidden" name="geste" value="ajouter" />
@@ -140,14 +179,100 @@ Astro.response.headers.set(
           )
         }
 
-        {/* Les trois encadrés (livraison à 1 000 FCFA, emballage, réutilisable
-            deux ans) ont été retirés de la fiche le 13 octobre 2026, à la
-            demande d'Arthur. */}
+        {/* Les trois encadrés (livraison, emballage, réutilisable deux ans) ont
+            été retirés le 13 octobre 2026. Seule la livraison revient, le
+            26 octobre, et en une ligne plutôt qu'en encadré : c'est le chiffre
+            qui manque pour savoir ce qu'on paiera vraiment, pas une réclame. */}
+        <p class="livraison-mot">
+          <Icone nom="camion" taille={17} />
+          Livraison à Ouagadougou&nbsp;·&nbsp;<b class="chiffre">{prix(livraisonCfa)} FCFA</b>
+        </p>
 
         <a class="aide-dambe" href="/dambe">
           <span class="rond-sombre"><Icone nom="dambe" taille={20} /></span>
           <span>Tu hésites ? <strong>Demande à IA Dambé</strong></span>
         </a>
+
+        {/* Les avis (Arthur, 26 octobre 2026 : « mettre aussi des avis [...] à
+            la fin, si quelqu'un a reçu son colis, qu'il puisse mettre des avis,
+            avec peut-être des images même du produit »).
+
+            ILS SONT ANONYMES. Ni prénom, ni quartier, ni photo de profil. Sur
+            une boutique de protections périodiques, signer son avis revient à
+            dire publiquement ce qu'on achète et quand on a ses règles. Ce qui
+            donne sa valeur à l'avis, c'est qu'il vient d'une commande livrée,
+            pas le nom de qui l'écrit : la base n'accepte un avis que d'une
+            femme qui a reçu ce produit-là, et la mention le dit.
+
+            LES VIDES. Aucun avis : on ne le cache pas et on n'invente pas
+            d'étoiles, on dit qu'il n'y en a pas encore. Une note sans texte
+            compte autant qu'une autre : beaucoup de femmes mettront quatre
+            étoiles sans écrire un mot. */}
+        <section class="avis" aria-labelledby="titre-avis">
+          <h2 class="avis-titre" id="titre-avis">Ce qu'elles en disent</h2>
+
+          {avis.nombre === 0 ? (
+            <p class="avis-rien">
+              Pas encore d'avis sur ce produit. Le premier sera celui d'une
+              femme qui l'aura reçu.
+            </p>
+          ) : (
+            <>
+              <p class="avis-note">
+                <span class="avis-etoiles" aria-hidden="true">
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <span class:list={['etoile', (avis.moyenne ?? 0) >= n - 0.5 && 'etoile-pleine']}>
+                      <Icone nom="etoile" taille={17} />
+                    </span>
+                  ))}
+                </span>
+                <b class="chiffre">{String(avis.moyenne ?? 0).replace('.', ',')}</b>
+                <span class="avis-combien">
+                  sur {avis.nombre} avis
+                </span>
+              </p>
+
+              <ul class="avis-liste">
+                {avis.liste.map((a) => (
+                  <li class="avis-un">
+                    <p class="avis-haut">
+                      <span class="avis-etoiles" aria-label={`${a.note} sur 5`}>
+                        {[1, 2, 3, 4, 5].map((n) => (
+                          <span class:list={['etoile', a.note >= n && 'etoile-pleine']} aria-hidden="true">
+                            <Icone nom="etoile" taille={15} />
+                          </span>
+                        ))}
+                      </span>
+                      <span class="avis-verifie">
+                        <Icone nom="coche" taille={13} />
+                        Achat vérifié
+                      </span>
+                    </p>
+                    {a.texte && <p class="avis-texte">{a.texte}</p>}
+                    {a.photos.length > 0 && (
+                      <ul class="avis-photos">
+                        {a.photos.map((p) => (
+                          <li>
+                            <img
+                              class="avis-photo"
+                              src={`/photo-avis/${p}`}
+                              alt="Photo envoyée avec cet avis"
+                              width="76"
+                              height="76"
+                              loading="lazy"
+                              decoding="async"
+                            />
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    <p class="avis-quand">{dateLongue(a.cree_le)}</p>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </section>
 
         <div class="place-barre"></div>
 
@@ -401,5 +526,128 @@ Astro.response.headers.set(
      entière, sinon la dernière ligne du texte finit cachée derrière. */
   .place-barre {
     height: 8px;
+  }
+
+  /* --- Le prix de la livraison, en une ligne --------------------------- */
+  .livraison-mot {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin: var(--e3) 0 0;
+    font-size: 14.5px;
+    color: var(--texte-2);
+  }
+
+  /* --- Les avis -------------------------------------------------------- */
+  .avis {
+    margin-top: var(--e5);
+    padding-top: var(--e4);
+    border-top: 1px solid var(--bordure);
+  }
+
+  .avis-titre {
+    margin: 0 0 var(--e3);
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  .avis-rien {
+    margin: 0;
+    font-size: 14.5px;
+    color: var(--texte-2);
+  }
+
+  .avis-note {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin: 0 0 var(--e3);
+    font-size: 15px;
+  }
+
+  .avis-combien {
+    color: var(--texte-2);
+  }
+
+  .avis-etoiles {
+    display: inline-flex;
+    gap: 1px;
+  }
+
+  /* Une etoile vide reste dessinee, en gris : cinq formes alignees se
+     comparent d'un coup d'oeil, trois formes isolees ne se comparent pas. */
+  .etoile {
+    display: inline-grid;
+    place-items: center;
+    color: var(--bordure);
+  }
+
+  .etoile-pleine {
+    color: #e8a33d;
+  }
+
+  .avis-liste {
+    display: grid;
+    gap: var(--e3);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .avis-un {
+    padding: var(--e3);
+    border: 1px solid var(--bordure);
+    border-radius: var(--r-carte);
+    background: var(--surface);
+  }
+
+  .avis-haut {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--e2);
+    margin: 0;
+  }
+
+  /* « Achat verifie » est ce qui tient lieu de signature : l'avis est anonyme,
+     mais il vient d'une commande livree, et c'est cela qui compte. */
+  .avis-verifie {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--texte-2);
+  }
+
+  .avis-texte {
+    margin: var(--e2) 0 0;
+    font-size: 15px;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+  }
+
+  .avis-photos {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: var(--e2) 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .avis-photo {
+    display: block;
+    width: 76px;
+    height: 76px;
+    border-radius: var(--r-champ);
+    object-fit: cover;
+    background: var(--surface-douce);
+  }
+
+  .avis-quand {
+    margin: var(--e2) 0 0;
+    font-size: 12.5px;
+    color: var(--texte-3);
   }
 </style>

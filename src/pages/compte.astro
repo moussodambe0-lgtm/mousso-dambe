@@ -44,7 +44,7 @@ import CarteProduit from '../components/CarteProduit.astro';
 import { visiteuse, lirePanier, comptePanier } from '../lib/session';
 import { clientSession, clientPublic, baseConfiguree } from '../lib/supabase';
 import { urlAdmin } from '../lib/hotes';
-import { ETATS_CLIENTE } from '../lib/etats-commande';
+import BandeauCommandes from '../components/BandeauCommandes.astro';
 import { ADMIN_HOST } from 'astro:env/server';
 
 if (!baseConfiguree()) return Astro.redirect('/', 302);
@@ -68,35 +68,7 @@ const lienGestion = vendeuse ? urlAdmin(Astro.url.origin, ADMIN_HOST) : '#';
 
 const { data: commandesData } = await client.rpc('mes_commandes');
 const commandes = (commandesData ?? []) as { etat: string }[];
-const nombreEtat = (etats: string[]) => commandes.filter((c) => etats.includes(c.etat)).length;
 
-// Les icônes du bandeau, d'après les références envoyées par Arthur le 13
-// octobre 2026. « En livraison » (un livreur en scooter) et « Livrées » (une
-// coche cerclée) sont SES images, détourées et passées en noir foncé par
-// `outils/icone-depuis-image.py` : il a demandé de les coller telles quelles
-// plutôt que de les redessiner. Les deux autres sont dessinées au trait dans
-// `Icone.astro` ; sa croix d'annulation à lui était une image de banque
-// filigranée, donc inutilisable telle quelle.
-// Les quatre etats, avec leur dessin. Les cles d'adresse et les regroupements
-// viennent de `src/lib/etats-commande.ts`, partage avec les pages elles-memes :
-// deux listes qui divergeraient donneraient un compteur annoncant une commande
-// introuvable. Seules les images restent ici, elles ne concernent que ce
-// bandeau (Arthur, 13 octobre 2026 : « en livraison » et « livrees » sont SES
-// images, les deux autres sont dessinees au trait).
-const DESSINS: Record<string, { icone: string | null; image: string | null }> = {
-  'en-preparation': { icone: 'carton', image: null },
-  'en-livraison': { icone: null, image: '/icones/en-livraison.png' },
-  livrees: { icone: null, image: '/icones/livree.png' },
-  annulees: { icone: 'croix-cercle', image: null },
-};
-
-const ETATS_COMPTE = ETATS_CLIENTE.map((e) => ({
-  cle: e.cle,
-  mot: e.mot,
-  icone: DESSINS[e.cle]?.icone ?? null,
-  image: DESSINS[e.cle]?.image ?? null,
-  nombre: nombreEtat(e.etats),
-}));
 
 const adresseResume = [moi.quartier, moi.repere].filter(Boolean).join(' · ');
 
@@ -200,28 +172,7 @@ const messageEfface = !efface
       </a>
     </section>
 
-    {/* Le bandeau des commandes, dans l'esprit de Jia : un coup d'œil sur où
-        en sont ses commandes, sans ouvrir la liste. Le titre au-dessus est
-        demandé par Arthur le 13 octobre 2026 : sans lui, quatre mots isolés
-        ne disent pas de quoi ils parlent. */}
-    <h2 class="section-titre apparait">Mes commandes</h2>
-    <section class="etats apparait" aria-label="Mes commandes">
-      {
-        ETATS_COMPTE.map((e) => (
-          <a class="etat" href={`/commandes/${e.cle}`}>
-            <span class="etat-rond">
-              {e.image ? (
-                <img class="etat-image" src={e.image} alt="" width="28" height="28" decoding="async" />
-              ) : (
-                <Icone nom={e.icone!} taille={28} epaisseur={2} />
-              )}
-            </span>
-            {e.nombre > 0 && <span class="etat-nombre">{e.nombre}</span>}
-            <span class="etat-mot">{e.mot}</span>
-          </a>
-        ))
-      }
-    </section>
+    <BandeauCommandes commandes={commandes} classe="apparait" />
 
     {/* L'espace vendeur, seulement pour Arthur. Personne d'autre ne voit cette
         ligne : `est_admin()` a déjà répondu non.
@@ -404,81 +355,7 @@ const messageEfface = !efface
   /* Les quatre états tiennent dans UN SEUL rectangle (Arthur, 13 octobre
      2026 : « tous les logos doivent être dans le même rectangle »), comme sur
      l'écran de compte de Jia. Chaque état reste touchable à l'intérieur. */
-  /* Arthur, le 26 octobre 2026 : « diminue la hauteur même du rectangle où ces
-     étapes sont alignées ». La hauteur venait du remplissage vertical (--e4,
-     en haut comme en bas) et de l'écart entre le dessin et le mot. Les deux
-     sont réduits.
-
-     Ce qui N'EST PAS touché : la taille des dessins (28 px) et des mots
-     (14,5 px), ni leur noir profond. Arthur les avait demandés « encore plus
-     grand et plus foncé » le 13 octobre, et rapetisser le contenu pour gagner
-     de la hauteur reviendrait à défaire cette demande-là. */
-  .etats {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: var(--e2);
-    padding: var(--e3) var(--e2);
-    border: 1px solid var(--bordure);
-    border-radius: var(--r-carte);
-    background: var(--surface);
-  }
-
-  .etat {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 5px;
-    padding: 2px;
-    border-radius: var(--r-champ);
-    text-align: center;
-  }
-
-  .etat:active {
-    transform: scale(0.94);
-  }
-
-  /* Les dessins et les mots du bandeau sont en noir foncé, pas en rose, et
-     plus grands que le reste de la page (Arthur, 13 octobre 2026 : « les
-     écritures doivent être en noir foncé, les dessins aussi », puis « encore
-     plus grand [...] et plus foncé »). Ce noir est plus profond que l'encre
-     du texte courant, qui tire sur le prune. */
-  .etat-rond {
-    display: grid;
-    place-items: center;
-    color: #0d0a0c;
-  }
-
-  .etat-image {
-    display: block;
-    width: 28px;
-    height: 28px;
-    object-fit: contain;
-  }
-
-  .etat-nombre {
-    position: absolute;
-    top: -4px;
-    right: 6px;
-    display: grid;
-    place-items: center;
-    min-width: 17px;
-    height: 17px;
-    padding: 0 4px;
-    border-radius: 999px;
-    background: var(--rose);
-    color: #fff;
-    font-size: 12px;
-    font-weight: 700;
-  }
-
-  .etat-mot {
-    font-size: 14.5px;
-    font-weight: 700;
-    color: #0d0a0c;
-    line-height: 1.25;
-  }
-
+  
   .tuiles {
     display: grid;
     grid-template-columns: 1fr 1fr;
