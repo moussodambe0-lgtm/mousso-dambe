@@ -22,6 +22,15 @@ import { messageErreur } from '../../lib/format';
 if (!baseConfiguree()) return Astro.redirect('/', 302);
 const moi = await visiteuse(Astro);
 if (!moi) return Astro.redirect('/connexion', 302);
+// UN VRAI COMPTE, PAS SEULEMENT UNE SESSION (Arthur, le 27 octobre 2026).
+//
+// « Pour accéder à la messagerie et au niveau de compte, la personne va devoir
+// se connecter. » Celle qui est entrée par « Commencer » a bien une session,
+// et tout le reste de l'application lui est ouvert : son cycle, son journal,
+// la boutique, ses commandes. Mais ici il faut un email : sans lui, personne
+// ne peut lui répondre, et elle ne retrouverait rien en changeant de
+// téléphone. L'écran de connexion explique pourquoi grâce à `pour`.
+if (!moi.compteReel) return Astro.redirect('/connexion?pour=compte', 302);
 
 const client = clientSession(Astro)!;
 let erreur = '';

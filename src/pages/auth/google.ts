@@ -1,5 +1,5 @@
 /**
- * Se connecter avec Google.
+ * Se connecter avec Google, ou l'attacher au compte déjà commencé.
  *
  * Demande d'Arthur du 12 octobre 2026. Deux raisons de le vouloir ici :
  * c'est deux touches au lieu d'un mot de passe à retenir, et surtout
@@ -7,8 +7,23 @@
  * le seul chemin qui le garantit sans obliger chaque fille à ouvrir sa boîte
  * au milieu de son inscription.
  *
- * La route ne fait qu'une chose : demander à Supabase l'adresse de Google et
- * y renvoyer. Le retour est traité par /auth/retour.
+ * DEUX CHEMINS, ET LE BON SE CHOISIT ICI (27 octobre 2026)
+ *
+ *   - Personne derrière : connexion ordinaire (`signInWithOAuth`).
+ *   - Une visiteuse entrée par « Commencer », donc sans email : on AJOUTE
+ *     Google à son compte (`linkIdentity`). Son identifiant ne change pas,
+ *     donc son cycle, son journal et ses commandes restent les siens.
+ *
+ * Sans cette distinction, « Me connecter avec Google » l'emmenait sur un
+ * compte neuf et vide, et trois mois de règles notées devenaient
+ * inaccessibles. Voir src/lib/identite.ts.
+ *
+ * ON NE SE REPLIE PAS EN SILENCE. Si la liaison est refusée (le réglage
+ * « Manual linking » n'est pas activé dans Supabase, ou cette adresse Google
+ * appartient déjà à un autre compte), on ne la connecte PAS d'office sur un
+ * compte neuf : elle y perdrait tout sans l'avoir su. On revient à l'écran de
+ * connexion, qui explique, et qui lui laisse demander ce basculement
+ * elle-même. C'est alors le champ `basculer` qui le dit.
  *
  * En POST seulement : une connexion déclenchée par une image posée sur un
  * autre site n'a aucune raison d'exister.
@@ -33,40 +48,83 @@ import type { APIRoute } from 'astro';
 import { createClient } from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from 'astro:env/client';
 import { baseConfiguree } from '../../lib/supabase';
-import { COOKIE_OAUTH, optionsCookieOAuth, stockageDansObjet, porteUnVerificateur } from '../../lib/oauth';
+import { visiteuse } from '../../lib/session';
+import { clientAuthentifie, causeDeLEchec } from '../../lib/identite';
+import {
+  COOKIE_OAUTH,
+  optionsCookieOAuth,
+  stockageDansObjet,
+  porteUnVerificateur,
+  seulementLeVerificateur,
+} from '../../lib/oauth';
+
+/** Ce que Google doit nous renvoyer, et comment. */
+function options(origine: string) {
+  return {
+    redirectTo: new URL('/auth/retour', origine).href,
+    // Le code revient dans l'adresse, que le serveur peut lire. Sans ce
+    // choix, Supabase renvoie le jeton dans l'ancre (#), que le serveur ne
+    // voit jamais, et il faudrait du JavaScript pour le rattraper.
+    queryParams: { access_type: 'offline', prompt: 'select_account' },
+    skipBrowserRedirect: true,
+  };
+}
 
 export const POST: APIRoute = async (contexte) => {
   if (!baseConfiguree()) return contexte.redirect('/connexion?erreur=pas-de-base', 303);
 
+  const formulaire = await contexte.request.formData().catch(() => null);
+  const basculerExprès = String(formulaire?.get('basculer') ?? '') === '1';
+
+  const moi = await visiteuse(contexte as never);
+  // Déjà un vrai compte : rien à lier, rien à refaire.
+  if (moi?.compteReel) return contexte.redirect('/', 303);
+
   // Le sac que supabase-js va remplir, et que nous pourrons relire. Son
   // stockage à lui est privé : on ne récupérerait rien.
   const sac: Record<string, string> = {};
-  const client = createClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY, {
-    auth: {
-      // `persistSession: true` est OBLIGATOIRE pour que notre stockage soit
-      // pris en compte : a false, supabase-js le jette et garde le sien,
-      // prive, et le secret reste introuvable au retour. Voir src/lib/oauth.ts.
-      persistSession: true,
-      autoRefreshToken: false,
-      flowType: 'pkce',
-      storage: stockageDansObjet(sac),
-    },
-  });
+  let adresse = '';
 
-  const { data, error } = await client.auth.signInWithOAuth({
-    provider: 'google',
-    options: {
-      redirectTo: new URL('/auth/retour', contexte.url.origin).href,
-      // Le code revient dans l'adresse, que le serveur peut lire. Sans ce
-      // choix, Supabase renvoie le jeton dans l'ancre (#), que le serveur ne
-      // voit jamais, et il faudrait du JavaScript pour le rattraper.
-      queryParams: { access_type: 'offline', prompt: 'select_account' },
-      skipBrowserRedirect: true,
-    },
-  });
+  if (moi && !basculerExprès) {
+    // ELLE A DÉJÀ UN COMPTE COMMENCÉ : on y ajoute Google.
+    const client = await clientAuthentifie(contexte as never, sac);
+    if (!client) return contexte.redirect('/connexion?erreur=google', 303);
 
-  if (error || !data?.url) {
-    return contexte.redirect('/connexion?erreur=google', 303);
+    const { data, error } = await client.auth.linkIdentity({
+      provider: 'google',
+      options: options(contexte.url.origin),
+    });
+
+    if (error || !data?.url) {
+      // Pas de repli muet : voir l'en-tête de ce fichier.
+      const cause = causeDeLEchec(error?.message);
+      return contexte.redirect(
+        `/connexion?erreur=${cause === 'deja-pris' ? 'google-deja-pris' : 'liaison'}`,
+        303
+      );
+    }
+    adresse = data.url;
+  } else {
+    // Personne derrière, ou elle a demandé expressément un autre compte.
+    const client = createClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY, {
+      auth: {
+        // `persistSession: true` est OBLIGATOIRE pour que notre stockage soit
+        // pris en compte : a false, supabase-js le jette et garde le sien,
+        // prive, et le secret reste introuvable au retour. Voir src/lib/oauth.ts.
+        persistSession: true,
+        autoRefreshToken: false,
+        flowType: 'pkce',
+        storage: stockageDansObjet(sac),
+      },
+    });
+
+    const { data, error } = await client.auth.signInWithOAuth({
+      provider: 'google',
+      options: options(contexte.url.origin),
+    });
+
+    if (error || !data?.url) return contexte.redirect('/connexion?erreur=google', 303);
+    adresse = data.url;
   }
 
   // Pas de secret dans le sac : le retour échouerait de toute façon. Autant
@@ -75,8 +133,14 @@ export const POST: APIRoute = async (contexte) => {
     return contexte.redirect('/connexion?erreur=google', 303);
   }
 
-  contexte.cookies.set(COOKIE_OAUTH, JSON.stringify(sac), optionsCookieOAuth(import.meta.env.PROD));
-  return contexte.redirect(data.url, 303);
+  // Seul le secret voyage. La session, elle, a déjà son cookie : la recopier
+  // ici en ferait une deuxième copie à surveiller. Voir seulementLeVerificateur.
+  contexte.cookies.set(
+    COOKIE_OAUTH,
+    JSON.stringify(seulementLeVerificateur(sac)),
+    optionsCookieOAuth(import.meta.env.PROD)
+  );
+  return contexte.redirect(adresse, 303);
 };
 
 export const GET: APIRoute = (contexte) => contexte.redirect('/connexion', 303);

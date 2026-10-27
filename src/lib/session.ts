@@ -20,6 +20,22 @@ import type { ChoixAvatar } from './avatar';
 export interface Visiteuse {
   id: string;
   email: string | null;
+  /**
+   * VRAI COMPTE, ou simple visiteuse entrée par « Commencer » ?
+   *
+   * Les deux ont une session signée et des règles d'accès identiques : son
+   * cycle est à elle dans les deux cas. Ce qui change, c'est qu'une visiteuse
+   * anonyme n'a aucun moyen de revenir si elle change de téléphone, et que
+   * personne ne peut lui écrire. C'est pourquoi la messagerie et le compte
+   * demandent une vraie connexion (Arthur, le 27 octobre 2026), et le reste
+   * de l'application non.
+   *
+   * On lit `is_anonymous`, que Supabase met dans le jeton. Le repli sur
+   * l'email couvre un jeton ancien, émis avant que ce champ existe : sans
+   * email, on considère le compte anonyme, ce qui ferme une porte au lieu de
+   * l'ouvrir par erreur.
+   */
+  compteReel: boolean;
   prenom: string;
   questionnaireFini: boolean;
   rappelRegles: boolean;
@@ -123,6 +139,9 @@ export async function visiteuse(astro: ContexteAstro): Promise<Visiteuse | null>
   return {
     id: compte.user.id,
     email: compte.user.email ?? null,
+    compteReel: compte.user.is_anonymous === undefined
+      ? Boolean(compte.user.email)
+      : !compte.user.is_anonymous,
     prenom: profil?.prenom ?? '',
     // En cas de lecture impossible, on répond « fini » : se tromper dans ce
     // sens affiche un accueil incomplet, l'autre sens lui fait refaire un

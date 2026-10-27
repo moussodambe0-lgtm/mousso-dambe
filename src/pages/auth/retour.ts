@@ -49,6 +49,20 @@ export const GET: APIRoute = async (contexte) => {
   const brut = contexte.cookies.get(COOKIE_OAUTH)?.value;
   contexte.cookies.delete(COOKIE_OAUTH, { path: optionsCookieOAuth(import.meta.env.PROD).path });
 
+  // GOOGLE OU SUPABASE PEUT REFUSER, ET LE DIRE DANS L'ADRESSE.
+  //
+  // Ajouté le 27 octobre 2026 avec la liaison d'identité : quand une adresse
+  // Google appartient déjà à un autre compte, l'échec n'arrive pas à l'aller,
+  // il revient ici. Sans cette lecture, on tombait sur « pas de code » et
+  // l'écran disait « réessaie », ce qui envoyait la visiteuse boucler sur une
+  // tentative qui ne peut pas aboutir.
+  const refus = contexte.url.searchParams.get('error_description')
+    ?? contexte.url.searchParams.get('error');
+  if (refus) {
+    const deja = /already|exists|linked|registered/i.test(refus);
+    return contexte.redirect(`/connexion?erreur=${deja ? 'google-deja-pris' : 'google'}`, 303);
+  }
+
   const code = contexte.url.searchParams.get('code');
   if (!code) return contexte.redirect('/connexion?erreur=google', 303);
 

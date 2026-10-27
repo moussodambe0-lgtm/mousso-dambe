@@ -138,3 +138,23 @@ export function porteUnVerificateur(stockage: Record<string, string> | null): bo
     ([cle, valeur]) => /code-verifier/i.test(cle) && typeof valeur === 'string' && valeur.length >= 20
   );
 }
+
+/**
+ * Ne garder du sac que le secret de connexion, et rien d'autre.
+ *
+ * Nécessaire depuis la liaison Google du 27 octobre 2026 : pour lier Google à
+ * un compte déjà entré sans mot de passe, il faut un client AUTHENTIFIÉ, donc
+ * appeler `setSession` avant `linkIdentity`. Or `setSession` écrit la session
+ * complète dans ce même sac, jeton de rafraîchissement compris. Mettre le sac
+ * entier dans le cookie recopierait donc la session dans un second cookie,
+ * avec une autre durée de vie et un autre chemin, alors qu'elle a déjà le sien.
+ * Deux copies d'un même jeton, c'est deux fois plus de chances d'en perdre
+ * une : on n'emporte que ce qui doit voyager.
+ */
+export function seulementLeVerificateur(sac: Record<string, string>): Record<string, string> {
+  const propre: Record<string, string> = {};
+  for (const [cle, valeur] of Object.entries(sac)) {
+    if (/code-verifier/i.test(cle)) propre[cle] = valeur;
+  }
+  return propre;
+}

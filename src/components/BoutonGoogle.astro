@@ -13,14 +13,35 @@
  */
 interface Props {
   texte?: string;
+  /**
+   * Le chemin principal de l'écran, et pas un chemin parmi deux.
+   *
+   * Arthur, le 27 octobre 2026 : « il y aura le bouton se connecter avec
+   * Google qui sera en grand, et il y aura une petite option pour se
+   * connecter en écrivant son email et son mot de passe, mais je veux qu'on
+   * mette en valeur se connecter avec Google ».
+   *
+   * Ce n'est pas qu'une préférence de goût : Google ouvre la session tout de
+   * suite, alors que l'email demande d'aller chercher un message de
+   * confirmation dans une autre application, sur un téléphone d'entrée de
+   * gamme et une connexion qui tombe. Le chemin court mérite la place.
+   */
+  grand?: boolean;
+  /**
+   * Demander expressément un autre compte, au lieu d'attacher Google à celui
+   * qui est déjà commencé. N'apparaît qu'après un échec de liaison, et jamais
+   * de notre initiative : voir src/pages/auth/google.ts.
+   */
+  basculer?: boolean;
 }
 
-const { texte = 'Continuer avec Google' } = Astro.props;
+const { texte = 'Continuer avec Google', grand = false, basculer = false } = Astro.props;
 ---
 
 <form method="POST" action="/auth/google">
-  <button class="btn-google" type="submit">
-    <svg width="19" height="19" viewBox="0 0 48 48" aria-hidden="true">
+  {basculer && <input type="hidden" name="basculer" value="1" />}
+  <button class:list={['btn-google', grand && 'btn-google-grand']} type="submit">
+    <svg width={grand ? 22 : 19} height={grand ? 22 : 19} viewBox="0 0 48 48" aria-hidden="true">
       <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.6 30.2 0 24 0 14.6 0 6.5 5.4 2.5 13.2l7.8 6.1C12.2 13.1 17.6 9.5 24 9.5z"></path>
       <path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.2-.4-4.7H24v9h12.4c-.5 2.9-2.2 5.3-4.6 7l7.6 5.9c4.4-4.1 6.7-10.1 6.7-17.2z"></path>
       <path fill="#FBBC05" d="M10.3 28.7c-.5-1.5-.8-3-.8-4.7s.3-3.2.8-4.7l-7.8-6.1C.9 16.3 0 20 0 24s.9 7.7 2.5 10.8l7.8-6.1z"></path>
@@ -48,6 +69,19 @@ const { texte = 'Continuer avec Google' } = Astro.props;
     font-weight: 600;
     cursor: pointer;
     transition: background-color var(--vite) ease, border-color var(--vite) ease;
+  }
+
+  /* PLUS HAUT, PLUS LISIBLE, ET UN RELIEF QUI LE DÉTACHE DU FOND.
+     Le bouton reste blanc à logo coloré : c'est la forme que les femmes
+     reconnaissent sans lire, et la repeindre en rose pour « l'agrandir »
+     l'aurait rendu méconnaissable, donc moins choisi. Ce qui le met en valeur
+     ici, c'est sa taille, sa place en premier, et le fait qu'il soit le seul
+     bouton visible de l'écran. */
+  .btn-google-grand {
+    min-height: 58px;
+    border-width: 1.5px;
+    font-size: 18px;
+    box-shadow: 0 2px 10px rgb(60 20 40 / 8%);
   }
 
   .btn-google:hover {
