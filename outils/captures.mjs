@@ -131,23 +131,23 @@ const ECRANS = [
   { nom: '32b-suivre-en-route', url: '/commandes/suivre/MD-2610-00003', connectee: true },
   // Ce qu'une cliente voit si elle devine l'adresse de la gestion.
   { nom: '29-gestion-introuvable', url: '/vendeur', connectee: true },
-  // LA CONNEXION, REFAITE LE 27 OCTOBRE 2026. Trois etats, parce que l'ecran
-  // ne dit pas la meme chose selon qui arrive, et que c'est justement ce qu'il
-  // faut regarder.
-  { nom: '34-connexion-retrouver', url: '/connexion', connectee: false, ecranSeul: true },
+  // LA CONNEXION, REFAITE LE 27 OCTOBRE 2026 : d'abord le choix entre
+  // s'inscrire et se connecter, puis le meme ecran de Google pour les deux.
+  { nom: '34-connexion-choix', url: '/connexion', connectee: false, ecranSeul: true },
+  { nom: '34b-connexion-google', url: '/connexion?action=connecter', connectee: false, ecranSeul: true },
   {
-    nom: '34b-connexion-depliee',
-    url: '/connexion',
+    nom: '34c-connexion-depliee',
+    url: '/connexion?action=connecter',
     connectee: false,
-    // La petite option, ouverte : c'est le seul moyen de voir si le formulaire
-    // replie tient dans l'ecran une fois deplie.
+    // La petite option, ouverte : le seul moyen de voir si le formulaire tient
+    // dans l'ecran une fois deplie.
     prepare: "document.querySelector('.replie')?.setAttribute('open', '');",
   },
-  // Entree par « Commencer », donc sans email : l'ecran lui propose de GARDER
-  // son compte, pas de se connecter.
-  { nom: '35-connexion-garder', url: '/connexion', anonyme: true, ecranSeul: true },
-  // Elle a touche l'onglet Discussions sans compte : on doit lui dire pourquoi.
-  { nom: '35b-messagerie-fermee', url: '/discussions', anonyme: true, ecranSeul: true },
+  // Elle a touche l'onglet Discussions sans compte. La barre du bas doit
+  // RESTER : sans elle, cet ecran etait un cul-de-sac (Arthur, 27 octobre).
+  { nom: '35-messagerie-fermee', url: '/discussions', anonyme: true, ecranSeul: true },
+  // Et s'inscrire depuis un compte deja commence.
+  { nom: '35b-inscrire-dedans', url: '/connexion?action=inscrire&pour=messagerie', anonyme: true, ecranSeul: true },
   // Le bandeau d'installation. L'evenement du navigateur n'arrive jamais dans
   // un Chrome sans ecran : on le pose a la main pour pouvoir le regarder.
   {

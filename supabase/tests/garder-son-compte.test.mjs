@@ -38,14 +38,23 @@ titre("L'écran de connexion n'est plus interdit à celle qui est déjà entrée
     'la session anonyme ne referme plus la porte',
     !/if \(baseConfiguree\(\) && \(await visiteuse\(Astro\)\)\) \{\s*return Astro\.redirect/.test(page)
   );
-  verifier("l'écran sait proposer de GARDER son compte", page.includes('Garde ton compte'));
+  // DEUX BOUTONS AVANT GOOGLE (Arthur, le 27 octobre 2026) : « la personne doit
+  // voir s'inscrire ou se connecter, les deux options, deux boutons ». Les deux
+  // mènent au même second écran, mais celle qui n'a jamais eu de compte cherche
+  // « s'inscrire » et n'ose pas cliquer sur « se connecter ».
+  verifier("le premier écran propose de s'inscrire", page.includes("action=inscrire"));
+  verifier('il propose aussi de se connecter', page.includes('action=connecter'));
   verifier(
-    'le mot de passe attache l’email au compte, au lieu d’en ouvrir un autre',
-    page.includes("geste === 'garder'") && page.includes('auth.updateUser')
+    's’inscrire ATTACHE l’email au compte commencé, au lieu d’en ouvrir un autre',
+    page.includes("geste === 'attacher'") && page.includes('auth.updateUser')
   );
   verifier(
-    'elle peut quand même rejoindre un compte existant, en le demandant',
-    page.includes('retrouver=1')
+    'se connecter rejoint bien un compte qui existe ailleurs',
+    page.includes('signInWithPassword')
+  );
+  verifier(
+    'et elle est prévenue de ce qu’elle laisse derrière elle',
+    /ne suivra pas/.test(page)
   );
 }
 
@@ -53,6 +62,39 @@ titre('Google en grand, le mot de passe rangé derrière');
 {
   const page = lire('src/pages/connexion.astro');
   const bouton = lire('src/components/BoutonGoogle.astro');
+
+  // LES MOTS D'ARTHUR, LE 27 OCTOBRE 2026, APRÈS AVOIR VU L'ÉCRAN.
+  verifier(
+    'le bouton dit « Se connecter avec Google »',
+    page.includes('texte="Se connecter avec Google"')
+  );
+  verifier('et plus « Garder avec Google »', !page.includes('Garder avec Google'));
+  verifier(
+    'la phrase « deux touches, rien à retenir » est retirée',
+    !/rien à retenir/.test(page)
+  );
+  verifier('« Garde ton compte » ne sert plus de titre', !page.includes('Garde ton compte'));
+  // « Nous n'avons pas pu attacher Google a ton compte » ne voulait rien dire
+  // pour elle (Arthur : « ca veut dire quoi ? »). Attacher est un mot de
+  // mecanique interne : il a sa place dans les commentaires, jamais a l'ecran.
+  // On relit donc seulement les textes affiches, pas tout le fichier.
+  const affiches = [...page.matchAll(/(?:erreur|reussite) =\s*((?:'[^']*'|"[^"]*"|\s*\+\s*)+)/g)]
+    .map((m) => m[1])
+    .join(' ');
+  verifier(
+    'aucun message a l’ecran ne parle d’« attacher »',
+    affiches.length > 0 && !/attach/i.test(affiches),
+    affiches.slice(0, 80)
+  );
+
+  // LE CUL-DE-SAC : « la barre en bas disparaît, et il n'y a pas un truc pour
+  // revenir en arrière. Faut pas que les gens aillent là-bas se bloquer. »
+  verifier('la barre du bas reste pour celle qui est déjà dedans', /nav=\{onglet\}/.test(page));
+  verifier(
+    'l’écran plein ne vaut plus que pour celle qui vient de dehors',
+    /pleinEcran=\{!onglet\}/.test(page)
+  );
+  verifier('un retour existe', page.includes('class="revenir"'));
 
   verifier('le bouton Google est demandé en grand', /<BoutonGoogle\s+grand/.test(page));
   verifier('la version en grand existe vraiment', bouton.includes('btn-google-grand'));

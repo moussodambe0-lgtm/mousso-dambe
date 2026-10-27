@@ -1,34 +1,47 @@
 ---
 /**
- * Se connecter, ou garder le compte déjà commencé.
+ * Son compte : s'inscrire, ou se connecter.
  *
- * GOOGLE EN GRAND, LE MOT DE PASSE REPLIÉ (Arthur, le 27 octobre 2026)
+ * DEUX ÉCRANS, ET ARTHUR A DEMANDÉ LES DEUX (27 octobre 2026)
  *
- * « Il y aura le bouton se connecter avec Google qui sera en grand, et il y
- * aura une petite option pour se connecter en écrivant son email et son mot de
- * passe, mais je veux qu'on mette en valeur se connecter avec Google. »
+ * « Quand la personne vient sur la page, la personne doit voir s'inscrire ou
+ * se connecter. Les deux options. Deux boutons. Quand la personne clique sur
+ * s'inscrire, c'est là qu'elle va voir la page avec Google. Quand la personne
+ * clique sur se connecter aussi, la personne voit la même page avec Google. »
  *
- * Le second chemin est donc dans un `details` fermé : du HTML, pas une ligne
- * de JavaScript, et il s'ouvre en place sans quitter l'écran. Il n'est pas
- * caché pour autant, son libellé le nomme ; il est juste rangé.
+ * D'où un premier écran qui ne fait que demander laquelle des deux, puis le
+ * même second écran pour les deux. Techniquement c'est le même chemin, mais
+ * les deux situations ne se ressemblent pas dans la tête de celle qui arrive :
+ * celle qui n'a jamais eu de compte cherche « s'inscrire », et ne clique pas
+ * sur « se connecter » de peur de se tromper.
  *
- * Et ce n'est pas qu'une affaire de hiérarchie visuelle : Google ouvre la
- * session immédiatement, alors que l'email oblige à sortir de l'application
- * pour aller chercher un message de confirmation. Mettre en avant le chemin
- * court, c'est mettre en avant celui qui aboutit.
+ * GOOGLE EN GRAND, LE MOT DE PASSE REPLIÉ
  *
- * DEUX VISAGES, SELON QUI ARRIVE
+ * « Il y aura le bouton se connecter avec Google en grand, et une petite
+ * option pour écrire son email et son mot de passe, mais je veux qu'on mette
+ * en valeur se connecter avec Google. »
  *
- *   - Personne derrière : « Te revoilà ». On la connecte.
- *   - Une visiteuse entrée par « Commencer », donc sans email : « Garde ton
- *     compte ». On ATTACHE Google ou un mot de passe au compte qu'elle a
- *     déjà, et son identifiant ne change pas. Voir src/lib/identite.ts.
+ * Le second chemin est dans un `details` fermé : du HTML, pas une ligne de
+ * script, et il s'ouvre en place. Google ouvre la session tout de suite quand
+ * l'email oblige à sortir chercher un message de confirmation.
  *
- * CETTE PAGE LUI ÉTAIT INTERDITE, ET C'ÉTAIT UN MUR. Jusqu'au 27 octobre
- * 2026, la seule présence d'une session renvoyait à l'accueil. Or « Commencer »
- * pose une session anonyme : une femme entrée par là ne pouvait donc JAMAIS
- * atteindre cet écran, et n'avait aucun moyen d'obtenir un vrai compte. On ne
- * renvoie plus que celles qui en ont déjà un.
+ * S'INSCRIRE N'OUVRE PAS UN AUTRE COMPTE, IL GARDE CELUI-LÀ
+ *
+ * « Commencer » pose une identité anonyme : son cycle, son journal et ses
+ * commandes y sont déjà rattachés. S'inscrire ATTACHE donc Google (ou un mot
+ * de passe) à ce compte, au lieu d'en ouvrir un second. Sans ça, une femme qui
+ * a noté trois mois de règles arriverait sur un compte vide au moment précis
+ * où elle essaie de les mettre à l'abri. Voir src/lib/identite.ts.
+ *
+ * Se connecter, lui, rejoint un compte qui existe déjà ailleurs, et l'écran
+ * dit alors ce qu'elle laisse derrière elle.
+ *
+ * LA BARRE DU BAS RESTE (Arthur, le même jour) : « quand j'arrive là-bas, la
+ * barre en bas disparaît, c'est comme si c'était une nouvelle page, et il n'y
+ * a pas un truc pour revenir en arrière. Faut pas que les gens aillent là-bas
+ * se bloquer. » C'était un cul-de-sac : le seul moyen de sortir était le
+ * bouton « précédent » du navigateur, qui n'existe plus une fois
+ * l'application posée sur l'écran d'accueil.
  *
  * LE MESSAGE D'ERREUR EST LE MÊME QUE L'ADRESSE EXISTE OU NON : dire « cette
  * adresse n'a pas de compte » révélerait à un mari curieux si sa femme utilise
@@ -68,12 +81,19 @@ const moi = baseConfiguree() ? await visiteuse(Astro) : null;
 // sans compte, elle, vient précisément ici pour en obtenir un.
 if (moi?.compteReel) return Astro.redirect('/', 302);
 
-/** Elle a un compte commencé à garder, plutôt qu'une connexion à retrouver. */
-const aGarder = Boolean(moi) && !surHoteAdmin;
+/**
+ * Où on en est : le choix, puis l'écran de Google.
+ *
+ * Sur l'adresse de la gestion, il n'y a rien à choisir : un administrateur se
+ * connecte, il ne s'inscrit pas. On saute donc directement au second écran.
+ */
+type Etape = 'choix' | 'inscrire' | 'connecter';
+const demandee = String(Astro.url.searchParams.get('action') ?? '');
+let etape: Etape = demandee === 'inscrire' || demandee === 'connecter' ? demandee : 'choix';
+if (surHoteAdmin) etape = 'connecter';
 
-// Elle a demandé expressément un autre compte, après un échec de liaison.
-const basculer = Astro.url.searchParams.get('retrouver') === '1';
-const mode: 'garder' | 'retrouver' = aGarder && !basculer ? 'garder' : 'retrouver';
+/** S'inscrire depuis un compte commencé, c'est l'attacher, pas en ouvrir un autre. */
+const attache = etape === 'inscrire' && Boolean(moi) && !surHoteAdmin;
 
 let erreur = '';
 let reussite = '';
@@ -82,16 +102,18 @@ let reussite = '';
 // jamais dire si un compte existe ou non.
 const venuDe = Astro.url.searchParams.get('erreur');
 if (venuDe === 'google') {
-  erreur = "La connexion avec Google n'a pas abouti. Réessaie.";
+  erreur = "La connexion avec Google n'a pas marché. Réessaie.";
 } else if (venuDe === 'google-deja-pris') {
   erreur =
-    "Cette adresse Google est déjà celle d'un autre compte Mousso Dambé. "
-    + 'Tu peux te connecter à ce compte, mais ce que tu as noté depuis ce '
-    + 'téléphone ne le suivra pas.';
+    "Cette adresse Google a déjà un compte Mousso Dambé. Choisis « Se connecter » "
+    + 'pour le rejoindre.';
 } else if (venuDe === 'liaison') {
+  // « Nous n'avons pas pu attacher Google à ton compte » ne voulait rien dire
+  // pour elle (Arthur : « ça veut dire quoi ? »). Attacher est un mot de
+  // mécanique interne, et ce qu'elle veut savoir c'est quoi faire maintenant.
   erreur =
-    "Nous n'avons pas pu attacher Google à ton compte. Réessaie dans un "
-    + 'moment, ou garde ton compte avec un mot de passe.';
+    "La connexion avec Google n'a pas marché. Réessaie, ou utilise un email et "
+    + 'un mot de passe.';
 } else if (venuDe === 'pas-de-base') {
   erreur = "L'application n'est pas encore branchée à sa base de données.";
 }
@@ -99,11 +121,12 @@ if (venuDe === 'google') {
 /** Pourquoi on la lui demande, quand elle arrive depuis un écran fermé. */
 const POURQUOI: Record<string, string> = {
   messagerie:
-    "Pour écrire à Dambé ou à la boutique, garde d'abord ton compte : c'est ce "
-    + 'qui permet de retrouver tes messages, et à la boutique de te répondre.',
-  compte: "Pour voir ton compte, garde-le d'abord.",
+    "Pour écrire à Dambé ou à la boutique, il faut un compte : c'est ce qui "
+    + 'permet de retrouver tes messages, et à la boutique de te répondre.',
+  compte: "Pour voir ton compte, connecte-toi d'abord.",
 };
-const pourquoi = POURQUOI[String(Astro.url.searchParams.get('pour') ?? '')] ?? '';
+const dOu = String(Astro.url.searchParams.get('pour') ?? '');
+const pourquoi = POURQUOI[dOu] ?? '';
 
 let emailSaisi = '';
 
@@ -115,7 +138,7 @@ if (Astro.request.method === 'POST') {
 
   if (!emailSaisi || !motDePasse) {
     erreur = 'Remplis les deux champs.';
-  } else if (geste === 'garder' && moi) {
+  } else if (geste === 'attacher' && moi) {
     // ATTACHER un email et un mot de passe au compte qu'elle a déjà, au lieu
     // d'ouvrir une session sur un autre : son identifiant ne bouge pas, donc
     // son cycle, son journal et ses commandes restent les siens.
@@ -127,9 +150,7 @@ if (Astro.request.method === 'POST') {
       const { error } = await client.auth.updateUser({ email: emailSaisi, password: motDePasse });
       const cause = error ? causeDeLEchec(error.message) : null;
       if (cause === 'deja-pris') {
-        erreur =
-          "Cette adresse est déjà utilisée. Si c'est la tienne, ouvre « J'ai "
-          + 'déjà un compte » plus bas.';
+        erreur = 'Cette adresse a déjà un compte. Choisis « Se connecter » pour le rejoindre.';
       } else if (cause === 'mot-de-passe-faible') {
         erreur = 'Choisis un mot de passe un peu plus long, au moins huit caractères.';
       } else if (error) {
@@ -139,8 +160,8 @@ if (Astro.request.method === 'POST') {
         // Supabase qui en décide, et c'est juste. On le lui dit franchement
         // plutôt que de la laisser croire que c'est fini.
         reussite =
-          'Nous venons d\'envoyer un message à ' + emailSaisi
-          + '. Ouvre-le pour terminer, et ton compte sera gardé.';
+          "Nous venons d'envoyer un message à " + emailSaisi
+          + '. Ouvre-le pour terminer.';
       }
     }
   } else {
@@ -169,23 +190,49 @@ if (Astro.request.method === 'POST') {
   }
 }
 
-const titre = mode === 'garder' ? 'Garde ton compte' : 'Te revoilà';
+const TITRES: Record<Etape, string> = {
+  choix: 'Ton compte',
+  inscrire: "S'inscrire",
+  connecter: 'Se connecter',
+};
+const titre = TITRES[etape];
+
+// Ce qu'on garde dans l'adresse en passant d'un écran à l'autre, pour que
+// l'explication « pour écrire à Dambé… » ne se perde pas en route.
+const suite = dOu ? `&pour=${encodeURIComponent(dOu)}` : '';
+const retourAuChoix = dOu ? `/connexion?pour=${encodeURIComponent(dOu)}` : '/connexion';
+
+// LA BARRE DU BAS RESTE pour celle qui est déjà dans l'application. Celle qui
+// arrive de dehors n'a pas de barre à garder, et l'écran plein est le bon.
+const ONGLET_DORIGINE: Record<string, 'discussions' | 'compte'> = {
+  messagerie: 'discussions',
+  compte: 'compte',
+};
+const onglet = moi ? (ONGLET_DORIGINE[dOu] ?? 'compte') : null;
 ---
 
-<Base titre={mode === 'garder' ? 'Garder mon compte' : 'Me connecter'} pleinEcran>
-  <main class="page">
+<Base titre={titre} nav={onglet} pleinEcran={!onglet}>
+  <main class:list={['page', onglet && 'avec-nav']}>
+    {/* Le retour, en plus de la barre : la barre ramène vers un onglet, ce
+        lien ramène d'où elle vient. Ni l'un ni l'autre n'existe quand
+        l'application est posée sur l'écran d'accueil, puisqu'il n'y a plus de
+        bouton « précédent » de navigateur. */}
+    {(onglet || etape !== 'choix') && (
+      <a
+        class="revenir"
+        href={etape === 'choix' ? '/' : retourAuChoix}
+        aria-label={etape === 'choix' ? "Revenir à l'accueil" : 'Revenir au choix'}
+      >
+        <Icone nom="retour" taille={22} />
+      </a>
+    )}
+
     <div class="haut">
       <Symbole taille={150} forme="nom" anime titre="Mousso Dambé" />
       <h1>{titre}</h1>
-      {mode === 'garder' && (
-        <p class="sous">
-          Tes règles, ton journal et tes commandes sont déjà là. Attache-les à ton
-          email pour les retrouver sur n'importe quel téléphone.
-        </p>
-      )}
     </div>
 
-    <div class="apparait corps">
+    <div class="corps apparait">
       {erreur && <div class="marge-bas"><Alerte type="erreur" texte={erreur} /></div>}
       {reussite && <div class="marge-bas"><Alerte type="reussite" texte={reussite} /></div>}
 
@@ -196,103 +243,121 @@ const titre = mode === 'garder' ? 'Garde ton compte' : 'Te revoilà';
         </p>
       )}
 
-      <BoutonGoogle
-        grand
-        basculer={mode === 'retrouver' && aGarder}
-        texte={mode === 'garder' ? 'Garder avec Google' : 'Me connecter avec Google'}
-      />
-      <p class="rapide">Deux touches, rien à retenir, et c'est tout de suite.</p>
+      {etape === 'choix' ? (
+        <div class="choix">
+          <a class="btn btn-rose btn-plein" href={`/connexion?action=inscrire${suite}`}>
+            S'inscrire
+          </a>
+          <a class="btn btn-contour btn-plein" href={`/connexion?action=connecter${suite}`}>
+            Se connecter
+          </a>
+        </div>
+      ) : (
+        <>
+          <BoutonGoogle grand basculer={!attache && Boolean(moi)} texte="Se connecter avec Google" />
 
-      <details class="replie">
-        <summary>
-          <span>
-            {mode === 'garder'
-              ? 'Utiliser un email et un mot de passe'
-              : 'Me connecter avec un mot de passe'}
-          </span>
-          <Icone nom="bas" taille={16} />
-        </summary>
-
-        <form method="POST" class="dedans">
-          <input type="hidden" name="geste" value={mode === 'garder' ? 'garder' : 'retrouver'} />
-
-          <div class="champ-bloc">
-            <label class="libelle" for="email">Ton email</label>
-            <input class="champ" id="email" name="email" type="email" autocomplete="email" required value={emailSaisi} />
-          </div>
-
-          <div class="champ-bloc">
-            <label class="libelle" for="motdepasse">
-              {mode === 'garder' ? 'Choisis un mot de passe' : 'Ton mot de passe'}
-            </label>
-            <input
-              class="champ"
-              id="motdepasse"
-              name="motdepasse"
-              type="password"
-              autocomplete={mode === 'garder' ? 'new-password' : 'current-password'}
-              minlength={mode === 'garder' ? 8 : undefined}
-              required
-            />
-          </div>
-
-          {mode === 'garder' && (
-            <p class="aide">
-              Tu devras ouvrir le message que nous t'enverrons pour terminer. Avec
-              Google, il n'y a rien à ouvrir.
+          {/* Elle a un compte commencé et choisit d'en rejoindre un autre :
+              elle doit savoir ce qu'elle laisse, AVANT de toucher le bouton. */}
+          {moi && !attache && (
+            <p class="prudence">
+              <Icone nom="info" taille={15} />
+              Ce que tu as noté depuis ce téléphone restera sur le compte commencé
+              ici, et ne suivra pas.
             </p>
           )}
 
-          <button class="btn btn-rose btn-plein" type="submit">
-            {mode === 'garder' ? 'Garder mon compte' : 'Me connecter'}
-          </button>
-        </form>
-      </details>
+          <details class="replie">
+            <summary>
+              <span>Utiliser un email et un mot de passe</span>
+              <Icone nom="bas" taille={16} />
+            </summary>
 
-      <p class="centre marge">
-        {mode === 'garder' && (
-          <a class="btn btn-texte" href="/connexion?retrouver=1">J'ai déjà un compte</a>
-        )}
-        {mode === 'retrouver' && aGarder && (
-          <a class="btn btn-texte" href="/connexion">Revenir à mon compte commencé</a>
-        )}
-        {mode === 'retrouver' && !aGarder && !surHoteAdmin && (
-          <a class="btn btn-texte" href="/ouverture">Je n'ai pas encore de compte</a>
-        )}
-      </p>
+            <form method="POST" class="dedans">
+              <input type="hidden" name="geste" value={attache ? 'attacher' : 'connecter'} />
+
+              <div class="champ-bloc">
+                <label class="libelle" for="email">Ton email</label>
+                <input class="champ" id="email" name="email" type="email" autocomplete="email" required value={emailSaisi} />
+              </div>
+
+              <div class="champ-bloc">
+                <label class="libelle" for="motdepasse">
+                  {etape === 'inscrire' ? 'Choisis un mot de passe' : 'Ton mot de passe'}
+                </label>
+                <input
+                  class="champ"
+                  id="motdepasse"
+                  name="motdepasse"
+                  type="password"
+                  autocomplete={etape === 'inscrire' ? 'new-password' : 'current-password'}
+                  minlength={etape === 'inscrire' ? 8 : undefined}
+                  required
+                />
+              </div>
+
+              {etape === 'inscrire' && (
+                <p class="aide">
+                  Tu devras ouvrir le message que nous t'enverrons pour terminer. Avec
+                  Google, il n'y a rien à ouvrir.
+                </p>
+              )}
+
+              <button class="btn btn-rose btn-plein" type="submit">{titre}</button>
+            </form>
+          </details>
+        </>
+      )}
     </div>
   </main>
 </Base>
 
 <style>
-  /* CENTRE VERTICALEMENT, ET AVEC DES MARGES AUTOMATIQUES PLUTOT QU'UN
-     `justify-content: center`.
-     Les deux centrent pareil tant que ca tient dans l'ecran. Mais quand la
-     petite option est depliee, le formulaire depasse : `justify-content:
-     center` deborde alors des DEUX cotes, et le haut de la page devient
-     impossible a atteindre au defilement, logo et titre compris. Une marge
-     automatique, elle, se reduit a zero des qu'il n'y a plus de place. */
   .page {
+    position: relative;
     display: flex;
     flex-direction: column;
     min-height: 100svh;
   }
 
-  .haut {
-    margin-top: auto;
+  /* Avec la barre du bas, le corps de la page s'arrête au-dessus d'elle :
+     sinon la page mesure un écran PLUS la hauteur de la barre, et le contenu
+     centré se retrouve décalé, avec un défilement qui ne mène à rien. */
+  .page.avec-nav {
+    min-height: calc(100svh - var(--nav-hauteur));
   }
 
-  .corps {
-    margin-bottom: auto;
-    padding-bottom: var(--e5);
+  .revenir {
+    position: absolute;
+    top: var(--e3);
+    left: 0;
+    display: grid;
+    place-items: center;
+    /* 44 px : la cible que le pouce atteint sans viser. */
+    width: 44px;
+    height: 44px;
+    color: var(--texte-2);
+    border-radius: 50%;
   }
 
+  .revenir:focus-visible {
+    outline: 2px solid var(--rose);
+    outline-offset: 2px;
+  }
+
+  /* CENTRÉ VERTICALEMENT, ET AVEC DES MARGES AUTOMATIQUES PLUTÔT QU'UN
+     `justify-content: center`.
+     Les deux centrent pareil tant que ça tient dans l'écran. Mais quand la
+     petite option est dépliée, le formulaire dépasse : `justify-content:
+     center` déborde alors des DEUX côtés, et le haut de la page devient
+     impossible à atteindre au défilement, logo et titre compris. Une marge
+     automatique, elle, se réduit à zéro dès qu'il n'y a plus de place. */
   .haut {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: var(--e3);
-    padding: var(--e7) 0 var(--e4);
+    margin-top: auto;
+    padding: var(--e5) 0 var(--e4);
     text-align: center;
   }
 
@@ -300,31 +365,28 @@ const titre = mode === 'garder' ? 'Garde ton compte' : 'Te revoilà';
     font-size: 31.5px;
   }
 
-  .sous {
-    margin: 0;
-    max-width: 30ch;
-    font-size: 15px;
-    line-height: 1.5;
-    color: var(--texte-2);
+  .corps {
+    margin-bottom: auto;
+    padding-bottom: var(--e5);
+  }
+
+  /* Les deux chemins, de même largeur et l'un sous l'autre : côte à côte, les
+     libellés se seraient coupés en deux lignes sur un écran de 390 px. */
+  .choix {
+    display: grid;
+    gap: var(--e3);
   }
 
   .champ-bloc {
     margin-bottom: var(--e4);
   }
 
-  .marge {
-    margin-top: var(--e3);
-  }
-
-  .centre {
-    text-align: center;
-  }
-
   .marge-bas {
     margin-bottom: var(--e4);
   }
 
-  .pourquoi {
+  .pourquoi,
+  .prudence {
     display: flex;
     align-items: flex-start;
     gap: 6px;
@@ -337,18 +399,14 @@ const titre = mode === 'garder' ? 'Garde ton compte' : 'Te revoilà';
     color: var(--texte-2);
   }
 
-  /* Sous le bouton, et non au-dessus : elle lit d'abord quoi faire, puis
-     pourquoi c'est le bon choix. */
-  .rapide {
-    margin: var(--e2) 0 var(--e5);
-    font-size: 13px;
-    text-align: center;
-    color: var(--texte-3);
+  .prudence {
+    margin: var(--e3) 0 0;
   }
 
   /* LA PETITE OPTION. Un repli, pas un second bouton : deux boutons de même
      poids auraient annulé la mise en valeur demandée. */
   .replie {
+    margin-top: var(--e5);
     border-top: 1px solid var(--bordure);
     padding-top: var(--e3);
   }
