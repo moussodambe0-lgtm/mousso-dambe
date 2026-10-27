@@ -12,12 +12,12 @@
  * n'appartient qu'a l'hote exact qui l'a pose : se connecter a la boutique ne
  * connecte donc pas a l'administration.
  *
- * Le plan d'origine etait un sous-domaine, `admin.moussodambe.bf`. Il attend
+ * Le plan d'origine etait un sous-domaine, `admin.moussodambe.com`. Il attend
  * l'achat du nom de domaine : sous `.vercel.app`, on ne peut pas poser de
  * sous-domaine. Arthur a donc choisi, le 26 octobre 2026, la seule chose qui
  * marche tout de suite : un SECOND PROJET Vercel sur le meme depot GitHub,
  * donc une seconde adresse. Le jour ou le domaine arrive, il suffira de
- * pointer `admin.moussodambe.bf` sur ce projet et de changer une variable.
+ * pointer `admin.moussodambe.com` sur ce projet et de changer une variable.
  *
  * CE QUI SEPARE REELLEMENT LES DEUX
  *

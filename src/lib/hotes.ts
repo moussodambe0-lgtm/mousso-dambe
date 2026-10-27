@@ -4,7 +4,7 @@
  * Décision d'Arthur du 21 octobre 2026 : l'administration est séparée de la
  * plateforme principale, sur son propre sous-domaine, avec le même code et un
  * seul déploiement. Deux adresses, donc deux sessions : le cookie posé sur
- * `admin.moussodambe.bf` n'est pas envoyé à `moussodambe.bf`, et l'inverse non
+ * `admin.moussodambe.com` n'est pas envoyé à `moussodambe.com`, et l'inverse non
  * plus, parce qu'un cookie sans `Domain` n'appartient qu'à l'hôte exact qui l'a
  * posé. Se connecter à la boutique ne connecte donc pas à l'administration.
  *
@@ -98,7 +98,7 @@ export function hoteDemande(
  *
  * Deux façons de l'être, pour que rien ne dépende d'un domaine pas encore
  * acheté : le nom exact posé dans `ADMIN_HOST`, ou le préfixe `admin.`, qui
- * marche aussi bien pour `admin.moussodambe.bf` que pour `admin.localhost` en
+ * marche aussi bien pour `admin.moussodambe.com` que pour `admin.localhost` en
  * développement (les navigateurs résolvent tout `*.localhost` vers la machine).
  */
 export function estHoteAdmin(hote: string, hoteConfigure?: string | null): boolean {

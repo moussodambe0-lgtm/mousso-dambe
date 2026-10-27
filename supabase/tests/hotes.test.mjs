@@ -35,46 +35,46 @@ titre("L'hôte demandé est celui que la personne a tapé");
   );
   verifier(
     "derrière Vercel, c'est x-forwarded-host qui compte",
-    hoteDemande(entetes({ host: 'interne.vercel.app', 'x-forwarded-host': 'admin.moussodambe.bf' })) ===
-      'admin.moussodambe.bf'
+    hoteDemande(entetes({ host: 'interne.vercel.app', 'x-forwarded-host': 'admin.moussodambe.com' })) ===
+      'admin.moussodambe.com'
   );
   verifier(
     'une liste de relais ne garde que le premier',
-    hoteDemande(entetes({ 'x-forwarded-host': 'admin.moussodambe.bf, relais.interne' })) ===
-      'admin.moussodambe.bf'
+    hoteDemande(entetes({ 'x-forwarded-host': 'admin.moussodambe.com, relais.interne' })) ===
+      'admin.moussodambe.com'
   );
   verifier(
     'la casse ne change rien',
-    hoteDemande(entetes({ host: 'ADMIN.MoussoDambe.BF' })) === 'admin.moussodambe.bf'
+    hoteDemande(entetes({ host: 'ADMIN.MoussoDambe.COM' })) === 'admin.moussodambe.com'
   );
   verifier(
     "sans en-tête, on prend ce qu'Astro a reconstruit",
-    hoteDemande(entetes({}), 'moussodambe.bf') === 'moussodambe.bf'
+    hoteDemande(entetes({}), 'moussodambe.com') === 'moussodambe.com'
   );
 }
 
 titre("On reconnaît l'adresse de l'administration");
 {
-  verifier('admin.moussodambe.bf en est', estHoteAdmin('admin.moussodambe.bf') === true);
+  verifier('admin.moussodambe.com en est', estHoteAdmin('admin.moussodambe.com') === true);
   verifier('admin.localhost en est, pour le développement', estHoteAdmin('admin.localhost') === true);
-  verifier("le site des clientes n'en est pas", estHoteAdmin('moussodambe.bf') === false);
+  verifier("le site des clientes n'en est pas", estHoteAdmin('moussodambe.com') === false);
   verifier('localhost tout court non plus', estHoteAdmin('localhost') === false);
-  verifier('www non plus', estHoteAdmin('www.moussodambe.bf') === false);
+  verifier('www non plus', estHoteAdmin('www.moussodambe.com') === false);
   verifier(
     "un nom qui contient « admin » ailleurs n'en est pas",
-    estHoteAdmin('mon-admin.moussodambe.bf') === false
+    estHoteAdmin('mon-admin.moussodambe.com') === false
   );
   verifier(
-    "un faux voisin ne passe pas : administration.moussodambe.bf n'est pas admin.",
-    estHoteAdmin('administration.moussodambe.bf') === false
+    "un faux voisin ne passe pas : administration.moussodambe.com n'est pas admin.",
+    estHoteAdmin('administration.moussodambe.com') === false
   );
   verifier(
     'un nom précis posé dans ADMIN_HOST est reconnu',
-    estHoteAdmin('gestion.moussodambe.bf', 'gestion.moussodambe.bf') === true
+    estHoteAdmin('gestion.moussodambe.com', 'gestion.moussodambe.com') === true
   );
   verifier(
     "ADMIN_HOST n'ouvre pas la porte à un autre nom",
-    estHoteAdmin('moussodambe.bf', 'gestion.moussodambe.bf') === false
+    estHoteAdmin('moussodambe.com', 'gestion.moussodambe.com') === false
   );
   verifier('un hôte vide ne passe jamais', estHoteAdmin('') === false);
 }
@@ -161,19 +161,19 @@ titre("Le seul lien qui traverse la frontière mène au bon endroit");
   );
   verifier(
     'en production, il mène au sous-domaine en https',
-    urlAdmin('https://moussodambe.bf') === 'https://admin.moussodambe.bf'
+    urlAdmin('https://moussodambe.com') === 'https://admin.moussodambe.com'
   );
   verifier(
     'un www ne donne pas admin.www',
-    urlAdmin('https://www.moussodambe.bf') === 'https://admin.moussodambe.bf'
+    urlAdmin('https://www.moussodambe.com') === 'https://admin.moussodambe.com'
   );
   verifier(
     'un nom configuré est respecté',
-    urlAdmin('https://moussodambe.bf', 'gestion.moussodambe.bf') === 'https://gestion.moussodambe.bf'
+    urlAdmin('https://moussodambe.com', 'gestion.moussodambe.com') === 'https://gestion.moussodambe.com'
   );
   verifier(
     "depuis l'administration, il ne s'empile pas",
-    urlAdmin('https://admin.moussodambe.bf') === 'https://admin.moussodambe.bf'
+    urlAdmin('https://admin.moussodambe.com') === 'https://admin.moussodambe.com'
   );
   verifier(
     "une origine illisible ne casse pas la page",

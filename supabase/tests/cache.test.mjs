@@ -47,7 +47,7 @@ function chargerServiceWorker() {
     addEventListener: (nom, fn) => {
       ecouteurs[nom] = fn;
     },
-    location: { origin: 'https://moussodambe.bf' },
+    location: { origin: 'https://moussodambe.com' },
     skipWaiting: async () => undefined,
     clients: { claim: async () => undefined },
   };
@@ -65,7 +65,7 @@ function chargerServiceWorker() {
     /** Rejoue une requête. Renvoie { interceptee, gardee }. */
     async requete(chemin, entetes = {}, { methode = 'GET' } = {}) {
       reponseDuReseau = new Response('<html>page</html>', { status: 200, headers: entetes });
-      const requete = new Request(`https://moussodambe.bf${chemin}`, { method: methode });
+      const requete = new Request(`https://moussodambe.com${chemin}`, { method: methode });
       /** @type {Promise<Response> | null} */
       let promesse = null;
       ecouteurs.fetch({ request: requete, respondWith: (p) => { promesse = p; } });
