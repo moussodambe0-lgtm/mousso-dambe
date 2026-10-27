@@ -131,6 +131,43 @@ const ECRANS = [
   { nom: '32b-suivre-en-route', url: '/commandes/suivre/MD-2610-00003', connectee: true },
   // Ce qu'une cliente voit si elle devine l'adresse de la gestion.
   { nom: '29-gestion-introuvable', url: '/vendeur', connectee: true },
+  // LA CONNEXION, REFAITE LE 27 OCTOBRE 2026. Trois etats, parce que l'ecran
+  // ne dit pas la meme chose selon qui arrive, et que c'est justement ce qu'il
+  // faut regarder.
+  { nom: '34-connexion-retrouver', url: '/connexion', connectee: false, ecranSeul: true },
+  {
+    nom: '34b-connexion-depliee',
+    url: '/connexion',
+    connectee: false,
+    // La petite option, ouverte : c'est le seul moyen de voir si le formulaire
+    // replie tient dans l'ecran une fois deplie.
+    prepare: "document.querySelector('.replie')?.setAttribute('open', '');",
+  },
+  // Entree par « Commencer », donc sans email : l'ecran lui propose de GARDER
+  // son compte, pas de se connecter.
+  { nom: '35-connexion-garder', url: '/connexion', anonyme: true, ecranSeul: true },
+  // Elle a touche l'onglet Discussions sans compte : on doit lui dire pourquoi.
+  { nom: '35b-messagerie-fermee', url: '/discussions', anonyme: true, ecranSeul: true },
+  // Le bandeau d'installation. L'evenement du navigateur n'arrive jamais dans
+  // un Chrome sans ecran : on le pose a la main pour pouvoir le regarder.
+  {
+    nom: '36-installer-android',
+    url: '/boutique',
+    anonyme: true,
+    ecranSeul: true,
+    prepare: `document.documentElement.dataset.installer = 'android';
+      const b = document.getElementById('invite-installer');
+      if (b) b.hidden = false;`,
+  },
+  {
+    nom: '36b-installer-iphone',
+    url: '/boutique',
+    anonyme: true,
+    ecranSeul: true,
+    prepare: `document.documentElement.dataset.installer = 'ios';
+      const b = document.getElementById('invite-installer');
+      if (b) b.hidden = false;`,
+  },
 ];
 
 /** Se connecte comme le ferait un téléphone, et récupère le cookie de session. */
@@ -148,6 +185,31 @@ async function cookieDeSession(base = SITE, email = 'awa@essai.bf') {
     if (nom === 'md_session') return reste.join('=');
   }
   throw new Error(`La connexion au banc local a échoué (${base}) : le cookie n'est pas revenu.`);
+}
+
+/**
+ * Le cookie d'une visiteuse ENTREE SANS COMPTE, celle qui a touche
+ * « Commencer » et n'a donne que son prenom.
+ *
+ * C'est un etat que les captures ne savaient pas produire, et c'est pourtant
+ * le plus courant : tant qu'elle n'a pas garde son compte, c'est elle. Sans ce
+ * cookie, on ne pouvait photographier que deux extremes, personne ou un compte
+ * complet, et jamais l'ecran qu'elle voit vraiment.
+ */
+async function cookieAnonyme(base = SITE) {
+  const reponse = await fetch(`${base}/commencer`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded', origin: base },
+    body: new URLSearchParams({}),
+    redirect: 'manual',
+  });
+  const brut = reponse.headers.getSetCookie?.() ?? [];
+  for (const c of brut) {
+    const [paire] = c.split(';');
+    const [nom, ...reste] = paire.split('=');
+    if (nom === 'md_session') return reste.join('=');
+  }
+  throw new Error(`« Commencer » n'a pas ouvert de session sur le banc local (${base}).`);
 }
 
 const attendre = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -195,6 +257,7 @@ fs.mkdirSync(SORTIE, { recursive: true });
 // couleurs pendant deux captures, et la cause n'était pas dans le code.
 fs.rmSync(path.join(SORTIE, '.profil'), { recursive: true, force: true });
 const cookie = await cookieDeSession();
+const cookieSansCompte = await cookieAnonyme();
 
 // La gestion a sa propre adresse et sa propre session : il faut donc un second
 // cookie, obtenu avec la seule adresse qui y entre. Sans coffre sur cette
@@ -248,10 +311,10 @@ try {
     const base = ecran.admin ? SITE_ADMIN : SITE;
 
     await envoyer('Network.clearBrowserCookies');
-    if (ecran.connectee) {
+    if (ecran.connectee || ecran.anonyme) {
       await envoyer('Network.setCookie', {
         name: 'md_session',
-        value: ecran.admin ? cookieAdmin : cookie,
+        value: ecran.anonyme ? cookieSansCompte : ecran.admin ? cookieAdmin : cookie,
         url: base,
         path: '/',
         httpOnly: true,

@@ -14,6 +14,7 @@ import '../styles/animations.css';
 import '../styles/motion.css';
 import NavBasse from '../components/NavBasse.astro';
 import BoutonMascotte from '../components/BoutonMascotte.astro';
+import InviteInstaller from '../components/InviteInstaller.astro';
 
 interface Props {
   titre: string;
@@ -93,6 +94,11 @@ const canonique = new URL(Astro.url.pathname, Astro.site ?? 'http://localhost:43
   </head>
   <body class={pleinEcran ? 'sans-nav' : undefined}>
     <slot />
+    {/* Proposer de poser l'application sur l'écran d'accueil (Arthur, le 27
+        octobre 2026). Invisible tant que le navigateur n'a pas dit que
+        l'installation est possible, et jamais sur l'adresse de la gestion :
+        un vendeur n'installe pas l'application des clientes. */}
+    {nav && <InviteInstaller />}
     {mascotteFlottante && <BoutonMascotte prenom={prenom} />}
     {nav && <NavBasse actif={nav} panier={panier} messages={messages} />}
     <script>
