@@ -61,20 +61,27 @@ import { telephone } from '../lib/format-gestion';
  */
 export interface LigneFil {
   fil: string;
-  sujet: 'boutique' | 'medecin';
+  /** Absent pour un échange avec IA Dambé : il n'a pas de sujet. */
+  sujet?: 'boutique' | 'medecin';
   prenom: string;
-  telephone: string;
+  telephone?: string;
   avatar_fichier: string | null;
   apercu: string;
-  apercu_de: 'elle' | 'boutique';
+  apercu_de?: 'elle' | 'boutique';
   quand: string | null;
-  non_lus: number;
+  non_lus?: number;
 }
 
 interface Props {
   fil: LigneFil;
   /** Où mène la ligne. Par défaut, le fil lui-même. */
   href?: string;
+  /**
+   * La deuxième ligne, quand la page a mieux à y mettre que « Question à la
+   * boutique · numéro ». Les échanges avec IA Dambé s'en servent : ils n'ont ni
+   * sujet ni numéro, et ce qui compte pour eux est le nombre de questions.
+   */
+  second?: string;
   /**
    * Étiquettes posées PAR LA PAGE, dans la rangée de pilules de Jia. Il n'y a
    * pas de table d'étiquettes ici comme chez Jia : la rangée existe, et chaque
@@ -84,7 +91,7 @@ interface Props {
   etiquettes?: string[];
 }
 
-const { fil: f, href, etiquettes = [] } = Astro.props;
+const { fil: f, href, second: secondImpose, etiquettes = [] } = Astro.props;
 
 const apercu = f.apercu
   ? `${f.apercu_de === 'boutique' ? 'Toi : ' : ''}${f.apercu}`
@@ -95,7 +102,9 @@ const apercu = f.apercu
 const aQui = f.sujet === 'medecin' ? 'Question au médecin' : 'Question à la boutique';
 // Le numero passe par le formateur de Jia (« +226 70 12 34 56 ») : la base le
 // garde collé, et collé il ne se lit pas d'un coup d'œil.
-const second = f.telephone ? `${aQui} · ${telephone(f.telephone)}` : aQui;
+const second = secondImpose ?? (f.telephone ? `${aQui} · ${telephone(f.telephone)}` : aQui);
+
+const nonLusNombre = f.non_lus ?? 0;
 
 // L'heure si c'est d'aujourd'hui, la date sinon : format demandé par Arthur.
 const quand = !f.quand ? null : (() => {
@@ -108,10 +117,10 @@ const quand = !f.quand ? null : (() => {
 
 // Au-delà de 99, le chiffre ne tiendrait plus dans la pastille, et savoir s'il
 // y en a 140 ou 260 ne change rien à ce qu'on va faire.
-const nonLus = f.non_lus > 99 ? '99+' : String(f.non_lus);
+const nonLus = nonLusNombre > 99 ? '99+' : String(nonLusNombre);
 ---
 
-<a href={href ?? `/admin/${f.fil}`} class:list={['ligne', { 'non-lue': f.non_lus > 0 }]}>
+<a href={href ?? `/admin/${f.fil}`} class:list={['ligne', { 'non-lue': nonLusNombre > 0 }]}>
   <span class="porte-avatar">
     {/* Le fond orange ne sert qu'a porter l'initiale. Chez Jia un logo de
         boutique est souvent transparent : pose dessus, il se retrouvait sur un
@@ -124,7 +133,7 @@ const nonLus = f.non_lus > 99 ? '99+' : String(f.non_lus);
         f.prenom.slice(0, 1)
       )}
     </span>
-    {f.non_lus > 0 && <span class="pastille">{nonLus}</span>}
+    {nonLusNombre > 0 && <span class="pastille">{nonLus}</span>}
   </span>
 
   <span class="texte">

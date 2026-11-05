@@ -66,7 +66,6 @@ const compte = ((data as any)?.compte ?? {}) as Record<string, number>;
 // « 100 commandes » pour toujours à partir de la centième.
 const totalExact = ETATS.reduce((s, e) => s + Number(compte[e.id] ?? 0), 0);
 const total = commandes.length;
-const plafondAtteint = total >= 100;
 const livrees = commandes.filter((c) => c.etat === 'livree');
 const annulees = commandes.filter((c) => c.etat === 'annulee');
 // `total_cfa` est ce que la cliente a payé, livraison comprise. On retire la
