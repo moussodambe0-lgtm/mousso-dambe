@@ -1,0 +1,97 @@
+---
+// La barre basse de l'administration.
+//
+// Arthur, le 5 novembre 2026 : « au niveau de l'administration, on va faire la
+// même chose [que l'espace vendeur]. Vue d'ensemble, Commandes, Conversations,
+// Monde, ça sera en bas aussi, au lieu d'être en haut. Et avec le même effet
+// de bulle que dans l'espace vendeur. »
+//
+// Elle remplace la rangée d'onglets qui était en haut, sous l'en-tête sombre.
+// Celle-là débordait de l'écran : les onglets de droite étaient hors de vue, et
+// la barre semblait dire qu'on était ailleurs qu'on n'était (son défaut signalé
+// le même jour). En bas, les quatre tiennent côte à côte, et le pouce les
+// atteint sans traverser l'écran.
+//
+// C'est le même composant que `NavVendeur`, aux onglets près : même balisage,
+// mêmes classes, même script de bulle liquide. Les deux espaces se tiennent et
+// se quittent donc de la même façon.
+
+import Icone from './IconeJia.astro';
+import type { IconName } from './IconeJia.astro';
+
+export type OngletAdmin = 'vue' | 'commandes' | 'conversations' | 'monde';
+
+interface Props {
+  actif: OngletAdmin;
+}
+
+const { actif } = Astro.props;
+
+// « Ensemble » et non « Vue d'ensemble » : une colonne fait 91 px sur un écran
+// de 390, et le libellé ne se coupe jamais (`white-space: nowrap` chez Jia).
+// « Vue d'ensemble » les remplissait d'un bord à l'autre et venait toucher le
+// coin arrondi de la barre. Le mot qui porte le sens est « ensemble » ; « vue »
+// ne dit rien de plus. L'en-tête de la page, lui, garde le nom entier.
+const onglets: { cle: OngletAdmin; libelle: string; href: string; icone: IconName }[] = [
+  { cle: 'vue', libelle: 'Ensemble', href: '/admin', icone: 'dashboard' },
+  { cle: 'commandes', libelle: 'Commandes', href: '/admin/commandes', icone: 'receipt' },
+  { cle: 'conversations', libelle: 'Conversations', href: '/admin/conversations', icone: 'message' },
+  { cle: 'monde', libelle: 'Monde', href: '/admin/monde', icone: 'user' },
+];
+
+const indexActif = onglets.findIndex((o) => o.cle === actif);
+---
+
+<nav class="nav-basse" aria-label="Navigation de l'administration" data-nav-liquide data-actif={indexActif}>
+  <div class="nav-barre">
+    {indexActif >= 0 && (
+      <span class:list={['nav-repere', `nav-pos-${indexActif}`]} aria-hidden="true">
+        <span class="nav-bulle"></span>
+      </span>
+    )}
+    {
+      onglets.map((o) => (
+        <a
+          href={o.href}
+          class:list={['nav-onglet', { actif: actif === o.cle }]}
+          aria-current={actif === o.cle ? 'page' : undefined}
+        >
+          <span class="nav-icone">
+            <Icone name={o.icone} size={23} stroke={actif === o.cle ? 2 : 1.8} />
+          </span>
+          <span class="libelle-onglet">{o.libelle}</span>
+        </a>
+      ))
+    }
+  </div>
+</nav>
+
+<style>
+  /* QUATRE COLONNES, comme l'espace vendeur. `components.css` est la feuille de
+     Jia, copiée octet pour octet, et je veux qu'elle le reste : elle y pose une
+     grille de cinq colonnes et un repère large de 20 %, parce que les barres de
+     Jia ont cinq onglets. Sans ces deux règles, la bulle se poserait à côté de
+     l'onglet actif. */
+  .nav-barre {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .nav-repere {
+    width: 25%;
+  }
+
+  /* « Conversations » reste plus long que les libellés de l'espace vendeur, et
+     un libellé ne se coupe jamais (`white-space: nowrap` chez Jia). Un point et
+     demi de moins le fait tenir dans les 91 px d'une colonne. Seul l'onglet
+     actif montre son libellé : il n'y a rien à comparer d'un onglet à l'autre,
+     et personne ne voit que c'est un peu plus petit que dans l'espace
+     vendeur. */
+  .nav-onglet .libelle-onglet {
+    font-size: 11px;
+  }
+</style>
+
+<script>
+  import { brancherNavLiquide } from '../scripts/nav-liquide';
+  brancherNavLiquide();
+</script>
