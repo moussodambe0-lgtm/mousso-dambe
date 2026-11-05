@@ -16,17 +16,19 @@
  *
  * CETTE PAGE AVAIT DISPARU, et la voici revenue. Elle ne contenait plus qu'une
  * redirection 301 vers `/admin`, posée le 5 novembre 2026 au motif qu'il n'y a
- * pas de vendeur tiers ici et donc pas deux boîtes à tenir. Le motif était bon
- * mais la conclusion mauvaise : ce ne sont pas deux boîtes, c'est UNE boîte et
- * DEUX métiers. Le vendeur ouvre cette page pour répondre à ses clientes ;
- * l'administration ouvre `/admin/conversations` pour chercher dans tout ce qui
- * s'est dit. Chez Jia les deux existent, et c'est ce que nous copions.
+ * pas de vendeur tiers ici et donc pas deux boîtes à tenir.
+ *
+ * C'EST MAINTENANT LA SEULE BOÎTE DES MESSAGES DES CLIENTES. Le même jour,
+ * Arthur a décidé que l'onglet Conversations de l'administration ne montrerait
+ * plus que les échanges avec IA Dambé : « je veux voir seulement les
+ * conversations que les gens ont avec l'IA ». Ce qu'une cliente écrit à la
+ * boutique ou au médecin n'apparaît donc plus que sur cette page, et la flèche
+ * de retour d'un fil ramène ici.
  *
  * ELLE MONTRE LES DEUX SUJETS, boutique et médecin, sans filtre. Le compteur de
  * la barre basse (`NavVendeur`, nourri par le gabarit) additionne les deux : si
  * cette page en cachait la moitié, la pastille annoncerait des messages
- * introuvables. Le tri par sujet est sur la page de l'administration, qui est
- * celle où l'on cherche.
+ * introuvables.
  *
  * CE QUE JIA A ET QUE NOUS N'AVONS PAS : le bouton « tout marquer comme lu ».
  * Jia a `tout_marquer_lu(p_cote)` en base ; ici `marquer_lu` prend un fil et un

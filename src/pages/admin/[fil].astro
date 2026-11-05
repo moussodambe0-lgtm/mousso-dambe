@@ -158,7 +158,7 @@ const lignes = messages.map((m) => {
         <Icone name="lock" size={32} class="icone-vide" />
         <div class="titre">Cette conversation ne s'ouvre pas</div>
         <p class="texte">Soit elle n'existe pas, soit cet espace n'est pas pour toi.</p>
-        <a class="btn btn-contour espace" href="/admin/conversations">Retour aux conversations</a>
+        <a class="btn btn-contour espace" href="/vendeur/messages">Retour aux messages</a>
       </div>
     )
   }
@@ -170,7 +170,15 @@ const lignes = messages.map((m) => {
             `.entete-page` est la barre collante de Jia ; le reste est accroché
             dessus. */}
         <header class="entete-page barre-fil">
-          <a class="retour" href="/admin/conversations" aria-label="Retour aux conversations">
+          {/* RETOUR VERS L'ESPACE VENDEUR, et non vers `/admin/conversations`.
+              Cette flèche y menait jusqu'au 5 novembre 2026. Ce jour-là,
+              l'onglet Conversations de l'administration est devenu la liste des
+              échanges avec IA Dambé : la flèche sortait donc d'une conversation
+              avec une cliente pour atterrir sur une liste où cette conversation
+              ne figure pas (bug signalé par Arthur le jour même). La boîte des
+              messages des clientes est dans l'espace vendeur, c'est là qu'on y
+              répond, et c'est de là qu'on arrive ici. */}
+          <a class="retour" href="/vendeur/messages" aria-label="Retour aux messages">
             <Icone name="chevron-left" size={20} stroke={2} />
           </a>
           <Avatar fichier={tete.avatar_fichier} prenom={tete.prenom} taille={38} contour={false} />
