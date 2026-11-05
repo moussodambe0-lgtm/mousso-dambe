@@ -91,12 +91,6 @@ const partQuestionnaire = comptes > 0 ? Math.round((questionnaire / comptes) * 1
         </section>
 
         <section class="section">
-          <p class="note">
-            {partAcheteuses === null
-              ? "Personne n'a encore de compte."
-              : `${partAcheteuses} % de celles qui ont un compte ont commandé au moins une fois. Le reste vient pour suivre son cycle.`}
-          </p>
-
           <h2 class="titre-section">Les trente derniers jours</h2>
           <div class="bloc-courbe">
             <div class="courbe" role="img" aria-label="Inscriptions et commandes des trente derniers jours">
@@ -122,17 +116,6 @@ const partQuestionnaire = comptes > 0 ? Math.round((questionnaire / comptes) * 1
                 {partQuestionnaire !== null && <span class="part"> · {partQuestionnaire} %</span>}
               </strong>
             </div>
-            <p class="aide-mention">
-              Celles qui ne l'ont pas fini gardent un cycle de 28 jours par défaut, qui a peu de chances d'être le leur.
-            </p>
-          </div>
-
-          <div class="encadre encadre-neutre politique">
-            <Icone name="shield" size={16} />
-            <span>
-              Cet écran ne compte que des gestes volontaires : créer un compte, commander. Les visiteuses qui passent
-              sans compte ne sont suivies nulle part, et aucun cycle ni journal n'est lu pour fabriquer ces nombres.
-            </span>
           </div>
         </section>
       </>
@@ -173,7 +156,4 @@ const partQuestionnaire = comptes > 0 ? Math.round((questionnaire / comptes) * 1
   .ligne-mention > span:first-child { color: var(--texte-secondaire); }
   .ligne-mention strong { white-space: nowrap; }
   .part { color: var(--texte-tertiaire); font-weight: 700; }
-  .aide-mention { font-size: 12.5px; color: var(--texte-tertiaire); line-height: 1.5; margin: 9px 0 0; }
-
-  .politique { margin-top: 20px; }
 </style>

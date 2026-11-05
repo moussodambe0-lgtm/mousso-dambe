@@ -115,11 +115,6 @@ const trie = recherche !== '' || sujet !== '';
     <h2 class="titre-section">
       {fils.length} conversation{fils.length > 1 ? 's' : ''}
     </h2>
-    <p class="intro">
-      Tout ce que les clientes ont écrit à la boutique et au médecin, du plus récent au plus ancien.
-      Ouvre un fil pour le lire en entier et répondre.
-    </p>
-
     <form method="get" class="barre-recherche sur-fond recherche">
       {sujet && <input type="hidden" name="sujet" value={sujet} />}
       <Icone name="search" size={15} stroke={2} />
@@ -140,11 +135,6 @@ const trie = recherche !== '' || sujet !== '';
       <div class="etat-vide">
         <Icone name={trie ? 'search' : 'message'} size={32} class="icone-vide" />
         <div class="titre">{trie ? 'Aucune conversation trouvée' : 'Aucune conversation'}</div>
-        <p class="texte">
-          {trie
-            ? 'Essaie un autre prénom, un autre numéro, ou reviens à tout.'
-            : 'Les échanges apparaîtront ici dès qu’une cliente écrira à la boutique ou au médecin.'}
-        </p>
         {trie && <a class="btn btn-contour espace" href="/admin/conversations">Voir tout</a>}
       </div>
     ) : (
@@ -163,16 +153,11 @@ const trie = recherche !== '' || sujet !== '';
       </ul>
     )}
 
-    <p class="promesse-confidentialite">
-      Cet espace ne montre jamais le calendrier d'une cliente, son journal, ni ses questions posées à
-      IA Dambé. C'est la base qui le refuse, pas seulement cette page.
-    </p>
   </section>
 </Admin>
 
 <style>
   .titre-section { font-size: 16px; }
-  .intro { font-size: 14px; color: var(--texte-secondaire); line-height: 1.5; margin: 6px 0 0; }
   .recherche { margin-top: 14px; }
 
   /* Les pilules de filtre debordent de la gouttiere pour pouvoir glisser d'un
@@ -212,11 +197,4 @@ const trie = recherche !== '' || sujet !== '';
 
   .etat-vide :global(.icone-vide) { color: var(--texte-tertiaire); }
   .espace { margin-top: 16px; }
-
-  .promesse-confidentialite {
-    margin: 18px 0 0;
-    font-size: 12.5px;
-    color: var(--texte-tertiaire);
-    line-height: 1.5;
-  }
 </style>

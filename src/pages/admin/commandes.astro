@@ -106,9 +106,6 @@ const piecesVendues = [...parProduit.values()].reduce((s, p) => s + p.pieces, 0)
     <div class="etat-vide">
       <Icone name="receipt" size={34} class="icone-vide" />
       <div class="titre">Aucune commande pour l'instant</div>
-      <p class="texte">
-        Dès la première vente, cette page dira combien, pour quelle somme, et ce qui part le mieux.
-      </p>
     </div>
   ) : (
     <>
@@ -135,18 +132,6 @@ const piecesVendues = [...parProduit.values()].reduce((s, p) => s + p.pieces, 0)
             <span class="cle">{tauxAbouti === null ? 'Aucune commande tranchée' : 'Vont au bout'}</span>
           </div>
         </div>
-        {tauxAbouti !== null && (
-          <p class="note">
-            Sur {tranchees} commande{tranchees > 1 ? 's' : ''} dont le sort est tranché : {livrees.length} livrée
-            {livrees.length > 1 ? 's' : ''}, {annulees.length} annulée{annulees.length > 1 ? 's' : ''}.
-            Les commandes encore en route ne sont comptées ni d'un côté ni de l'autre.
-          </p>
-        )}
-        {plafondAtteint && (
-          <p class="note">
-            Les sommes et les pièces portent sur les cent dernières commandes. « Commandes en tout » porte sur toutes.
-          </p>
-        )}
       </section>
 
       <section class="section">
@@ -165,22 +150,15 @@ const piecesVendues = [...parProduit.values()].reduce((s, p) => s + p.pieces, 0)
         </nav>
       </section>
 
-      <div class="section-serree">
-        <div class="encadre encadre-neutre">
-          <Icone name="info" size={16} />
-          <span>Toucher un état ouvre ces commandes dans l'espace vendeur, le seul endroit où on agit dessus.</span>
-        </div>
-      </div>
-
       <section class="section">
         <h2 class="titre-section">Ce qui se vend</h2>
         {meilleurs.length === 0 ? (
-          <p class="note">Rien n'a encore été vendu : toutes les commandes passées ont été annulées.</p>
+          <p class="note">Rien n'a encore été vendu.</p>
         ) : (
           <div class="liste-stock meilleurs">
             <div class="tete-liste">
               <Icone name="trend-up" size={16} />
-              <strong>Toutes tailles confondues, annulations exclues</strong>
+              <strong>Sur 30 jours</strong>
             </div>
             {meilleurs.map((p, i) => (
               <div class="ligne-stock">

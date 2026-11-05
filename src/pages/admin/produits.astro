@@ -108,21 +108,10 @@ const erreur = Astro.url.searchParams.get('erreur') ? 'Action impossible. Réess
     <h2 class="titre-section">
       {recherche ? `${produits.length} résultat${produits.length > 1 ? 's' : ''}` : 'Le catalogue'}
     </h2>
-    <p class="aide">
-      Tout le catalogue, en vente et retiré mélangés, dans l’ordre où les clientes le voient. Retirer n’efface
-      pas : le produit disparaît de la boutique, ses anciennes commandes gardent leur contenu, et il se remet en
-      vente d’un geste. Pour changer un prix, un stock ou un texte, c’est la fiche dans l’espace vendeur.
-    </p>
-
     {produits.length === 0 && (
       <div class="etat-vide">
         <Icone name="box" size={34} class="icone-vide" />
         <div class="titre">{recherche ? 'Aucun produit de ce nom' : 'Catalogue vide'}</div>
-        <p class="texte">
-          {recherche
-            ? 'Essaie avec un seul mot, ou vide la recherche pour revoir tout le catalogue.'
-            : 'Les produits s’ajoutent depuis l’espace vendeur.'}
-        </p>
         <a class="btn btn-action espace" href="/vendeur/produits">Aller aux produits</a>
       </div>
     )}
@@ -170,7 +159,6 @@ const erreur = Astro.url.searchParams.get('erreur') ? 'Action impossible. Réess
   .recherche :global(svg) { color: var(--texte-secondaire); flex: 0 0 auto; }
   .alertes { display: grid; padding-top: 0; padding-bottom: 0; }
   .alertes :global(.alerte) { margin-top: 12px; }
-  .aide { margin: 0; font-size: 13px; color: var(--texte-secondaire); line-height: 1.5; }
   .liste { display: grid; gap: 10px; }
   .carte { display: flex; gap: 12px; background: var(--surface); border: 1px solid var(--bordure); border-radius: var(--r-grand); padding: 12px; }
   .carte.retire { opacity: .6; }

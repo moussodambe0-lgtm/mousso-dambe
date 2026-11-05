@@ -184,9 +184,7 @@ const MOTS: Record<string, string> = {
         <div class="etat-vide">
           <Icone name="receipt" size={34} class="icone-vide" />
           <div class="titre">Aucune commande ici</div>
-          <div class="texte">
-            Rien dans l'état « {filtre.libelle.toLowerCase()} ». Les autres états sont dans la rangée au-dessus.
-          </div>
+          <div class="texte">Rien dans l'état « {filtre.libelle.toLowerCase()} ».</div>
         </div>
       ) : (
         commandes.slice(0, 10).map((o: any) => {
@@ -343,13 +341,6 @@ const MOTS: Record<string, string> = {
         vignette serait une image cassée sur cet écran. Leur nombre est dit, ce
         qui suffit à savoir qu'il y a quelque chose à aller regarder. */}
 
-    <div class="encadre encadre-neutre politique">
-      <Icone name="shield" size={16} />
-      <span>
-        Cet écran ne lit ni les cycles ni le journal de personne. Les noms et les numéros qu'il affiche sont ceux des
-        commandes, et ils ne servent qu'à livrer.
-      </span>
-    </div>
   </section>
 </Admin>
 
@@ -400,5 +391,4 @@ const MOTS: Record<string, string> = {
   .note-boutique { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: var(--texte-secondaire); flex: 0 0 auto; }
 
   .reste { font-size: 13px; color: var(--texte-secondaire); margin: 0; }
-  .politique { margin-top: 4px; }
 </style>
