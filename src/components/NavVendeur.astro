@@ -1,0 +1,88 @@
+---
+// Navigation basse de l'espace vendeur, copiée de `NavVendeur.astro` de Jia,
+// navigation « liquide » comprise (la bulle qui glisse sous l'onglet actif).
+//
+// Les onglets sont ceux de Jia, dans le même ordre et avec les mêmes mots.
+//
+// QUATRE ET NON CINQ. Jia en a un cinquième, « Ma boutique », où un vendeur
+// renseigne le nom, le logo et l'accroche de SA boutique. Arthur, le
+// 5 novembre 2026, après avoir vu la copie à cinq onglets : « laisse tomber le
+// menu Ma boutique dans espace vendeur ». Chez Jia cet onglet existe parce
+// qu'il y a des centaines de boutiques qui se présentent chacune aux
+// acheteurs ; ici la boutique est la maison, elle n'a personne à qui se
+// présenter dans son propre espace de gestion.
+//
+// Quatre onglets tiennent d'ailleurs mieux sur un écran de 390 px : à cinq,
+// « Ma boutique » passait sur deux lignes.
+
+import Icone from './IconeJia.astro';
+import type { IconName } from './IconeJia.astro';
+
+export type OngletVendeur = 'resume' | 'commandes' | 'produits' | 'messages';
+
+interface Props {
+  actif: OngletVendeur;
+  aExpedier?: number;
+  messages?: number;
+}
+
+const { actif, aExpedier = 0, messages = 0 } = Astro.props;
+
+const onglets: { cle: OngletVendeur; libelle: string; href: string; icone: IconName; compteur?: number }[] = [
+  { cle: 'resume', libelle: 'Résumé', href: '/vendeur', icone: 'dashboard' },
+  { cle: 'commandes', libelle: 'Commandes', href: '/vendeur/commandes', icone: 'receipt', compteur: aExpedier },
+  { cle: 'produits', libelle: 'Produits', href: '/vendeur/produits', icone: 'box' },
+  { cle: 'messages', libelle: 'Messages', href: '/vendeur/messages', icone: 'message', compteur: messages },
+];
+
+const indexActif = onglets.findIndex((o) => o.cle === actif);
+---
+
+<nav class="nav-basse" aria-label="Navigation vendeur" data-nav-liquide data-actif={indexActif}>
+  <div class="nav-barre">
+    {indexActif >= 0 && (
+      <span class:list={['nav-repere', `nav-pos-${indexActif}`]} aria-hidden="true">
+        <span class="nav-bulle"></span>
+      </span>
+    )}
+    {
+      onglets.map((o) => (
+        <a
+          href={o.href}
+          class:list={['nav-onglet', { actif: actif === o.cle }]}
+          aria-current={actif === o.cle ? 'page' : undefined}
+        >
+          <span class="nav-icone">
+            <Icone name={o.icone} size={23} stroke={actif === o.cle ? 2 : 1.8} />
+            {!!o.compteur && o.compteur > 0 && <span class="nav-compteur">{o.compteur}</span>}
+          </span>
+          <span class="libelle-onglet">{o.libelle}</span>
+        </a>
+      ))
+    }
+  </div>
+</nav>
+
+<style>
+  /* QUATRE COLONNES, PAS CINQ.
+     `components.css` est la feuille de Jia, copiée octet pour octet, et je
+     veux qu'elle le reste : elle y pose une grille de cinq colonnes et un
+     repère large de 20 %, parce que les deux barres de Jia ont cinq onglets.
+     La nôtre en a quatre depuis qu'Arthur a retiré « Ma boutique ». Sans ces
+     deux lignes, la bulle se posait à côté de l'onglet actif, et le quatrième
+     onglet laissait un vide à droite.
+     Ces règles sont portées par le composant, donc elles ne touchent aucune
+     autre barre, et la feuille de Jia n'est pas modifiée. */
+  .nav-barre {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .nav-repere {
+    width: 25%;
+  }
+</style>
+
+<script>
+  import { brancherNavLiquide } from '../scripts/nav-liquide';
+  brancherNavLiquide();
+</script>

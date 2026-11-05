@@ -1,0 +1,179 @@
+---
+/**
+ * MONDE : qui vient sur Mousso Dambé.
+ *
+ * L'écran que Jia appelle « Monde », adapté. Chez Jia il compte aussi les
+ * vendeurs qui arrivent et les visiteurs sans compte ; ici il n'y a pas de
+ * vendeur tiers, et aucune table ne suit les visiteuses anonymes. Cet écran
+ * s'en tient donc à ce qui est vrai : les comptes créés, et ce qu'ils font.
+ *
+ * Aucun prénom, aucun numéro n'apparaît : des nombres. La fonction `monde()`
+ * ne lit ni les cycles, ni le journal, ni les questions posées à Dambé, et
+ * c'est écrit dans sa migration.
+ *
+ * RHABILLÉ LE 5 NOVEMBRE 2026, après Arthur : « tu copies tout, tu copies
+ * absolument tout, même les couleurs ». Ses requêtes et ses calculs n'ont PAS
+ * bougé d'une ligne : c'est toujours `monde()`, les mêmes trente jours, les
+ * mêmes pourcentages. Ce qui a changé, c'est la peau :
+ *
+ *   - la rangée de quatre chiffres est maintenant celle de Jia
+ *     (`.section-serree.chiffres` collée sous l'en-tête, quatre colonnes
+ *     égales, `<strong class="chiffre">` et son `<span>` dessous) et non plus
+ *     quatre cartes sur deux lignes ;
+ *   - les classes et variables de l'application des clientes (`--rose`,
+ *     `--e2`…`--e5`, `--r-carte`, `--texte-2`, `--texte-3`) ont disparu :
+ *     elles n'existent pas dans les feuilles de Jia, et les écrire ici donnait
+ *     des marges nulles et du texte noir là où il devait être gris. À leur
+ *     place, les jetons de Jia : `--gouttiere`, `--r-grand`, `--bordure`,
+ *     `--texte-secondaire`, `--texte-tertiaire`, `--action`, `--encre` ;
+ *   - le rose des barres d'inscriptions est devenu l'orange d'action de Jia, et
+ *     les commandes gardent l'encre. Deux couleurs de la palette de Jia, pas
+ *     une de plus ;
+ *   - la page d'attente de migration et l'état « rien à compter » prennent la
+ *     forme de l'état vide de Jia (`.etat-vide`), et la promesse du bas celle
+ *     de son encadré de politique (`.encadre.encadre-neutre`) ;
+ *   - LA PAGE DE REFUS EN DOUBLE EST PARTIE. Elle existait ici en copie, avec
+ *     son propre gabarit `Base` et sa propre icône, dans toutes les pages de
+ *     l'administration. `exigerGestion()` la rend désormais lui-même, en 403,
+ *     à un seul endroit. Vingt lignes de balisage recopiées dans chaque page
+ *     finissent par diverger, et c'est ce qui était en train d'arriver.
+ */
+import Admin from '../../layouts/Admin.astro';
+import Icone from '../../components/IconeJia.astro';
+import { exigerGestion } from '../../lib/gestion';
+import { entier } from '../../lib/format-gestion';
+
+const acces = await exigerGestion(Astro);
+if (acces instanceof Response) return acces;
+const { sb } = acces;
+
+const { data, error } = await sb.rpc('monde');
+// La fonction naît avec la migration du 5 novembre 2026. Tant qu'elle n'est
+// pas appliquée sur une base, on le dit au lieu d'afficher des zéros, qui
+// feraient croire que personne ne vient.
+const pasEncore = !!error || data?.ok !== true;
+const d: any = pasEncore ? {} : data;
+
+const jours = (d.jours ?? []) as { jour: string; inscriptions: number; commandes: number }[];
+const maxJour = Math.max(1, ...jours.map((j) => Math.max(j.inscriptions, j.commandes)));
+
+const comptes = Number(d.comptes ?? 0);
+const ontCommande = Number(d.ont_commande ?? 0);
+const partAcheteuses = comptes > 0 ? Math.round((ontCommande / comptes) * 100) : null;
+const questionnaire = Number(d.questionnaire_fait ?? 0);
+const partQuestionnaire = comptes > 0 ? Math.round((questionnaire / comptes) * 100) : null;
+---
+
+<Admin titre="Monde" onglet="monde">
+  {
+    pasEncore ? (
+      <div class="etat-vide">
+        <Icone name="user" size={34} class="icone-vide" />
+        <div class="titre">Rien à compter pour l'instant</div>
+        <div class="texte">
+          Cet écran attend la migration <strong>20261105120000_monde.sql</strong>. Tant qu'elle n'est pas appliquée sur
+          cette base, aucun nombre affiché ici ne voudrait dire quelque chose.
+        </div>
+      </div>
+    ) : (
+      <>
+        <section class="section-serree chiffres">
+          <div><strong class="chiffre">{entier(comptes)}</strong><span>comptes en tout</span></div>
+          <div><strong class="chiffre">{entier(Number(d.comptes_7j ?? 0))}</strong><span>nouveaux 7 j</span></div>
+          <div>
+            <strong class="chiffre">
+              {entier(ontCommande)}
+              {partAcheteuses !== null && <small>{partAcheteuses} %</small>}
+            </strong>
+            <span>ont commandé</span>
+          </div>
+          <div><strong class="chiffre">{entier(Number(d.ont_recommande ?? 0))}</strong><span>ont recommandé</span></div>
+        </section>
+
+        <section class="section">
+          <p class="note">
+            {partAcheteuses === null
+              ? "Personne n'a encore de compte."
+              : `${partAcheteuses} % de celles qui ont un compte ont commandé au moins une fois. Le reste vient pour suivre son cycle.`}
+          </p>
+
+          <h2 class="titre-section">Les trente derniers jours</h2>
+          <div class="bloc-courbe">
+            <div class="courbe" role="img" aria-label="Inscriptions et commandes des trente derniers jours">
+              {jours.map((j) => (
+                <span class="jour" title={`${j.jour} : ${j.inscriptions} inscription(s), ${j.commandes} commande(s)`}>
+                  <span class="barre barre-inscription" style={`height:${(j.inscriptions / maxJour) * 100}%`} />
+                  <span class="barre barre-commande" style={`height:${(j.commandes / maxJour) * 100}%`} />
+                </span>
+              ))}
+            </div>
+            <div class="legende">
+              <span><i class="puce puce-inscription" />Inscriptions</span>
+              <span><i class="puce puce-commande" />Commandes</span>
+            </div>
+          </div>
+
+          <h2 class="titre-section">Le questionnaire</h2>
+          <div class="carte">
+            <div class="ligne-mention">
+              <span>Questionnaire d'ouverture fini</span>
+              <strong>
+                {entier(questionnaire)} compte{questionnaire > 1 ? 's' : ''}
+                {partQuestionnaire !== null && <span class="part"> · {partQuestionnaire} %</span>}
+              </strong>
+            </div>
+            <p class="aide-mention">
+              Celles qui ne l'ont pas fini gardent un cycle de 28 jours par défaut, qui a peu de chances d'être le leur.
+            </p>
+          </div>
+
+          <div class="encadre encadre-neutre politique">
+            <Icone name="shield" size={16} />
+            <span>
+              Cet écran ne compte que des gestes volontaires : créer un compte, commander. Les visiteuses qui passent
+              sans compte ne sont suivies nulle part, et aucun cycle ni journal n'est lu pour fabriquer ces nombres.
+            </span>
+          </div>
+        </section>
+      </>
+    )
+  }
+</Admin>
+
+<style>
+  .chiffres { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; background: var(--surface); border-bottom: 1px solid var(--bordure); }
+  .chiffres div { text-align: center; }
+  .chiffres strong { display: block; font-size: 19px; }
+  .chiffres strong small { font-size: 11.5px; font-weight: 700; color: var(--texte-tertiaire); margin-left: 3px; }
+  .chiffres span { display: block; font-size: 11.5px; color: var(--texte-secondaire); margin-top: 1px; }
+
+  .etat-vide :global(.icone-vide) { color: var(--texte-tertiaire); }
+
+  .titre-section { font-size: 16px; margin: 20px 0 12px; }
+  .note { font-size: 13px; color: var(--texte-tertiaire); line-height: 1.5; margin: 0; }
+
+  /* Une courbe sans bibliothèque : trente colonnes, deux barres par jour.
+     Rien à télécharger, et ça se lit sur un téléphone. */
+  .bloc-courbe { background: var(--surface); border: 1px solid var(--bordure); border-radius: var(--r-grand); padding: 14px; }
+  .courbe { display: flex; align-items: flex-end; gap: 3px; height: 120px; }
+  .jour { display: flex; align-items: flex-end; gap: 1px; flex: 1; height: 100%; }
+  .barre { flex: 1; min-height: 2px; border-radius: 2px 2px 0 0; }
+  .barre-inscription { background: var(--action); }
+  .barre-commande { background: var(--encre); }
+
+  .legende { display: flex; gap: 16px; margin-top: 11px; font-size: 12.5px; color: var(--texte-secondaire); }
+  .puce { display: inline-block; width: 10px; height: 10px; margin-right: 6px; border-radius: 3px; }
+  .puce-inscription { background: var(--action); }
+  .puce-commande { background: var(--encre); }
+
+  .carte { background: var(--surface); border: 1px solid var(--bordure); border-radius: var(--r-grand); padding: 14px; }
+  .ligne-mention { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; }
+  /* Le premier span seulement : le second vit dans le <strong> et porte le
+     pourcentage, qui a sa propre couleur juste dessous. */
+  .ligne-mention > span:first-child { color: var(--texte-secondaire); }
+  .ligne-mention strong { white-space: nowrap; }
+  .part { color: var(--texte-tertiaire); font-weight: 700; }
+  .aide-mention { font-size: 12.5px; color: var(--texte-tertiaire); line-height: 1.5; margin: 9px 0 0; }
+
+  .politique { margin-top: 20px; }
+</style>

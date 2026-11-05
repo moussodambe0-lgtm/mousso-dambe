@@ -1,0 +1,222 @@
+---
+/**
+ * TOUTES LES CONVERSATIONS, VUES DE L'ADMINISTRATION.
+ *
+ * Copie de `src/pages/admin/conversations.astro` de Jia, le 5 novembre 2026.
+ * Arthur, le même jour : « tu copies tout, tu copies absolument tout, même les
+ * couleurs ».
+ *
+ * CE QUI EST REPRIS TEL QUEL DE JIA : le gabarit `Admin` et son onglet
+ * « Conversations », le titre de section qui compte les fils, le paragraphe
+ * d'introduction qui dit à quoi sert l'écran, la barre de recherche
+ * `.barre-recherche.sur-fond` avec sa loupe, l'état vide à deux phrases (une
+ * quand on a cherché, une quand la boîte est vide), le nombre de messages par
+ * fil compté EN UNE SEULE requête et non une par ligne, et la liste de la
+ * messagerie.
+ *
+ * ELLE REMPLACE `/admin/messages`, supprimée le 5 novembre 2026. Ce que
+ * l'ancienne page savait faire et qui est repris ici sans rien perdre : la
+ * recherche par prénom ou par numéro, et les trois filtres Tout / Médecin /
+ * Boutique avec leurs compteurs de non-lus. Ils sont redessinés avec les
+ * pilules de Jia (`.rangee-filtres`, `.filtre`, `.filtre.actif`), pas avec les
+ * leurs : c'était tout l'objet de la demande d'Arthur.
+ *
+ * DEUX PHRASES DE JIA QUI NE SONT PAS COPIÉES, parce qu'elles seraient FAUSSES
+ * ici :
+ *
+ *   1. « Les échanges entre acheteurs et boutiques, pour départager en cas de
+ *      litige. » Chez Jia l'administration est un arbitre entre deux tiers.
+ *      Ici elle est l'un des deux : c'est elle qui a écrit la moitié des
+ *      messages. Il n'y a personne à départager.
+ *
+ *   2. « Rien n'y est modifiable : c'est ce qui leur donne leur valeur de
+ *      preuve. » Chez Jia l'administration regarde sans écrire. Ici elle
+ *      répond : `repondre_a()` est faite pour elle. Garder la phrase serait
+ *      mentir sur ce que fait le bouton d'à côté.
+ *
+ * CE QUI N'EST PAS REPRIS, FAUTE DE DONNÉES : Jia filtre « par boutique ou par
+ * acheteur » et affiche le nom de la boutique en tête de chaque ligne. Il n'y a
+ * qu'une boutique ici, la maison. Le filtre porte donc sur le SUJET du fil, qui
+ * est la seule chose qui distingue deux conversations : écrit-elle à la
+ * boutique, ou au médecin.
+ *
+ * LA RÈGLE DE CONFIDENTIALITÉ, posée le 12 octobre 2026 et toujours tenue :
+ * aucun écran de gestion ne lit le cycle d'une cliente, ni son journal, ni ses
+ * questions à IA Dambé. `boite_de_reception()` ne les renvoie pas, et les
+ * règles d'accès de la base les refusent même en SQL direct. Les tables
+ * `cycles` et `journal` n'apparaissent nulle part dans ce fichier, et ne le
+ * peuvent pas.
+ */
+import Admin from '../../layouts/Admin.astro';
+import Icone from '../../components/IconeJia.astro';
+import LigneConversation, { type LigneFil } from '../../components/LigneConversation.astro';
+import { exigerGestion } from '../../lib/gestion';
+
+const acces = await exigerGestion(Astro);
+if (acces instanceof Response) return acces;
+const { sb } = acces;
+
+const recherche = (Astro.url.searchParams.get('q') ?? '').trim().slice(0, 60);
+
+// Deux boîtes dans une seule : la boutique, et le médecin. On ne répond pas de
+// la même façon à une question de taille et à une question de douleur, donc on
+// ne les lit pas mélangées. Un sujet inventé dans l'adresse vaut « tout ».
+const demande = Astro.url.searchParams.get('sujet') ?? '';
+const sujet = demande === 'boutique' || demande === 'medecin' ? demande : '';
+
+const { data: boite, error } = await sb.rpc('boite_de_reception', {
+  p_recherche: recherche || null,
+  p_sujet: sujet || null,
+});
+if (error) console.error('boite_de_reception', error.message);
+
+const b = (boite ?? {}) as any;
+const fils = (b.fils ?? []) as LigneFil[];
+const nonLus = Number(b.non_lus ?? 0);
+const nonLusBoutique = Number(b.non_lus_boutique ?? 0);
+const nonLusMedecin = Number(b.non_lus_medecin ?? 0);
+
+// Le nombre de messages par fil : une requête, pas une par ligne. Mot pour mot
+// la façon de faire de Jia, y compris le plafond de 5 000 lignes.
+const identifiants = fils.map((f) => f.fil);
+const compteurs = new Map<string, number>();
+if (identifiants.length) {
+  const { data: messages } = await sb
+    .from('messages')
+    .select('fil_id')
+    .in('fil_id', identifiants)
+    .limit(5000);
+  for (const m of (messages ?? []) as { fil_id: string }[]) {
+    compteurs.set(m.fil_id, (compteurs.get(m.fil_id) ?? 0) + 1);
+  }
+}
+
+// Les filtres gardent la recherche en cours, et la recherche garde le filtre :
+// changer de sujet ne doit pas effacer ce qu'on vient de taper.
+const lien = (unSujet: string) => {
+  const p = new URLSearchParams();
+  if (unSujet) p.set('sujet', unSujet);
+  if (recherche) p.set('q', recherche);
+  const t = p.toString();
+  return t ? `/admin/conversations?${t}` : '/admin/conversations';
+};
+
+const filtres = [
+  { cle: '', libelle: 'Tout', badge: nonLus },
+  { cle: 'medecin', libelle: 'Médecin', badge: nonLusMedecin },
+  { cle: 'boutique', libelle: 'Boutique', badge: nonLusBoutique },
+];
+
+const trie = recherche !== '' || sujet !== '';
+---
+
+<Admin titre="Conversations" onglet="conversations">
+  <section class="section">
+    <h2 class="titre-section">
+      {fils.length} conversation{fils.length > 1 ? 's' : ''}
+    </h2>
+    <p class="intro">
+      Tout ce que les clientes ont écrit à la boutique et au médecin, du plus récent au plus ancien.
+      Ouvre un fil pour le lire en entier et répondre.
+    </p>
+
+    <form method="get" class="barre-recherche sur-fond recherche">
+      {sujet && <input type="hidden" name="sujet" value={sujet} />}
+      <Icone name="search" size={15} stroke={2} />
+      <label class="lecteur-ecran-seul" for="q">Chercher un prénom ou un numéro</label>
+      <input id="q" type="search" name="q" value={recherche} placeholder="Prénom ou numéro" />
+    </form>
+
+    <div class="rangee-filtres filtres-sujet">
+      {filtres.map((f) => (
+        <a href={lien(f.cle)} class:list={['filtre', { actif: f.cle === sujet }]}>
+          {f.libelle}
+          {f.badge > 0 && <span class="badge-filtre">{f.badge > 99 ? '99+' : f.badge}</span>}
+        </a>
+      ))}
+    </div>
+
+    {fils.length === 0 ? (
+      <div class="etat-vide">
+        <Icone name={trie ? 'search' : 'message'} size={32} class="icone-vide" />
+        <div class="titre">{trie ? 'Aucune conversation trouvée' : 'Aucune conversation'}</div>
+        <p class="texte">
+          {trie
+            ? 'Essaie un autre prénom, un autre numéro, ou reviens à tout.'
+            : 'Les échanges apparaîtront ici dès qu’une cliente écrira à la boutique ou au médecin.'}
+        </p>
+        {trie && <a class="btn btn-contour espace" href="/admin/conversations">Voir tout</a>}
+      </div>
+    ) : (
+      <ul class="liste-conversations">
+        {fils.map((f) => {
+          const n = compteurs.get(f.fil) ?? 0;
+          return (
+            <li>
+              <LigneConversation
+                fil={f}
+                etiquettes={n > 0 ? [`${n} message${n > 1 ? 's' : ''}`] : []}
+              />
+            </li>
+          );
+        })}
+      </ul>
+    )}
+
+    <p class="promesse-confidentialite">
+      Cet espace ne montre jamais le calendrier d'une cliente, son journal, ni ses questions posées à
+      IA Dambé. C'est la base qui le refuse, pas seulement cette page.
+    </p>
+  </section>
+</Admin>
+
+<style>
+  .titre-section { font-size: 16px; }
+  .intro { font-size: 14px; color: var(--texte-secondaire); line-height: 1.5; margin: 6px 0 0; }
+  .recherche { margin-top: 14px; }
+
+  /* Les pilules de filtre debordent de la gouttiere pour pouvoir glisser d'un
+     bord a l'autre : sinon la troisieme reste coupee sur un petit telephone. */
+  .filtres-sujet {
+    margin: 12px calc(var(--gouttiere) * -1) 0;
+    padding: 0 var(--gouttiere);
+  }
+  .badge-filtre {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 19px;
+    height: 19px;
+    margin-left: 6px;
+    padding: 0 5px;
+    border-radius: 10px;
+    background: var(--pastille-rouge);
+    color: #FFFFFF;
+    font-size: 11.5px;
+    font-weight: 600;
+    line-height: 1;
+  }
+
+  /* La liste de la messagerie de Jia : le blanc d'un bord a l'autre, un filet
+     entre deux conversations. Elle ressort de la gouttiere de la section pour
+     que les lignes touchent les bords, comme chez Jia. */
+  .liste-conversations {
+    list-style: none;
+    margin: 14px calc(var(--gouttiere) * -1) 0;
+    padding: 0;
+    background: var(--surface);
+    border-top: 1px solid var(--filet-liste);
+    border-bottom: 1px solid var(--filet-liste);
+  }
+  .liste-conversations li + li { border-top: 1px solid var(--filet-liste); }
+
+  .etat-vide :global(.icone-vide) { color: var(--texte-tertiaire); }
+  .espace { margin-top: 16px; }
+
+  .promesse-confidentialite {
+    margin: 18px 0 0;
+    font-size: 12.5px;
+    color: var(--texte-tertiaire);
+    line-height: 1.5;
+  }
+</style>

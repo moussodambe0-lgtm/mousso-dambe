@@ -81,13 +81,23 @@ setTimeout(() => {
   // Le site met une bonne trentaine de secondes à être prêt sur cette
   // machine : on n'annonce l'adresse qu'une fois qu'elle répond vraiment,
   // sinon on envoie Arthur sur une page blanche.
+  // `annonce` plutôt que le seul `clearInterval` : les tics partent toutes les
+  // deux secondes sans attendre le `fetch` du précédent, donc trois appels
+  // pouvaient être en vol au moment où le site répond enfin, et le pavé
+  // s'imprimait trois fois (vu le 5 novembre 2026 dans le journal).
+  let annonce = false;
   const guetter = setInterval(async () => {
+    if (annonce) return;
     try {
       await fetch('http://127.0.0.1:4322/');
+      if (annonce) return;
+      annonce = true;
       clearInterval(guetter);
       console.log('\n========================================================');
-      console.log('  Ouvre http://127.0.0.1:4322 dans ton navigateur.');
-      console.log('  Connexion : awa@essai.bf   mot de passe : motdepasse');
+      console.log('  La boutique   : http://127.0.0.1:4322');
+      console.log('                  awa@essai.bf / motdepasse');
+      console.log('  La gestion    : http://admin.localhost:4322/dev/admin');
+      console.log('                  (entre sans rien taper, local seulement)');
       console.log('  Ctrl+C pour tout arrêter.');
       console.log('========================================================\n');
     } catch {

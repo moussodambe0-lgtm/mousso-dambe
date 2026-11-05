@@ -1,0 +1,201 @@
+/* La gestion de Mousso Dambé : la STRUCTURE de Jia, les COULEURS de Mousso Dambé.
+
+   Ce fichier était la copie exacte de `tokens.css` de Jia. Arthur, le
+   5 novembre 2026, après avoir vu la copie orange : « maintenant les couleurs,
+   tu utilises seulement les couleurs de Mousso Dambé, les couleurs du site
+   officiel. C'est les couleurs seulement que tu changes. »
+
+   CE QUI A CHANGÉ : les valeurs de couleur, et rien d'autre.
+   CE QUI N'A PAS CHANGÉ : les NOMS des variables, les rayons, les espacements,
+   les polices, et toutes les règles de base. C'est volontaire, et c'est la
+   condition pour que la copie tienne : les pages et `components.css` viennent
+   de Jia et écrivent `var(--action)`, `var(--orange-clair)`,
+   `var(--texte-secondaire)`. Renommer une seule variable aurait obligé à
+   retoucher des centaines de lignes copiées, donc à ne plus copier.
+   Un nom de Jia peut donc porter ici une couleur qui n'a rien d'orange : c'est
+   le prix de la copie, et il se paie une fois.
+
+   LA RÈGLE DE LECTURE, reprise de Jia et transposée :
+   chez Jia, « l'orange PROFOND agit, l'orange VIF attire, le rouge alerte ».
+   Ici, LE ROSE DE L'INTERFACE AGIT (--action, les boutons), LE ROSE DU LOGO
+   ATTIRE (--orange, les prix et l'urgence), LE ROUGE ALERTE (ce qui bloque ou
+   détruit, et rien d'autre). Jamais l'inverse.
+
+   Les valeurs viennent toutes de `src/styles/tokens.css`, la palette de
+   l'application des clientes. Aucune n'est inventée ici. */
+
+:root {
+  /* Fonds et surfaces */
+  --fond: #FFF6F9;
+  --surface: #FFFFFF;
+  --surface-douce: #FFEEF4;
+  --bordure: #F6D9E4;
+
+  /* Texte */
+  --encre: #1B1116;
+  --texte-secondaire: #6B5560;
+  --texte-tertiaire: #7A6370;
+  --texte-corps: #3A2A31;
+
+  /* CE QUI AGIT : le rose de l'interface. Il prend la place de l'orange
+     profond de Jia, et pour la même raison : il porte du blanc sans le rendre
+     illisible. #D0206A donne 5,13 pour 1 contre le blanc, au-dessus du 4,5
+     exigé pour du texte courant, donc largement au-dessus du 3 exigé pour le
+     gros texte d'un bouton. C'est aussi le rose que les clientes voient sur
+     chaque bouton de l'application : un bouton doit se reconnaître d'un monde
+     à l'autre. */
+  --action: #D0206A;
+  --action-fonce: #9C1450;
+  --action-clair: #FFDCE9;
+  --action-bordure: #F6B9CE;
+
+  /* CE QUI ATTIRE : le rose du logo. Prix, promotions, urgence. Plus vif que
+     celui qui agit, et jamais utilisé pour du texte sur blanc : il n'y donne
+     que 4,43 pour 1. Sur un fond coloré ou en aplat, il est à sa place. */
+  --orange: #EA194E;
+  --orange-fonce: #9E1038;
+  --orange-clair: #FFE3EA;
+  --orange-bordure: #FFC2D3;
+
+  /* La barre de recherche. Chez Jia c'est le seul endroit où l'orange vire au
+     jaune, et le seul dégradé de l'application : il tient lieu de signature.
+     Ici le dégradé va du rose du logo au grenat, pour la même raison. */
+  --recherche-bord: #EA194E;
+  --recherche-micro: #D0206A;
+  --recherche-bouton-haut: #EA194E;
+  --recherche-bouton-bas: #9C1450;
+
+  /* La messagerie. */
+  /* La pastille des non-lus : le rose vif, celui qui attire. Elle n'alerte pas,
+     elle appelle, et elle ne doit donc pas porter le rouge. */
+  --pastille-rouge: #EA194E;
+  --repere-marque: #F58FB0;
+  /* Le trait entre deux conversations. Assez foncé pour qu'on voie où finit une
+     conversation, assez clair pour ne pas quadriller l'écran. */
+  --filet-liste: #F6D9E4;
+  --champ-gris: #FFEEF4;
+  /* LE BANDEAU D'INFORMATION. Chez Jia il est bleu, et le commentaire d'origine
+     dit pourquoi : il n'annonce ni une action ni un danger, il ne doit donc
+     ressembler à rien d'autre. Le bleu n'existe pas dans la palette de Mousso
+     Dambé ; la pêche y joue exactement ce rôle, à distance du rose qui agit et
+     du rouge qui alerte. Le violet aurait été le choix évident, mais il dit
+     « fertilité » dans toute l'application des clientes et ne doit jamais dire
+     autre chose. */
+  --info-fond: #FFEEDD;
+  --info-trait: #C2652A;
+
+  /* Le nom d'un produit, partout : catalogue, fiche, commande, espace vendeur.
+     Une même chose porte une même couleur, sinon on ne reconnaît pas qu'on
+     regarde le même objet d'un écran à l'autre. */
+  --nom-produit: var(--encre);
+
+  /* Les étoiles de notation, et elles seules. L'ambre de Mousso Dambé plutôt
+     que le jaune de Jia : une étoile doit rester dorée pour se lire comme une
+     étoile, mais celle-ci vient de la palette. */
+  --jaune: #D9900F;
+  --jaune-clair: #FDF1E3;
+  --jaune-fonce: #A8590B;
+
+  /* CE QUI VA BIEN : une vente en hausse, une commande livrée, un stock sain.
+     Jia n'a plus aucun vert depuis le 27 septembre 2026 ; Mousso Dambé en a un,
+     celui des jours sans risque, et il dit la même chose ici. */
+  --vert: #2F8F5B;
+  --vert-clair: #E4F5EA;
+  --vert-trait: #A8DCBF;
+
+  /* CE QUI ALERTE, et rien d'autre : ce qui bloque ou détruit. */
+  --rouge: #B3261E;
+  --rouge-clair: #FDECEB;
+  --rouge-bordure: #F3C2BB;
+
+  /* Sur la barre sombre, le gris de Jia éclaircissait vers le bleu. Celui-ci
+     éclaircit vers le rose, et donne 7,04 pour 1 contre l'encre. */
+  --sur-sombre: #B09AA5;
+  --sur-sombre-faible: #8A7480;
+
+  /* WhatsApp, canal de repli. Le bouton perd le vert de la marque WhatsApp :
+     l'icône suffit à le faire reconnaître, et le vert ici voudrait dire
+     « tout va bien », ce qu'un bouton ne dit pas. */
+  --whatsapp: #FFDCE9;
+  --whatsapp-fonce: #9C1450;
+
+  /* Rayons. Ceux de Jia, inchangés : Arthur a demandé de ne changer que les
+     couleurs. Ils sont plus serrés que ceux des clientes, et c'est ce qui donne
+     à la gestion son air d'outil plutôt que d'application. */
+  --r-petit: 8px;
+  --r-moyen: 10px;
+  --r-grand: 13px;
+  --r-pilule: 30px;
+
+  /* Rythme */
+  --gouttiere: 18px;
+  --hauteur-nav: 98px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  background: var(--fond);
+  color: var(--encre);
+  font-family: 'Karla', system-ui, -apple-system, sans-serif;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  min-height: 100vh;
+  padding-bottom: var(--hauteur-nav);
+}
+
+/* Réserve de place quand une barre d'action colle au-dessus de la navigation */
+body.avec-barre-action { padding-bottom: calc(var(--hauteur-nav) + 76px); }
+body.sans-nav { padding-bottom: 0; }
+
+img, svg { max-width: 100%; }
+img { height: auto; }
+
+a { color: var(--action); text-decoration: none; }
+a:hover { color: var(--action-fonce); }
+
+h1, h2, h3, h4 {
+  font-family: 'Outfit', system-ui, sans-serif;
+  margin: 0;
+  letter-spacing: -0.02em;
+  font-weight: 700;
+}
+
+/* Conteneur : mobile d'abord. Sur grand écran, un mobile centré.
+   Ce n'est pas un oubli : la gestion se tient sur un téléphone, comme le reste,
+   parce que c'est là qu'Arthur la regarde. */
+.page {
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100vh;
+  background: var(--fond);
+  position: relative;
+}
+
+/* Tout prix s'écrit en Outfit. Un prix en Karla est un bug visuel. */
+.prix {
+  font-family: 'Outfit', system-ui, sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--orange);
+}
+.prix-encre { color: var(--encre); }
+.prix-barre { color: var(--texte-tertiaire); text-decoration: line-through; font-weight: 400; }
+
+.chiffre {
+  font-family: 'Outfit', system-ui, sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+/* Accessibilité : respecter le réglage système de réduction des animations */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

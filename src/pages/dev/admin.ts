@@ -27,12 +27,20 @@ import { clientPublic, poserSession, baseConfiguree } from '../../lib/supabase';
 
 export const prerender = false;
 
-const COFFRE = 'C:/Users/larou/OneDrive/Desktop/Jarvis/secrets/.env';
+// Deux PC, deux comptes Windows, deux emplacements du dossier Jarvis : un seul
+// chemin en dur marchait sur une machine et pas sur l'autre. On prend le
+// premier des emplacements connus qui existe. Même liste que outils/coffre.mjs.
+const COFFRES = [
+  'C:/Users/larou/OneDrive/Desktop/Jarvis/secrets/.env',
+  'C:/Users/larou/Desktop/Jarvis/secrets/.env',
+  'C:/Users/USER/Desktop/Jarvis/secrets/.env',
+];
 
 /** L'adresse de l'administrateur, lue dans le coffre, hors du dépôt. */
 function adresseAdmin(): string | null {
   try {
-    if (!fs.existsSync(COFFRE)) return null;
+    const COFFRE = COFFRES.find((c) => fs.existsSync(c));
+    if (!COFFRE) return null;
     const trouvees: string[] = [];
     for (const ligne of fs.readFileSync(COFFRE, 'utf8').split(/\r?\n/)) {
       const propre = ligne.trim();

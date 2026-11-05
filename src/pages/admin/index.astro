@@ -1,692 +1,404 @@
 ---
 /**
- * L'ESPACE D'ARTHUR.
+ * VUE D'ENSEMBLE : la première page de l'administration.
  *
- * Section 9 du cahier : la boîte de réception et les commandes, utilisables
- * sur un téléphone, parce que c'est là qu'il les lira.
+ * Arthur, le 5 novembre 2026 : « dans espace administration, faut copier tout,
+ * tout ce que tu vas voir dans espace administrateur, LA MANIÈRE DONT C'EST
+ * PRÉSENTÉ, tout. Tu copies tout. Même les couleurs. »
  *
- * Qui entre ici : seulement une ligne de la table `administrateurs`. Aucun
- * mot de passe n'est écrit dans le code, aucune adresse n'est privilégiée, et
- * la page n'est même pas une page à part : c'est la base qui refuse de
- * répondre à quelqu'un d'autre. Si Arthur perd son accès, il se le rend avec
- * une ligne de SQL ; si quelqu'un trouve l'adresse de cette page, il voit un
- * écran qui lui dit non.
+ * CE QUI EST COPIÉ DE `pages/admin/index.astro` DE JIA, et dans son ordre :
  *
- * Ce que cet écran ne peut pas montrer, par construction : le calendrier, le
- * journal et les questions posées à IA Dambé. Les fonctions appelées ici ne
- * les lisent pas, et les règles d'accès de la base les refusent même en SQL
- * direct. C'est vérifié par `supabase/tests/messagerie.test.mjs`.
+ *   1. la rangée de quatre chiffres collée sous l'en-tête
+ *      (`.section-serree.chiffres`, quatre colonnes égales, `<strong
+ *      class="chiffre">` à 19 px et son `<span>` à 11,5 px dessous, fond
+ *      `--surface` et trait de séparation en bas) ;
+ *   2. la rangée de filtres en pilules qui défile horizontalement
+ *      (`.filtres` / `.filtre` / `.filtre.actif` en encre et blanc), avec son
+ *      compteur accolé au libellé par un point médian ;
+ *   3. la rangée d'alertes (`.section-serree.alertes`) ;
+ *   4. la liste de cartes (`.section.liste`, `.carte`, `.tete` avec son carré
+ *      d'encre à gauche, `.infos` avec `.nom` et `.meta`, `.quand` à droite,
+ *      puis `.accroche`, `.contact`, les `.libelle` en capitales, les
+ *      `.ligne-mention`, les blocs d'action repliés `details.repli` et la
+ *      `.rangee-btn`) ;
+ *   5. l'état vide avec sa grande icône grise ;
+ *   6. l'encadré de politique en bas de page.
+ *
+ * Pas une classe inventée, pas une couleur inventée : tout vient du fichier de
+ * Jia et des feuilles de style recopiées dans `src/styles/gestion/`.
+ *
+ * CE QUE CET ÉCRAN MONTRE, puisque ce n'est pas ce que Jia montre. Chez Jia,
+ * cette page est la FILE DE VÉRIFICATION DES BOUTIQUES : chaque carte est un
+ * vendeur tiers qui demande son badge, avec ses pièces d'identité et trois
+ * contrôles à cocher. Ici il n'y a qu'une boutique, la maison, et personne ne
+ * la vérifie : la file serait vide pour toujours. La présentation est donc
+ * remplie avec ce que Mousso Dambé a vraiment, c'est-à-dire des commandes qui
+ * attendent une décision et des avis qui viennent d'arriver.
+ *
+ * LA DIFFÉRENCE AVEC LE RÉSUMÉ DE L'ESPACE VENDEUR, qui ressemble à ceci : le
+ * vendeur regarde ce qu'il doit FAIRE aujourd'hui (préparer, envoyer, remettre
+ * en stock). Cette page-ci regarde comment va la boutique, et ouvre sur ce qui
+ * réclame une décision. Deux métiers, deux écrans, comme chez Jia.
+ *
+ * RIEN DE CE QUI SORT D'ICI NE TOUCHE AU CYCLE NI AU JOURNAL. `monde()` le
+ * garantit dans sa propre migration, et aucune requête de cette page ne nomme
+ * les tables `cycles` ou `journal`. Les noms et les numéros qui s'affichent
+ * viennent de `commandes_admin`, qui existe pour qu'on puisse livrer.
  */
-import Base from '../../layouts/Base.astro';
-import Icone from '../../components/Icone.astro';
-import Avatar from '../../components/Avatar.astro';
-import Alerte from '../../components/Alerte.astro';
-import { clientSession, baseConfiguree } from '../../lib/supabase';
-import { visiteuse } from '../../lib/session';
-import { prixComplet, quandCourt, dateLongue, messageErreur } from '../../lib/format';
+import Admin from '../../layouts/Admin.astro';
+import Icone from '../../components/IconeJia.astro';
+import Alerte from '../../components/AlerteJia.astro';
+import { exigerGestion } from '../../lib/gestion';
+import { prix, entier, depuis, dateCourte, etoiles, telephone, lienWhatsApp, normaliserTelephone } from '../../lib/format-gestion';
 
-if (!baseConfiguree()) return Astro.redirect('/', 302);
-const moi = await visiteuse(Astro);
-if (!moi) return Astro.redirect('/connexion', 302);
+const acces = await exigerGestion(Astro);
+if (acces instanceof Response) return acces;
+const { sb } = acces;
 
-const client = clientSession(Astro)!;
-
-const { data: admin } = await client.rpc('est_admin');
-const autorisee = admin === true;
-
-let erreur = '';
-
-if (autorisee && Astro.request.method === 'POST') {
-  const f = await Astro.request.formData();
-  const commande = String(f.get('commande') ?? '');
-  const etat = String(f.get('etat') ?? '');
-  if (commande && etat) {
-    const { data } = await client.rpc('changer_etat_commande', { p_id: commande, p_etat: etat });
-    if (!data?.ok) erreur = messageErreur(data?.erreur);
-    else return Astro.redirect(`/admin?vue=commandes&etat=${encodeURIComponent(String(f.get('filtre') ?? ''))}`, 303);
-  }
-}
-
-const vue = Astro.url.searchParams.get('vue') === 'commandes' ? 'commandes' : 'messages';
-const cherche = (Astro.url.searchParams.get('q') ?? '').slice(0, 60);
-const filtreEtat = Astro.url.searchParams.get('etat') ?? '';
-
-// Deux boîtes dans une seule : la boutique, et le médecin. Elles ne se
-// répondent pas de la même façon, donc elles ne se lisent pas mélangées.
-const demande = Astro.url.searchParams.get('sujet') ?? '';
-const sujetFiltre = demande === 'boutique' || demande === 'medecin' ? demande : '';
-
-let fils: any[] = [];
-let nonLus = 0;
-let nonLusBoutique = 0;
-let nonLusMedecin = 0;
-let commandesNouvelles = 0;
-let commandes: any[] = [];
-let compte: Record<string, number> = {};
-
-if (autorisee) {
-  const { data: boite } = await client.rpc('boite_de_reception', {
-    p_recherche: cherche || null,
-    p_sujet: sujetFiltre || null,
-  });
-  fils = boite?.fils ?? [];
-  nonLus = boite?.non_lus ?? 0;
-  nonLusBoutique = boite?.non_lus_boutique ?? 0;
-  nonLusMedecin = boite?.non_lus_medecin ?? 0;
-  commandesNouvelles = boite?.commandes_nouvelles ?? 0;
-
-  if (vue === 'commandes') {
-    const { data } = await client.rpc('commandes_admin', { p_etat: filtreEtat || null });
-    commandes = data?.commandes ?? [];
-    compte = data?.compte ?? {};
-  }
-}
-
+// Les filtres, dans l'ordre où une commande traverse sa vie. Chez Jia ce sont
+// les quatre statuts d'une boutique ; ici les cinq états d'une commande, et le
+// premier est celui qui attend une main.
 const ETATS = [
-  { id: 'nouvelle', libelle: 'Nouvelle' },
-  { id: 'preparee', libelle: 'Préparée' },
-  { id: 'envoyee', libelle: 'En livraison' },
-  { id: 'livree', libelle: 'Livrée' },
-  { id: 'annulee', libelle: 'Annulée' },
-];
+  { cle: 'nouvelle', libelle: 'À traiter' },
+  { cle: 'preparee', libelle: 'Préparées' },
+  { cle: 'envoyee', libelle: 'En route' },
+  { cle: 'livree', libelle: 'Livrées' },
+  { cle: 'annulee', libelle: 'Annulées' },
+] as const;
+const filtre = ETATS.find((e) => e.cle === Astro.url.searchParams.get('etat')) ?? ETATS[0];
+
+const [tdb, boite, mondeRep, cmdRep, prodRep] = await Promise.all([
+  sb.rpc('tableau_de_bord_vendeur'),
+  sb.rpc('boite_de_reception', { p_recherche: null, p_sujet: null }),
+  sb.rpc('monde'),
+  sb.rpc('commandes_admin', { p_etat: filtre.cle }),
+  sb.rpc('produits_admin'),
+]);
+
+const t = (tdb.data ?? {}) as any;
+const b = (boite.data ?? {}) as any;
+const m = (mondeRep.data ?? {}) as any;
+const c = (cmdRep.data ?? {}) as any;
+
+// La somme de la semaine vient de `tableau_de_bord_vendeur`, qui écarte les
+// commandes annulées : un panier annulé n'est pas une vente.
+const ventes7j = ((t.ventes_7j ?? []) as { jour: string; total_cfa: number }[]).reduce(
+  (s, j) => s + Number(j.total_cfa ?? 0),
+  0
+);
+
+// Le nombre de commandes de la semaine vient de `monde()`, seule fonction qui
+// les compte par jour. Attention : elle les compte TOUTES, annulées comprises,
+// parce qu'elle répond à « qui vient », pas à « combien on a vendu ». Les deux
+// chiffres de la rangée ne disent donc pas la même chose, et c'est voulu.
+const joursMonde = (m.jours ?? []) as { jour: string; inscriptions: number; commandes: number }[];
+const commandes7j = joursMonde.slice(-7).reduce((s, j) => s + Number(j.commandes ?? 0), 0);
+
+const messagesSansReponse = Number(b.non_lus ?? 0);
+const comptes = Number(m.comptes ?? 0);
+
+const compteParEtat = (c.compte ?? {}) as Record<string, number>;
+const commandes = (c.commandes ?? []) as any[];
+
+/**
+ * LES DERNIERS AVIS, assemblés produit par produit.
+ *
+ * Il n'existe pas de fonction `avis_recents()` : la table `avis` est fermée en
+ * lecture directe (aucune règle d'accès ne laisse passer, migration du
+ * 26 octobre 2026) et la seule porte ouverte est `avis_du_produit(slug)`. On
+ * appelle donc une fois par produit publié, en parallèle, puis on fusionne et
+ * on garde les cinq plus récents. Le catalogue compte une poignée de fiches :
+ * c'est tenable. Le jour où il en comptera cent, une fonction `avis_recents()`
+ * remplacera cette boucle par un seul appel, et cette page ne changera que
+ * d'une ligne.
+ */
+const produits = ((prodRep.data as any)?.produits ?? []) as any[];
+const publies = produits.filter((p) => p.publie);
+const paquetsAvis = await Promise.all(
+  publies.map((p) => sb.rpc('avis_du_produit', { p_slug: p.slug, p_combien: 5 }))
+);
+const derniersAvis = paquetsAvis
+  .flatMap((r, i) =>
+    (((r.data as any)?.liste ?? []) as any[]).map((a) => ({ ...a, produit: publies[i]!.nom as string }))
+  )
+  .sort((x, y) => String(y.cree_le).localeCompare(String(x.cree_le)))
+  .slice(0, 5);
+
+// La note de la boutique, telle que le tableau de bord la calcule sur tous les
+// avis déposés. La boutique et le catalogue ne font qu'un ici.
+const note = Number(t.shop?.rating_avg ?? 0);
+const nombreAvis = Number(t.shop?.rating_count ?? 0);
+
+// Une fonction absente de la base ne doit pas s'afficher en zéros : des zéros
+// feraient croire que personne ne vient, et on prendrait des décisions dessus.
+const manquantes = [
+  tdb.error || t.ok !== true ? 'tableau_de_bord_vendeur' : '',
+  mondeRep.error || m.ok !== true ? 'monde' : '',
+  cmdRep.error || c.ok !== true ? 'commandes_admin' : '',
+]
+  .filter(Boolean)
+  .join(', ');
+const erreur = manquantes
+  ? `Ces fonctions n'ont pas répondu : ${manquantes}. Les chiffres correspondants sont incomplets, applique les migrations avant de t'y fier.`
+  : null;
+
+const PASTILLES: Record<string, string> = {
+  nouvelle: 'pastille-orange',
+  preparee: 'pastille-jaune',
+  envoyee: 'pastille-action',
+  livree: 'pastille-neutre',
+  annulee: 'pastille-neutre',
+};
+const MOTS: Record<string, string> = {
+  nouvelle: 'À traiter',
+  preparee: 'Préparée',
+  envoyee: 'En route',
+  livree: 'Livrée',
+  annulee: 'Annulée',
+};
 ---
 
-<Base titre="Administration" nav={null}>
-  {
-    !autorisee && (
-      <main class="page refus">
-        <span class="refus-rond"><Icone nom="cadenas" taille={28} /></span>
-        <h1>Cet espace n'est pas pour toi</h1>
-        <p>
-          Seule la boutique y entre. Si tu cherchais tes discussions, elles sont dans l'onglet du milieu.
-        </p>
-        <a class="btn btn-rose" href="/">Retour à l'accueil</a>
-      </main>
-    )
-  }
+<Admin titre="Vue d'ensemble" onglet="vue">
+  <section class="section-serree chiffres">
+    <div><strong class="chiffre">{commandes7j}</strong><span>commandes 7 j</span></div>
+    <div><strong class="chiffre">{entier(ventes7j)}</strong><span>FCFA 7 j</span></div>
+    <div><strong class="chiffre">{messagesSansReponse}</strong><span>sans réponse</span></div>
+    <div><strong class="chiffre">{entier(comptes)}</strong><span>comptes créés</span></div>
+  </section>
 
-  {
-    autorisee && (
-      <main class="admin">
-        <header class="tete">
-          <div>
-            <h1>Administration</h1>
-            <p class="sous">Mousso Dambé, {dateLongue(new Date().toISOString().slice(0, 10))}</p>
+  <nav class="filtres" aria-label="État des commandes">
+    {ETATS.map((e) => (
+      <a href={`/admin?etat=${e.cle}`} class:list={['filtre', { actif: e.cle === filtre.cle }]}>
+        {e.libelle}{compteParEtat[e.cle] ? ` · ${compteParEtat[e.cle]}` : ''}
+      </a>
+    ))}
+  </nav>
+
+  <div class="section-serree alertes">
+    <Alerte message={erreur} />
+  </div>
+
+  <section class="section liste">
+    {
+      commandes.length === 0 ? (
+        <div class="etat-vide">
+          <Icone name="receipt" size={34} class="icone-vide" />
+          <div class="titre">Aucune commande ici</div>
+          <div class="texte">
+            Rien dans l'état « {filtre.libelle.toLowerCase()} ». Les autres états sont dans la rangée au-dessus.
           </div>
-          <a class="sortie" href="/" aria-label="Quitter l'administration">
-            <Icone nom="croix" taille={20} />
-          </a>
-        </header>
-
-        <nav class="onglets" aria-label="Sections de l'administration">
-          <a class:list={['onglet', vue === 'messages' && 'onglet-actif']} href="/admin">
-            <Icone nom="bulles" taille={17} />
-            Messages
-            {nonLus > 0 && <span class="compteur">{nonLus}</span>}
-          </a>
-          <a class:list={['onglet', vue === 'commandes' && 'onglet-actif']} href="/admin?vue=commandes">
-            <Icone nom="colis" taille={17} />
-            Commandes
-            {commandesNouvelles > 0 && <span class="compteur">{commandesNouvelles}</span>}
-          </a>
-        </nav>
-
-        {erreur && <Alerte type="erreur" texte={erreur} />}
-
-        {/* --- La boîte de réception --- */}
-        {
-          vue === 'messages' && (
-            <section>
-              <form class="chercher" method="get">
-                <Icone nom="recherche" taille={18} />
-                <label class="lecture-seule" for="q">Chercher un prénom ou un numéro</label>
-                <input id="q" type="search" name="q" value={cherche} placeholder="Prénom ou numéro" />
-                {cherche && (
-                  <a class="vider" href="/admin" aria-label="Vider la recherche">
-                    <Icone nom="croix" taille={16} />
-                  </a>
-                )}
-              </form>
-
-              {/* Les deux boîtes : on répond autrement à une question de
-                  taille qu'à une question de douleur, donc on ne les lit pas
-                  mélangées. */}
-              <div class="filtres">
-                <a class:list={['filtre', !sujetFiltre && 'filtre-actif']} href={`/admin${cherche ? `?q=${encodeURIComponent(cherche)}` : ''}`}>
-                  Tout
-                  {nonLus > 0 ? ` ${nonLus}` : ''}
-                </a>
-                <a
-                  class:list={['filtre', sujetFiltre === 'medecin' && 'filtre-actif']}
-                  href={`/admin?sujet=medecin${cherche ? `&q=${encodeURIComponent(cherche)}` : ''}`}
-                >
-                  Médecin
-                  {nonLusMedecin > 0 ? ` ${nonLusMedecin}` : ''}
-                </a>
-                <a
-                  class:list={['filtre', sujetFiltre === 'boutique' && 'filtre-actif']}
-                  href={`/admin?sujet=boutique${cherche ? `&q=${encodeURIComponent(cherche)}` : ''}`}
-                >
-                  Boutique
-                  {nonLusBoutique > 0 ? ` ${nonLusBoutique}` : ''}
-                </a>
+        </div>
+      ) : (
+        commandes.slice(0, 10).map((o: any) => {
+          const articles = (o.articles ?? []) as { nom: string; taille: string | null; quantite: number; prix_cfa: number }[];
+          const pieces = articles.reduce((s, a) => s + Number(a.quantite ?? 0), 0);
+          const numero = String(o.numero ?? '');
+          return (
+            <article class="carte">
+              <div class="tete">
+                <span class="logo">{numero.slice(-2) || '?'}</span>
+                <span class="infos">
+                  <a href={`/vendeur/commandes?etat=${o.etat}`} class="nom">Commande {numero}</a>
+                  <span class="meta">
+                    {[o.quartier, `${pieces} article${pieces > 1 ? 's' : ''}`].filter(Boolean).join(' · ')}
+                  </span>
+                </span>
+                <span class="quand">{o.quand ? depuis(o.quand) : ''}</span>
               </div>
 
-              {fils.length === 0 && (
-                <p class="rien">
-                  {cherche ? 'Personne ne correspond à cette recherche.' : "Aucun message pour l'instant."}
-                </p>
+              <p class="accroche">
+                <span class:list={['pastille', PASTILLES[o.etat] ?? 'pastille-neutre']}>
+                  <span class="point" />{MOTS[o.etat] ?? o.etat}
+                </span>
+                <span class="total prix">{prix(Number(o.total_cfa ?? 0))}</span>
+              </p>
+
+              <p class="contact">
+                Cliente : <strong>{o.nom || 'non renseigné'}</strong>
+                {o.telephone && (
+                  <>
+                    {' · '}
+                    <a href={`tel:+226${String(o.telephone).replace(/[^0-9]/g, '')}`}>{telephone(String(o.telephone))}</a>
+                  </>
+                )}
+              </p>
+
+              {o.repere && (
+                <div class="encadre encadre-neutre repere">
+                  <Icone name="map-pin" size={16} />
+                  <span>{o.repere}</span>
+                </div>
               )}
 
-              <ul class="lignes">
-                {fils.map((f) => (
-                  <li>
-                    <a class:list={['ligne', f.sujet === 'medecin' && 'ligne-medecin']} href={`/admin/${f.fil}`}>
-                      <Avatar fichier={f.avatar_fichier} prenom={f.prenom} taille={44} />
-                      <span class="ligne-corps">
-                        <span class="ligne-haut">
-                          <b>{f.prenom}</b>
-                          {f.sujet === 'medecin' && <span class="etiquette-sujet">Médecin</span>}
-                          <span class="ligne-heure">{quandCourt(f.quand)}</span>
-                        </span>
-                        <span class="ligne-bas">
-                          <span class:list={['ligne-apercu', f.non_lus > 0 && 'ligne-apercu-gras']}>
-                            {f.apercu_de === 'boutique' ? 'Toi : ' : ''}
-                            {f.apercu}
-                          </span>
-                          {f.non_lus > 0 && <span class="non-lu">{f.non_lus}</span>}
-                        </span>
-                        {f.telephone && <span class="ligne-tel">{f.telephone}</span>}
-                      </span>
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )
-        }
+              {o.livreur_nom && (
+                <div class="mentions">
+                  <div class="libelle">LIVREUR</div>
+                  <div class="ligne-mention"><span>Nom</span><strong>{o.livreur_nom}</strong></div>
+                  {o.livreur_telephone && (
+                    <div class="ligne-mention"><span>Téléphone</span><strong>{telephone(String(o.livreur_telephone))}</strong></div>
+                  )}
+                  {o.livreur_vu_le && (
+                    <div class="ligne-mention"><span>A ouvert son lien</span><strong>{dateCourte(o.livreur_vu_le)}</strong></div>
+                  )}
+                </div>
+              )}
 
-        {/* --- Les commandes --- */}
-        {
-          vue === 'commandes' && (
-            <section>
-              <div class="filtres">
-                <a class:list={['filtre', !filtreEtat && 'filtre-actif']} href="/admin?vue=commandes">
-                  Toutes
-                </a>
-                {ETATS.map((e) => (
+              {articles.length > 0 && (
+                <details class="repli">
+                  <summary>Ce qu'il y a dans le colis</summary>
+                  <div class="form-repli">
+                    {articles.map((a) => (
+                      <div class="ligne-mention">
+                        <span>{a.quantite} × {a.nom}{a.taille ? ` (${a.taille})` : ''}</span>
+                        <strong>{prix(Number(a.prix_cfa ?? 0) * Number(a.quantite ?? 0))}</strong>
+                      </div>
+                    ))}
+                    {o.livraison_cfa != null && (
+                      <div class="ligne-mention"><span>Livraison</span><strong>{prix(Number(o.livraison_cfa))}</strong></div>
+                    )}
+                  </div>
+                </details>
+              )}
+
+              {/* Le bloc d'action, dans la forme de celui de Jia. Les décisions
+                  elles-mêmes (préparer, envoyer, annuler) se prennent sur
+                  l'écran des commandes, qui a les formulaires et les garde-fous
+                  de la base. Cette page ouvre la bonne porte, elle ne la
+                  remplace pas : deux écrans qui changent le même état finissent
+                  par se contredire. */}
+              <div class="rangee-btn actions">
+                {o.telephone && (
                   <a
-                    class:list={['filtre', filtreEtat === e.id && 'filtre-actif']}
-                    href={`/admin?vue=commandes&etat=${e.id}`}
+                    class="btn btn-whatsapp btn-petit"
+                    href={lienWhatsApp(
+                      normaliserTelephone(String(o.telephone)) ?? String(o.telephone),
+                      `Bonjour ${o.nom ?? ''}, ici Mousso Dambé au sujet de votre commande ${numero}.`
+                    )}
+                    target="_blank"
+                    rel="noopener noreferrer"
                   >
-                    {e.libelle}
-                    {compte[e.id] ? ` ${compte[e.id]}` : ''}
+                    Écrire sur WhatsApp
                   </a>
-                ))}
+                )}
+                <a class="btn btn-contour btn-petit" href={`/vendeur/commandes?etat=${o.etat}`}>Ouvrir la commande</a>
               </div>
+            </article>
+          );
+        })
+      )
+    }
 
-              {commandes.length === 0 && <p class="rien">Aucune commande dans cette liste.</p>}
+    {commandes.length > 10 && (
+      <p class="reste">
+        et {commandes.length - 10} autre{commandes.length - 10 > 1 ? 's' : ''} dans cet état.
+        <a href={`/vendeur/commandes?etat=${filtre.cle}`}> Tout voir</a>
+      </p>
+    )}
+  </section>
 
-              <ul class="commandes">
-                {commandes.map((c) => (
-                  <li class:list={['commande', `etat-${c.etat}`]}>
-                    <div class="commande-haut">
-                      <b>{c.numero}</b>
-                      <span class="etiquette-etat">{ETATS.find((e) => e.id === c.etat)?.libelle ?? c.etat}</span>
-                    </div>
+  <section class="section liste">
+    <div class="entete-section">
+      <h2>Les derniers avis</h2>
+      {nombreAvis > 0 && (
+        <span class="note-boutique">
+          <span class="etoiles">{etoiles(note)}</span>
+          {note.toFixed(1).replace('.', ',')} · {nombreAvis} avis
+        </span>
+      )}
+    </div>
 
-                    <p class="commande-qui">
-                      {c.nom} · <a href={`tel:${c.telephone}`}>{c.telephone}</a>
-                    </p>
-                    <p class="commande-ou">
-                      {c.quartier}
-                      {c.repere ? `, ${c.repere}` : ''}
-                    </p>
+    {
+      derniersAvis.length === 0 ? (
+        <div class="etat-vide">
+          <Icone name="message-star" size={34} class="icone-vide" />
+          <div class="titre">Aucun avis déposé</div>
+          <div class="texte">
+            Un avis ne peut être donné qu'après une livraison. Les premiers arriveront avec les premières commandes
+            livrées.
+          </div>
+        </div>
+      ) : (
+        derniersAvis.map((a: any) => (
+          <article class="carte">
+            <div class="tete">
+              <span class="logo note-carree chiffre">{a.note}</span>
+              <span class="infos">
+                <span class="nom">{a.produit}</span>
+                <span class="meta">
+                  <span class="etoiles">{etoiles(Number(a.note))}</span>
+                  {(a.photos ?? []).length > 0 && ` · ${(a.photos ?? []).length} photo${(a.photos ?? []).length > 1 ? 's' : ''}`}
+                </span>
+              </span>
+              <span class="quand">{a.cree_le ? dateCourte(a.cree_le) : ''}</span>
+            </div>
+            {a.texte ? <p class="accroche">{a.texte}</p> : <p class="accroche muet">Note sans commentaire.</p>}
+          </article>
+        ))
+      )
+    }
 
-                    <ul class="articles">
-                      {c.articles.map((a: any) => (
-                        <li>
-                          <span>
-                            {a.quantite} × {a.nom}
-                            {a.taille ? ` (${a.taille})` : ''}
-                          </span>
-                          <span>{prixComplet(a.prix_cfa * a.quantite)}</span>
-                        </li>
-                      ))}
-                      <li class="articles-livraison">
-                        <span>Livraison</span>
-                        <span>{c.livraison_cfa > 0 ? prixComplet(c.livraison_cfa) : 'offerte'}</span>
-                      </li>
-                      <li class="articles-total">
-                        <span>Total à encaisser</span>
-                        <span>{prixComplet(c.total_cfa)}</span>
-                      </li>
-                    </ul>
+    {/* Les photos d'avis ne sont pas montrées ici : la route qui les sert,
+        `/photo-avis/[id]`, ne répond que sur l'adresse des clientes
+        (`CHEMINS_PARTAGES` dans lib/hotes.ts ne la contient pas), donc chaque
+        vignette serait une image cassée sur cet écran. Leur nombre est dit, ce
+        qui suffit à savoir qu'il y a quelque chose à aller regarder. */}
 
-                    <p class="commande-quand">Passée {quandCourt(c.quand)}</p>
-
-                    <form class="etats" method="post">
-                      <input type="hidden" name="commande" value={c.id} />
-                      <input type="hidden" name="filtre" value={filtreEtat} />
-                      {ETATS.filter((e) => e.id !== c.etat).map((e) => (
-                        <button class="bouton-etat" type="submit" name="etat" value={e.id}>
-                          {e.libelle}
-                        </button>
-                      ))}
-                    </form>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )
-        }
-
-        <p class="promesse">
-          Cet espace ne montre jamais le calendrier, le journal ni les questions posées à IA Dambé. C'est la base qui
-          le refuse, pas seulement cette page.
-        </p>
-
-        <div class="espace"></div>
-      </main>
-    )
-  }
-</Base>
+    <div class="encadre encadre-neutre politique">
+      <Icone name="shield" size={16} />
+      <span>
+        Cet écran ne lit ni les cycles ni le journal de personne. Les noms et les numéros qu'il affiche sont ceux des
+        commandes, et ils ne servent qu'à livrer.
+      </span>
+    </div>
+  </section>
+</Admin>
 
 <style>
-  /* --- Le refus --- */
-  .refus {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--e3);
-    padding-top: 20vh;
-    text-align: center;
-  }
+  .chiffres { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; background: var(--surface); border-bottom: 1px solid var(--bordure); }
+  .chiffres div { text-align: center; }
+  .chiffres strong { display: block; font-size: 19px; }
+  .chiffres span { display: block; font-size: 11.5px; color: var(--texte-secondaire); margin-top: 1px; }
 
-  .refus-rond {
-    display: grid;
-    place-items: center;
-    width: 64px;
-    height: 64px;
-    border-radius: 50%;
-    background: var(--surface-douce);
-    color: var(--rose);
-  }
+  .filtres { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 12px var(--gouttiere) 0; }
+  .filtres::-webkit-scrollbar { display: none; }
+  .filtre { flex: 0 0 auto; font-size: 14px; font-weight: 700; color: var(--texte-secondaire); padding: 7px 12px; border-radius: var(--r-pilule); border: 1px solid var(--bordure); background: var(--surface); white-space: nowrap; }
+  .filtre.actif { background: var(--encre); border-color: var(--encre); color: #FFFFFF; }
 
-  .refus h1 {
-    font-size: 24.5px;
-  }
+  .alertes { display: grid; padding-top: 0; padding-bottom: 0; }
+  .alertes :global(.alerte) { margin-top: 12px; }
+  .etat-vide :global(.icone-vide) { color: var(--texte-tertiaire); }
 
-  .refus p {
-    max-width: 300px;
-    font-size: 15.5px;
-    color: var(--texte-2);
-    line-height: 1.5;
-  }
+  .liste { display: grid; gap: 11px; }
+  .carte { background: var(--surface); border: 1px solid var(--bordure); border-radius: var(--r-grand); padding: 14px; }
+  .tete { display: flex; align-items: center; gap: 11px; }
+  .logo { width: 40px; height: 40px; border-radius: 11px; background: var(--encre); color: #FFFFFF; font-family: 'Outfit', sans-serif; font-weight: 800; display: flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+  .note-carree { background: var(--jaune); color: var(--encre); font-size: 17px; }
+  .infos { flex: 1; min-width: 0; }
+  .nom { display: block; font-weight: 700; font-size: 16px; color: var(--encre); }
+  .meta { display: block; font-size: 13px; color: var(--texte-secondaire); margin-top: 2px; }
+  .quand { font-size: 12.5px; color: var(--texte-tertiaire); white-space: nowrap; }
+  .accroche { margin: 9px 0 0; font-size: 14px; color: var(--texte-corps); display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+  .accroche.muet { color: var(--texte-tertiaire); font-style: italic; }
+  .total { margin-left: auto; font-size: 15px; }
+  .contact { margin: 8px 0 0; font-size: 14px; color: var(--texte-secondaire); }
+  .contact a { white-space: nowrap; }
 
-  /* --- L'espace --- */
-  .admin {
-    max-width: 560px;
-    margin: 0 auto;
-    padding: var(--e4) var(--e4) var(--e6);
-  }
+  .repere { margin-top: 10px; }
 
-  .tete {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: var(--e3);
-    padding-bottom: var(--e4);
-  }
+  .mentions { margin-top: 12px; border-top: 1px solid var(--bordure); padding-top: 12px; }
+  .ligne-mention { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; margin-top: 5px; }
+  .ligne-mention span { color: var(--texte-secondaire); }
 
-  .tete h1 {
-    font-size: 27px;
-    font-weight: 800;
-  }
+  .repli { margin-top: 12px; border-top: 1px solid var(--bordure); padding-top: 10px; }
+  .repli summary { cursor: pointer; font-size: 14px; font-weight: 700; color: var(--texte-secondaire); min-height: 28px; }
+  .form-repli { margin-top: 10px; }
 
-  .sous {
-    margin-top: 2px;
-    font-size: 14.5px;
-    color: var(--texte-3);
-  }
+  .actions { margin-top: 13px; }
+  .actions .btn { flex: 1; text-align: center; display: block; width: auto; }
 
-  .sortie {
-    display: grid;
-    place-items: center;
-    width: 38px;
-    height: 38px;
-    flex: none;
-    border: 1px solid var(--bordure);
-    border-radius: 50%;
-    color: var(--encre);
-  }
+  .entete-section { margin-bottom: 2px; }
+  .note-boutique { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: var(--texte-secondaire); flex: 0 0 auto; }
 
-  .onglets {
-    display: flex;
-    gap: var(--e2);
-    margin-bottom: var(--e4);
-  }
-
-  .onglet {
-    display: flex;
-    flex: 1;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    min-height: 44px;
-    border: 1px solid var(--bordure);
-    border-radius: var(--r-ronde);
-    background: var(--surface);
-    color: var(--texte-2);
-    font-size: 15.5px;
-    font-weight: 600;
-  }
-
-  .onglet-actif {
-    border-color: var(--encre);
-    background: var(--encre);
-    color: #fff;
-  }
-
-  .compteur {
-    display: grid;
-    place-items: center;
-    min-width: 20px;
-    height: 20px;
-    padding: 0 6px;
-    border-radius: var(--r-ronde);
-    background: var(--rose);
-    color: #fff;
-    font-size: 12.5px;
-    font-weight: 700;
-  }
-
-  /* --- Chercher --- */
-  .chercher {
-    display: flex;
-    align-items: center;
-    gap: var(--e2);
-    margin-bottom: var(--e3);
-    padding: 0 var(--e3);
-    border: 1px solid var(--bordure);
-    border-radius: var(--r-ronde);
-    background: var(--surface);
-    color: var(--texte-3);
-  }
-
-  .chercher input {
-    flex: 1;
-    min-height: 44px;
-    border: none;
-    background: none;
-    font-family: var(--texte);
-    font-size: 17px;
-  }
-
-  .chercher input:focus {
-    outline: none;
-  }
-
-  .vider {
-    display: flex;
-    color: var(--texte-3);
-  }
-
-  /* --- Les lignes de la boîte --- */
-  .lignes,
-  .commandes,
-  .articles {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-  }
-
-  .lignes {
-    display: flex;
-    flex-direction: column;
-    gap: var(--e2);
-  }
-
-  .ligne {
-    display: flex;
-    gap: var(--e3);
-    align-items: center;
-    padding: var(--e3);
-    border: 1px solid var(--bordure);
-    border-radius: 18px;
-    background: var(--surface);
-    color: var(--encre);
-  }
-
-  .ligne-corps {
-    flex: 1;
-    min-width: 0;
-  }
-
-  .ligne-haut,
-  .ligne-bas {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--e2);
-  }
-
-  .ligne-haut b {
-    flex: 1;
-    min-width: 0;
-    font-size: 17px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  /* Une conversation medicale se reconnait avant d'etre lue. */
-  .ligne-medecin {
-    border-left: 3px solid var(--rose);
-  }
-
-  .etiquette-sujet {
-    flex: none;
-    padding: 2px 8px;
-    border-radius: var(--r-ronde);
-    background: var(--rose-clair);
-    color: var(--rose-fonce);
-    font-size: 12px;
-    font-weight: 700;
-  }
-
-  .ligne-heure {
-    flex: none;
-    font-size: 13px;
-    color: var(--texte-3);
-  }
-
-  .ligne-apercu {
-    flex: 1;
-    min-width: 0;
-    margin-top: 2px;
-    font-size: 14.5px;
-    color: var(--texte-2);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .ligne-apercu-gras {
-    color: var(--encre);
-    font-weight: 600;
-  }
-
-  .non-lu {
-    display: grid;
-    place-items: center;
-    min-width: 20px;
-    height: 20px;
-    flex: none;
-    padding: 0 6px;
-    border-radius: var(--r-ronde);
-    background: var(--rose);
-    color: #fff;
-    font-size: 12.5px;
-    font-weight: 700;
-  }
-
-  .ligne-tel {
-    display: block;
-    margin-top: 2px;
-    font-size: 13px;
-    color: var(--texte-3);
-  }
-
-  .rien {
-    padding: var(--e5) 0;
-    font-size: 15.5px;
-    color: var(--texte-3);
-    text-align: center;
-  }
-
-  /* --- Les commandes --- */
-  .filtres {
-    display: flex;
-    gap: 6px;
-    margin: 0 calc(var(--e4) * -1) var(--e3);
-    padding: 0 var(--e4);
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-
-  .filtres::-webkit-scrollbar {
-    display: none;
-  }
-
-  .filtre {
-    flex: none;
-    padding: 8px 13px;
-    border: 1px solid var(--bordure);
-    border-radius: var(--r-ronde);
-    background: var(--surface);
-    color: var(--texte-2);
-    font-size: 14.5px;
-    font-weight: 600;
-    white-space: nowrap;
-  }
-
-  .filtre-actif {
-    border-color: var(--encre);
-    background: var(--encre);
-    color: #fff;
-  }
-
-  .commandes {
-    display: flex;
-    flex-direction: column;
-    gap: var(--e3);
-  }
-
-  .commande {
-    padding: var(--e3);
-    border: 1px solid var(--bordure);
-    border-radius: 18px;
-    border-left: 4px solid var(--bordure);
-    background: var(--surface);
-  }
-
-  .etat-nouvelle { border-left-color: var(--rose); }
-  .etat-preparee { border-left-color: #f5a623; }
-  .etat-envoyee { border-left-color: #7c5ce0; }
-  .etat-livree { border-left-color: #2f9e5e; }
-  .etat-annulee { border-left-color: var(--texte-3); }
-
-  .commande-haut {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--e2);
-    margin-bottom: 6px;
-  }
-
-  .commande-haut b {
-    font-family: var(--titre);
-    font-size: 18px;
-  }
-
-  .etiquette-etat {
-    padding: 3px 10px;
-    border-radius: var(--r-ronde);
-    background: var(--surface-douce);
-    font-size: 13px;
-    font-weight: 700;
-  }
-
-  .commande-qui,
-  .commande-ou {
-    font-size: 15px;
-    line-height: 1.4;
-  }
-
-  .commande-ou {
-    color: var(--texte-2);
-  }
-
-  .commande-qui a {
-    font-weight: 600;
-  }
-
-  .articles {
-    margin: var(--e2) 0;
-    padding-top: var(--e2);
-    border-top: 1px solid var(--bordure);
-    font-size: 14.5px;
-  }
-
-  .articles li {
-    display: flex;
-    justify-content: space-between;
-    gap: var(--e2);
-    padding: 2px 0;
-  }
-
-  .articles-livraison {
-    color: var(--texte-2);
-  }
-
-  .articles-total {
-    margin-top: 4px;
-    padding-top: 6px;
-    border-top: 1px solid var(--bordure);
-    font-weight: 700;
-  }
-
-  .commande-quand {
-    font-size: 13px;
-    color: var(--texte-3);
-  }
-
-  .etats {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin-top: var(--e2);
-  }
-
-  .bouton-etat {
-    padding: 8px 12px;
-    border: 1px solid var(--bordure);
-    border-radius: var(--r-ronde);
-    background: var(--surface-douce);
-    font-family: var(--texte);
-    font-size: 14px;
-    font-weight: 600;
-  }
-
-  .bouton-etat:active {
-    transform: scale(0.96);
-  }
-
-  .promesse {
-    margin-top: var(--e5);
-    font-size: 13.5px;
-    color: var(--texte-3);
-    line-height: 1.5;
-  }
+  .reste { font-size: 13px; color: var(--texte-secondaire); margin: 0; }
+  .politique { margin-top: 4px; }
 </style>

@@ -1,0 +1,283 @@
+/* Jia — animations.
+   ==========================================================================
+
+   Tout ici est du CSS, jamais du JavaScript. Une bibliothèque d'animation
+   coûterait 30 à 100 Ko à télécharger puis à interpréter sur un Android
+   d'entrée de gamme : l'application paraîtrait plus lente, pas plus vivante.
+   Ce fichier pèse quelques kilo-octets, se met en cache une fois, et
+   s'exécute sur le processeur graphique.
+
+   Deux règles tenues partout :
+
+   1. On n'anime que `transform` et `opacity`. Animer `width`, `top` ou
+      `box-shadow` force le navigateur à recalculer la mise en page à chaque
+      image : c'est exactement ce qui fait saccader un téléphone à 30 000 F.
+
+   2. Rien n'est jamais invisible « en attendant » une animation. Si le moteur
+      d'animation ne démarre pas, l'état de départ est l'état lisible. Une page
+      qui reste blanche parce qu'une animation n'a pas tourné est une page
+      perdue.
+
+   Et un garde-fou : `prefers-reduced-motion` coupe tout, d'un bloc, à la fin
+   du fichier. Le mouvement rend certaines personnes malades.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Entrées en cascade
+   Les blocs d'une page arrivent l'un après l'autre, de quelques dizaines de
+   millisecondes. C'est ce décalage, plus que l'animation elle-même, qui donne
+   l'impression d'une application soignée.
+   -------------------------------------------------------------------------- */
+
+@keyframes yaar-monte {
+  from { opacity: 0; transform: translate3d(0, 14px, 0); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes yaar-descend {
+  from { opacity: 0; transform: translate3d(0, -12px, 0); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes yaar-glisse-droite {
+  from { opacity: 0; transform: translate3d(-18px, 0, 0); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes yaar-eclot {
+  from { opacity: 0; transform: scale(.92); }
+  to   { opacity: 1; transform: none; }
+}
+
+.monte,
+.descend,
+.glisse,
+.eclot {
+  animation: yaar-monte .5s cubic-bezier(.22, .9, .26, 1) both;
+}
+.descend { animation-name: yaar-descend; }
+.glisse  { animation-name: yaar-glisse-droite; }
+.eclot   { animation-name: yaar-eclot; }
+
+/* Retards de cascade. Au-delà de 400 ms, l'attente se voit : on s'arrête là. */
+.monte-1, .descend-1, .glisse-1, .eclot-1 { animation-delay: .06s; }
+.monte-2, .descend-2, .glisse-2, .eclot-2 { animation-delay: .12s; }
+.monte-3, .descend-3, .glisse-3, .eclot-3 { animation-delay: .18s; }
+.monte-4, .descend-4, .glisse-4, .eclot-4 { animation-delay: .24s; }
+.monte-5, .descend-5, .glisse-5, .eclot-5 { animation-delay: .3s; }
+.monte-6, .descend-6, .glisse-6, .eclot-6 { animation-delay: .36s; }
+
+/* --------------------------------------------------------------------------
+   2. Apparition au défilement, sans JavaScript
+   `animation-timeline: view()` lie l'animation à l'entrée de l'élément dans
+   l'écran. Là où ce n'est pas encore supporté (Android ancien), le contenu
+   s'affiche simplement, sans animation : c'est le bon défaut.
+   -------------------------------------------------------------------------- */
+
+@supports (animation-timeline: view()) {
+  .au-defilement {
+    animation: yaar-monte linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 55%;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   3. Mouvements continus
+   Réservés aux éléments décoratifs et aux appels à l'action. Un mouvement
+   permanent sur du texte à lire fatigue.
+   -------------------------------------------------------------------------- */
+
+@keyframes yaar-flotte {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50%      { transform: translate3d(0, -7px, 0); }
+}
+
+@keyframes yaar-respire {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.04); }
+}
+
+@keyframes yaar-derive {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  33%  { transform: translate3d(16px, -22px, 0) scale(1.08); }
+  66%  { transform: translate3d(-14px, 12px, 0) scale(.95); }
+  100% { transform: translate3d(0, 0, 0) scale(1); }
+}
+
+@keyframes yaar-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: .45; }
+}
+
+/* Reflet qui balaie une surface. Sert à signaler une nouveauté ou une promotion,
+   jamais en continu sur toute une page. */
+@keyframes yaar-reflet {
+  0%   { transform: translate3d(-120%, 0, 0) rotate(18deg); }
+  100% { transform: translate3d(320%, 0, 0) rotate(18deg); }
+}
+
+.flotte  { animation: yaar-flotte 4.5s ease-in-out infinite; }
+.respire { animation: yaar-respire 3s ease-in-out infinite; }
+.derive  { animation: yaar-derive 18s ease-in-out infinite; }
+.pulse   { animation: yaar-pulse 1.8s ease-in-out infinite; }
+
+/* --------------------------------------------------------------------------
+   4. Réactions au toucher
+   Sur mobile, il n'y a pas de survol : c'est l'enfoncement qui donne la
+   sensation de matière. `:active` se déclenche au doigt posé, avant même la
+   navigation, ce qui masque la latence du réseau.
+   -------------------------------------------------------------------------- */
+
+.reagit {
+  transition: transform .22s cubic-bezier(.22, .9, .26, 1), box-shadow .22s ease, border-color .22s ease;
+}
+.reagit:active { transform: scale(.97); }
+
+.souleve {
+  transition: transform .28s cubic-bezier(.22, .9, .26, 1), box-shadow .28s ease;
+}
+.souleve:hover  { transform: translate3d(0, -4px, 0); }
+.souleve:active { transform: scale(.98); }
+
+/* --------------------------------------------------------------------------
+   4 bis. Les réponses aux gestes (accueil vivant, 28 septembre 2026)
+   Arthur : « des maquettes plus vivantes, mais posées ». Ce qui bouge ici
+   bouge PARCE QU'on a fait quelque chose : on aime, on ajoute, on fait défiler.
+   Rien ne s'agite tout seul pour attirer l'œil, à une exception près, le
+   produit du panneau, qui flotte comme posé sur un présentoir.
+   -------------------------------------------------------------------------- */
+
+/* Une carte qui monte à sa place quand elle entre dans l'écran. Seul l'état de
+   départ est écrit : l'arrivée reprend l'état normal de la carte, ce qui laisse
+   intacts son enfoncement au toucher et son soulèvement au survol. */
+@keyframes yaar-carte {
+  from { opacity: 0; transform: translate3d(0, 26px, 0) scale(.96); }
+}
+
+/* Le losange du logo se pose, une fois, à l'arrivée sur le site. */
+@keyframes yaar-pose {
+  from { transform: rotate(45deg) scale(0); }
+  60%  { transform: rotate(45deg) scale(1.3); }
+}
+
+/* Le cœur bat quand on aime. */
+@keyframes yaar-bat {
+  0%   { transform: scale(1); }
+  30%  { transform: scale(1.32); }
+  55%  { transform: scale(.9); }
+  80%  { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+
+/* Le panier rebondit quand on ajoute. */
+@keyframes yaar-rebond {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.2); }
+  65%  { transform: scale(.94); }
+  100% { transform: scale(1); }
+}
+
+
+.pose     { animation: yaar-pose .6s cubic-bezier(.3, 1.6, .5, 1) .2s both; }
+.bat      { animation: yaar-bat .5s cubic-bezier(.3, 1.4, .5, 1); }
+.rebondit { animation: yaar-rebond .42s cubic-bezier(.3, 1.5, .5, 1); }
+
+/* --------------------------------------------------------------------------
+   5. Le produit qui vole de son affiche à sa fiche
+   La photo touchée et celle de la fiche portent le même nom de transition
+   (scripts/envol.ts, .photo-produit). Le navigateur la fait voler de l'une à
+   l'autre pendant le changement de page ; ici, on la fait tourner en route.
+   -------------------------------------------------------------------------- */
+
+::view-transition-group(produit) {
+  animation-duration: 720ms;
+  animation-timing-function: cubic-bezier(.4, 0, .2, 1);
+  z-index: 2;
+}
+::view-transition-image-pair(produit) {
+  animation: yaar-vol-tourne 720ms cubic-bezier(.4, 0, .2, 1) both;
+}
+@keyframes yaar-vol-tourne {
+  0%   { transform: perspective(900px) rotateY(0) scale(1); }
+  45%  { transform: perspective(900px) rotateY(200deg) scale(1.12); }
+  100% { transform: perspective(900px) rotateY(360deg) scale(1); }
+}
+
+/* --------------------------------------------------------------------------
+   6. Dégradés vivants
+   Un dégradé qui se déplace lentement donne de la profondeur à un aplat, sans
+   une seule image à télécharger.
+   -------------------------------------------------------------------------- */
+
+@keyframes yaar-degrade {
+  0%   { background-position:   0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position:   0% 50%; }
+}
+
+.degrade-vivant {
+  background-size: 220% 220%;
+  animation: yaar-degrade 14s ease infinite;
+}
+
+/* --------------------------------------------------------------------------
+   7. Transitions entre les pages
+   La norme des vues partagées, en CSS seul. Aucun routeur JavaScript : le site
+   reste fait de vraies pages, qui fonctionnent sans script. Les navigateurs
+   qui ne la connaissent pas naviguent normalement.
+   -------------------------------------------------------------------------- */
+
+@view-transition {
+  navigation: auto;
+}
+
+/* Un fondu enchaîné court, sans décalage. La première version faisait sortir
+   l'ancienne page en 220 ms vers le haut pendant que la nouvelle entrait en
+   320 ms par le bas : les deux se croisaient mal et l'écran « respirait » à
+   chaque changement d'onglet. Ici les deux durent pareil et se superposent. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 140ms;
+  animation-timing-function: ease-out;
+}
+
+/* Quand on passe d'une page du site à une autre (un onglet, un retour), le
+   contenu est déjà là pour l'œil grâce à la transition : rejouer la cascade
+   d'apparition et les lettres de l'accueil donnerait l'impression d'un
+   rechargement. La classe est posée par scripts/envol.ts avant le premier
+   affichage. À l'arrivée sur le site, tout se joue normalement. */
+html.nav-interne .monte, html.nav-interne .descend, html.nav-interne .glisse, html.nav-interne .eclot,
+html.nav-interne .lettre, html.nav-interne .losange-enseigne, html.nav-interne .pose { animation: none; }
+
+/* --------------------------------------------------------------------------
+   8. Le garde-fou
+   Certaines personnes ont des vertiges ou des migraines déclenchés par le
+   mouvement, et le réglage existe dans tous les systèmes. On le respecte sans
+   discuter : les entrées deviennent de simples fondus, le reste s'arrête.
+   -------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .monte, .descend, .glisse, .eclot, .au-defilement {
+    animation: yaar-fondu .2s ease both;
+    animation-delay: 0s !important;
+  }
+  @keyframes yaar-fondu {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  .flotte, .respire, .derive, .pulse, .degrade-vivant,
+  .pose, .bat, .rebondit {
+    animation: none !important;
+  }
+  ::view-transition-group(produit),
+  ::view-transition-image-pair(produit) { animation: none; }
+  .reagit, .souleve { transition: none; }
+  .souleve:hover { transform: none; }
+
+  ::view-transition-old(root),
+  ::view-transition-new(root),
+  ::view-transition-group(nav-bulle), ::view-transition-group(nav-icone), ::view-transition-group(nav-libelle),
+  ::view-transition-image-pair(nav-bulle) { animation: none; }
+}

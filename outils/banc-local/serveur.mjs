@@ -260,10 +260,19 @@ await comme(`select public.changer_telephone('70889900')`, [], claimsAutre);
 // (`secrets/.env`, hors du dépôt), exactement comme le fait
 // `outils/nommer-admin.mjs`. Rien ne s'affiche d'elle au-delà de son début : ce
 // qui s'imprime dans un terminal finit dans un journal.
-const COFFRE = 'C:/Users/larou/OneDrive/Desktop/Jarvis/secrets/.env';
+// Deux PC, deux comptes Windows, deux emplacements du dossier Jarvis : un seul
+// chemin en dur marchait sur une machine et pas sur l'autre, et le banc se
+// rabattait alors en silence sur « le compte de démonstration est
+// administrateur ». Même liste que outils/coffre.mjs.
+const COFFRES = [
+  'C:/Users/larou/OneDrive/Desktop/Jarvis/secrets/.env',
+  'C:/Users/larou/Desktop/Jarvis/secrets/.env',
+  'C:/Users/USER/Desktop/Jarvis/secrets/.env',
+];
 
 function adresseAdminDuCoffre() {
-  if (!fs.existsSync(COFFRE)) return null;
+  const COFFRE = COFFRES.find((c) => fs.existsSync(c));
+  if (!COFFRE) return null;
   for (const ligne of fs.readFileSync(COFFRE, 'utf8').split(/\r?\n/)) {
     const propre = ligne.trim();
     if (!propre || propre.startsWith('#')) continue;
@@ -304,8 +313,13 @@ if (emailAdmin) {
   // On ne montre plus aucun fragment de l'adresse (Arthur, le 26 octobre
   // 2026 : « tu balances carrement mon email »). Trois lettres et un domaine
   // suffisent a reconnaitre quelqu'un, et un terminal finit dans un journal.
-  const masque = `une adresse de ${emailAdmin.length} caracteres`;
-  noteAdmin = `Administrateur : ${masque} / motdepasse (la seule adresse qui entre)`;
+  //
+  // Du coup l'adresse ne s'imprime pas, et Arthur ne peut pas la taper : le
+  // 5 novembre 2026, « j'arrive pas a me connecter a admin Mousso Dambe ».
+  // La note donne donc le lien qui entre sans rien taper, au lieu d'un masque
+  // qui ne sert qu'a dire qu'une adresse existe.
+  noteAdmin =
+    'Administration : ouvre http://admin.localhost:4322/dev/admin (entre sans mot de passe, local seulement)';
 } else {
   // Sur une machine sans le coffre, le banc ne doit pas devenir inutilisable :
   // on retombe sur le compte de démonstration, et on le dit franchement.

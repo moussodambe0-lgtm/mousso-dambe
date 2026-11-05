@@ -266,7 +266,23 @@ const onglet = moi ? (ONGLET_DORIGINE[dOu] ?? 'compte') : null;
             </p>
           )}
 
-          <details class="replie">
+          {/* EN LOCAL, LA PORTE SANS MOT DE PASSE. Arthur, le 5 novembre 2026 :
+              « j'arrive pas à me connecter à admin Mousso Dambé ». Le banc
+              local recrée sa base à chaque redémarrage, donc sa session meurt
+              et il retombe ici, devant un bouton Google qui ne peut pas
+              marcher sur localhost. Ce lien n'apparaît qu'en développement :
+              src/pages/dev/admin.ts renvoie 404 en production. */}
+          {import.meta.env.DEV && surHoteAdmin && (
+            <a class="btn btn-contour btn-plein porte-locale" href="/dev/admin">
+              Entrer sans mot de passe (local)
+            </a>
+          )}
+
+          {/* DÉPLIÉ SUR L'ADRESSE DE LA GESTION. Google est mis en valeur pour
+              les clientes, et c'est juste pour elles. Mais un administrateur
+              sur localhost n'a que l'email, et le chercher derrière un repli
+              était un piège. */}
+          <details class="replie" open={surHoteAdmin}>
             <summary>
               <span>Utiliser un email et un mot de passe</span>
               <Icone nom="bas" taille={16} />
@@ -375,6 +391,12 @@ const onglet = moi ? (ONGLET_DORIGINE[dOu] ?? 'compte') : null;
   .choix {
     display: grid;
     gap: var(--e3);
+  }
+
+  /* La porte locale, sous Google et au-dessus du formulaire : visible sans
+     chercher, mais sans voler la vedette au chemin qui sera le vrai. */
+  .porte-locale {
+    margin-top: var(--e3);
   }
 
   .champ-bloc {

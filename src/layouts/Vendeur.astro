@@ -1,177 +1,123 @@
 ---
 /**
- * Le gabarit de l'espace vendeur.
+ * Le gabarit de l'espace vendeur, copié de `layouts/Vendeur.astro` de Jia.
  *
- * Arthur, le 14 octobre 2026 : « tu vois l'espace vendeur de Jia ; je veux à
- * peu près la même chose, mais adapté pour Mousso Dambé ». Chez Jia, la
- * console vendeur a sa propre barre basse à cinq onglets (Dashboard, Produits,
- * Messages, Commandes, Ma boutique) et chaque écran s'y accroche.
+ * Arthur, le 5 novembre 2026 : « va, tu pars dans Jia, la manière que l'espace
+ * vendeur, la présentation de l'espace vendeur, tu copies la même chose, tout,
+ * tout ce que tu vas voir là-bas, tu copies, tu viens mettre [...] même les
+ * couleurs ».
  *
- * CE QUI CHANGE ICI, et pourquoi : Jia est une place de marché, avec des
- * vendeurs qui ont chacun leur boutique à remplir, une vérification de pièces
- * d'identité, des litiges et des paiements en ligne. Mousso Dambé n'a qu'une
- * boutique, celle d'Arthur, pas de paiement en ligne et pas de litige. Les
- * onglets « Ma boutique » et « Vérification » n'auraient donc rien à montrer :
- * il en reste quatre, et le tableau de bord récupère ce qui compte.
+ * CE QUI EST REPRIS TEL QUEL : l'en-tête collant avec sa pastille à gauche et
+ * le titre de la page, la barre basse avec sa bulle qui glisse, et toute la
+ * feuille de style de Jia (orange, noir, blanc, rouge ; Outfit pour les
+ * titres, Karla pour le texte). Les onglets portent les mêmes mots, dans le
+ * même ordre : Résumé, Commandes, Produits, Messages.
  *
- * Qui entre : la base, et elle seule. `est_admin()` est demandé par chaque
- * page avant d'afficher quoi que ce soit, et les fonctions appelées refusent
- * de répondre à quelqu'un d'autre, même en SQL direct.
+ * LES TROIS SEULES CHOSES QUE JE N'AI PAS COPIÉES, et pourquoi :
+ *
+ *   1. La pastille en haut à gauche dit « Administration » et non « Quitter ».
+ *      Chez Jia, « Quitter » ramène le vendeur sur son compte d'acheteur, dans
+ *      la même application. Ici les deux mondes sont sur deux adresses
+ *      différentes, et Arthur avait justement demandé qu'on retire ce lien le
+ *      5 novembre 2026 : « quand je suis dans admin je vois en haut à gauche
+ *      Quitter, non enlève ça », après s'être perdu (« j'ai cru que c'était
+ *      2 pages différentes »). La pastille garde sa place, sa forme et son
+ *      chevron ; seuls le mot et la destination changent.
+ *
+ *   2. Les bandeaux « boutique en vérification », « boutique suspendue » et
+ *      « vue administrateur » ne sont pas repris. Ils annoncent qu'un tiers
+ *      juge la boutique ou qu'on regarde celle de quelqu'un d'autre. Mousso
+ *      Dambé est la seule boutique et personne ne la juge : ces bandeaux ne
+ *      pourraient jamais s'allumer.
+ *
+ *   3. L'onglet « Ma boutique » et le bandeau rouge qui y menait. Arthur, le
+ *      5 novembre 2026, après avoir vu la copie : « laisse tomber le menu Ma
+ *      boutique dans espace vendeur ». Le bandeau annonçait ce qui manquait à
+ *      la vitrine et menait à cette page ; sans page, il n'avait plus de
+ *      destination. `src/lib/vitrine.ts` et les fonctions `boutique_vitrine()`
+ *      et `enregistrer_vitrine()` restent en place, prêtes, et rien ne les
+ *      affiche pour l'instant.
  */
-import Base from './Base.astro';
-import Icone from '../components/Icone.astro';
-
-export type OngletVendeur = 'tableau' | 'produits' | 'messages' | 'commandes';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import BaseGestion from './BaseGestion.astro';
+import Icone from '../components/IconeJia.astro';
+import NavVendeur, { type OngletVendeur } from '../components/NavVendeur.astro';
 
 interface Props {
   titre: string;
   onglet: OngletVendeur;
-  /** Le nombre de commandes qui attendent d'être préparées. */
-  aPreparer?: number;
-  /** Les messages de la boutique encore non lus. */
-  messages?: number;
+  sb: SupabaseClient;
+  /** Sous-titre sous le nom de la page. */
+  sousTitre?: string;
+  /** Réserve la place d'une barre d'action collante au-dessus de la navigation. */
+  avecBarreAction?: boolean;
 }
 
-const { titre, onglet, aPreparer = 0, messages = 0 } = Astro.props;
+const { titre, onglet, sb, sousTitre, avecBarreAction = false } = Astro.props;
 
-// « Quitter » ramène au site des clientes, qui depuis le 21 octobre 2026 est sur
-// une autre adresse que la gestion. `Astro.site` porte cette adresse (SITE_URL,
-// sinon celle de Vercel, sinon le serveur de développement), donc ce lien suit
-// le domaine du jour sans que rien ne soit écrit en dur. Sans elle, on reste sur
-// un chemin relatif, qui marchera tant que la séparation n'est pas en place.
-const lienQuitter = Astro.site ? new URL('/compte', Astro.site).href : '/compte';
-
-const ONGLETS: { cle: OngletVendeur; libelle: string; href: string; icone: string; compteur?: number }[] = [
-  { cle: 'tableau', libelle: 'Tableau', href: '/vendeur', icone: 'tableau' },
-  { cle: 'produits', libelle: 'Produits', href: '/vendeur/produits', icone: 'carton' },
-  { cle: 'commandes', libelle: 'Commandes', href: '/vendeur/commandes', icone: 'liste', compteur: aPreparer },
-  { cle: 'messages', libelle: 'Messages', href: '/vendeur/messages', icone: 'bulles', compteur: messages },
-];
+// Les compteurs de la navigation, visibles depuis toutes les pages. Chez Jia
+// ce sont deux requêtes ; ici deux fonctions, pour la même raison : la barre
+// doit dire la vérité sur chaque écran, pas seulement sur celui qui l'a
+// calculée.
+const [tableau, boite] = await Promise.all([
+  sb.rpc('tableau_de_bord_vendeur'),
+  sb.rpc('boite_de_reception', { p_recherche: null, p_sujet: null }),
+]);
+const aExpedier = Number((tableau.data as any)?.a_expedier ?? 0);
+const messagesNonLus = Number((boite.data as any)?.non_lus ?? 0);
 ---
 
-<Base titre={titre} nav={null}>
-  <div class="vendeur">
-    <header class="barre-vendeur">
-      <div class="dedans">
-        <span class="marque">Espace vendeur</span>
-        <a class="sortie" href={lienQuitter}>Quitter</a>
-      </div>
-    </header>
+<BaseGestion
+  titre={`${titre} · Espace vendeur`}
+  description="Espace vendeur de Mousso Dambé."
+  avecBarreAction={avecBarreAction}
+>
+  {/* En-tête compact, celui de Jia : la sortie et le titre de la page, rien de
+      plus. Le nom de la boutique n'y figure pas, on le connaît. */}
+  <header class="entete-vendeur">
+    <a href="/admin" class="sortie reagit">
+      <Icone name="chevron-left" size={19} stroke={2} />
+      <span>Administration</span>
+    </a>
+    <div class="titres">
+      <h1>{titre}</h1>
+      {sousTitre && <div class="sous">{sousTitre}</div>}
+    </div>
+  </header>
 
-    <main class="page corps">
-      <slot />
-      <div class="place-barre"></div>
-    </main>
+  <slot />
 
-    <nav class="nav-vendeur" aria-label="Espace vendeur">
-      {
-        ONGLETS.map((o) => (
-          <a
-            class:list={['onglet', onglet === o.cle && 'onglet-actif']}
-            href={o.href}
-            aria-current={onglet === o.cle ? 'page' : undefined}
-          >
-            <span class="onglet-icone">
-              <Icone nom={o.icone} taille={22} />
-              {(o.compteur ?? 0) > 0 && <span class="onglet-compteur">{o.compteur}</span>}
-            </span>
-            <span class="onglet-mot">{o.libelle}</span>
-          </a>
-        ))
-      }
-    </nav>
-  </div>
-</Base>
+  <NavVendeur actif={onglet} aExpedier={aExpedier} messages={messagesNonLus} />
+</BaseGestion>
 
 <style>
-  .vendeur {
-    min-height: 100dvh;
-  }
-
-  .barre-vendeur {
+  .entete-vendeur {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 12px;
     background: var(--surface);
     border-bottom: 1px solid var(--bordure);
+    padding: 11px var(--gouttiere);
   }
-
-  .dedans {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--e3);
-    padding: calc(var(--e4) + env(safe-area-inset-top, 0px)) var(--e4) var(--e4);
-  }
-
-  .marque {
-    font-family: var(--titre);
-    font-size: 18px;
-    font-weight: 800;
-  }
-
   .sortie {
-    font-size: 14.5px;
-    font-weight: 600;
-    color: var(--rose);
-  }
-
-  /* De la place pour la barre du bas, qui flotte au-dessus du contenu. */
-  .place-barre {
-    height: 104px;
-  }
-
-  .nav-vendeur {
-    position: fixed;
-    left: 50%;
-    bottom: calc(14px + env(safe-area-inset-bottom, 0px));
-    z-index: 30;
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    width: min(440px, calc(100% - 24px));
-    transform: translateX(-50%);
-    padding: 6px;
-    border-radius: 999px;
-    background: var(--encre);
-    box-shadow: 0 10px 30px rgba(27, 17, 22, 0.28);
-  }
-
-  .onglet {
-    display: flex;
-    flex-direction: column;
+    display: inline-flex;
     align-items: center;
     gap: 3px;
-    padding: 9px 2px;
-    border-radius: 999px;
-    color: rgba(255, 255, 255, 0.62);
-  }
-
-  .onglet-actif {
-    background: rgba(255, 255, 255, 0.12);
-    color: #fff;
-  }
-
-  .onglet-icone {
-    position: relative;
-    display: grid;
-    place-items: center;
-  }
-
-  .onglet-compteur {
-    position: absolute;
-    top: -5px;
-    right: -9px;
-    display: grid;
-    place-items: center;
-    min-width: 17px;
-    height: 17px;
-    padding: 0 4px;
-    border-radius: 999px;
-    background: var(--rose);
-    color: #fff;
-    font-size: 11px;
+    flex: 0 0 auto;
+    padding: 6px 11px 6px 7px;
+    border: 1px solid var(--bordure);
+    border-radius: var(--r-pilule);
+    background: var(--surface-douce);
+    color: var(--texte-secondaire);
+    font-size: 14px;
     font-weight: 700;
   }
+  .sortie:hover { color: var(--encre); border-color: var(--texte-tertiaire); }
 
-  .onglet-mot {
-    font-size: 11.5px;
-    font-weight: 600;
-  }
+  .titres { flex: 1; min-width: 0; }
+  .titres h1 { font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sous { font-size: 13px; color: var(--texte-secondaire); margin-top: 2px; }
 </style>

@@ -1,0 +1,542 @@
+---
+/**
+ * La fiche d'un produit, copiée de `pages/vendeur/produits/[id].astro` de Jia.
+ *
+ * Arthur, le 5 novembre 2026 : « tu copies tout, tu copies absolument tout,
+ * même les couleurs ». C'est l'écran qui manquait le plus : jusqu'ici le
+ * catalogue se modifiait dans un petit formulaire ouvert au milieu de la liste,
+ * et il fallait fermer la liste pour voir ce qu'on écrivait.
+ *
+ * UNE SEULE PAGE POUR DEUX GESTES, comme chez Jia : `/vendeur/produits/nouveau`
+ * crée, `/vendeur/produits/<slug>` modifie. Le reste de l'écran est identique
+ * dans les deux cas, et un seul fichier garantit qu'il le reste.
+ *
+ * L'ADRESSE PORTE LE SLUG, PAS L'UUID. Chez Jia c'est un uuid. Ici tout ce qui
+ * désigne un produit, de `retirer_produit()` à `tableau_de_bord_stock()`, parle
+ * en slugs : les liens « À réapprovisionner » du Résumé pointent déjà sur
+ * `/vendeur/produits/<slug>`. Un uuid dans l'adresse aurait obligé à traduire
+ * dans les deux sens à chaque lien.
+ *
+ * CE QUI EST COPIÉ TEL QUEL : l'ordre des blocs (les alertes et le lien vers la
+ * fiche publique, ce qui empêche de publier, le visuel, puis la fiche, puis le
+ * choix publié/brouillon, puis les deux boutons), les encadrés `.bloc`, les
+ * libellés `.etiquette-champ`, les deux grandes options radio avec leur puce
+ * qui s'allume en vert au clic, la liste numérotée en orange des manques, et
+ * toute la feuille de style du fichier de Jia.
+ *
+ * CE QUE JE N'AI PAS PU REPRENDRE, FAUTE DE DONNÉES ICI :
+ *
+ *   - les PHOTOS multiples, leur compression dans le téléphone, le détourage et
+ *     la vidéo de démonstration. Ce projet n'a aucun stockage de fichiers : les
+ *     visuels du catalogue sont des fichiers déposés dans le site
+ *     (`/produits/…-600.webp`) et `produits.image` n'en garde que le chemin. Le
+ *     bloc « Visuel » garde donc la forme du bloc « Photos » de Jia, sa grille
+ *     et sa vignette carrée, avec un champ qui dit quel fichier montrer.
+ *   - l'ANCIEN PRIX barré et la REMISE : `produits` n'a qu'une colonne de prix.
+ *   - la GARANTIE en mois et l'état NEUF/OCCASION : des serviettes et des
+ *     culottes ne se garantissent pas et ne se vendent pas d'occasion.
+ *   - la FICHE TECHNIQUE ligne par ligne : il n'y a pas de table de
+ *     caractéristiques. Ce que Jia met en spécifications, le catalogue d'ici le
+ *     met dans la description, et les TAILLES ont leur propre champ, qui lui
+ *     n'existe pas chez Jia et qui décide ce qu'une cliente peut commander.
+ *
+ * DEUX CHAMPS DE LA TABLE NE SONT PAS ÉDITABLES ICI, et c'est volontaire :
+ * `reutilisable` et `ordre`. `enregistrer_produit()` ne les prend pas, et les
+ * ajouter demandait une migration. La fonction ne les écrase pas non plus quand
+ * elle met à jour une fiche : ils gardent leur valeur. Le jour où Arthur veut
+ * ranger son catalogue à la main, c'est une migration de dix lignes et deux
+ * champs de plus dans ce formulaire.
+ *
+ * LE SEUL BLOC QUI NE VIENT PAS DE JIA : les avis. Arthur, le 26 octobre 2026 :
+ * « sur la fiche produit [...] mettre aussi des avis ». Les clientes les voient
+ * sur la fiche publique ; sans ce bloc, personne du côté gestion ne verrait
+ * jamais ce qui est dit d'un produit en particulier.
+ */
+import Vendeur from '../../../layouts/Vendeur.astro';
+import Icone from '../../../components/IconeJia.astro';
+import Alerte from '../../../components/AlerteJia.astro';
+import { exigerGestion } from '../../../lib/gestion';
+import { etoiles, dateCourte } from '../../../lib/format-gestion';
+
+const acces = await exigerGestion(Astro);
+if (acces instanceof Response) return acces;
+const { sb } = acces;
+
+const idParam = Astro.params.id ?? '';
+const creation = idParam === 'nouveau';
+// Un slug n'est que des minuscules, des chiffres et des tirets. Tout le reste
+// est un lien bricolé : on répond 404 sans aller interroger la base.
+if (!creation && !/^[a-z0-9][a-z0-9-]{0,79}$/.test(idParam)) return new Response(null, { status: 404 });
+
+/** La liste complète, publiés et retirés : la seule porte vers un brouillon. */
+async function chargerProduit(slug: string) {
+  const { data } = await sb.rpc('produits_admin');
+  return ((data?.ok ? data.produits : []) as any[]).find((p) => p.slug === slug) ?? null;
+}
+
+let produit = creation ? null : await chargerProduit(idParam);
+if (!creation && !produit) return new Response(null, { status: 404 });
+
+// Les quatre valeurs du type `rayon`, avec les mots que la boutique emploie
+// déjà sur ses propres onglets. Un rayon nommé autrement ici que là-bas finit
+// par ranger un produit dans ce qu'on croit être un autre rayon.
+const RAYONS = [
+  { id: 'serviettes', mot: 'Serviettes' },
+  { id: 'lavables', mot: 'Lavables' },
+  { id: 'culottes', mot: 'Culottes' },
+  { id: 'kits', mot: 'Kits' },
+];
+
+// Les messages de la base, dits en français. `enregistrer_produit` et
+// `retirer_produit` ne rendent que des codes : c'est à l'écran de les traduire,
+// et de dire quoi faire plutôt que ce qui a cassé.
+const ERREURS: Record<string, string> = {
+  acces_refuse: 'Cet espace ne t’est pas ouvert.',
+  nom_requis: 'Donne un nom au produit.',
+  prix_invalide: 'Indique un prix entre 1 et 999 999 FCFA.',
+  stock_invalide: 'Le stock doit être un nombre positif, ou zéro.',
+  rayon_invalide: 'Choisis un rayon dans la liste.',
+  produit_inconnu: 'Ce produit n’existe plus.',
+};
+const direErreur = (code: string | null | undefined) =>
+  (code && ERREURS[code]) || 'Enregistrement impossible. Réessaie dans un instant.';
+
+let erreur: string | null = null;
+let saisie: Record<string, string> = {
+  nom: produit?.nom ?? '',
+  rayon: produit?.rayon ?? '',
+  prix: produit ? String(produit.prix_cfa) : '',
+  stock: produit ? String(produit.stock) : '1',
+  tailles: ((produit?.tailles ?? []) as string[]).join(', '),
+  etiquette: produit?.etiquette ?? '',
+  accroche: produit?.resume ?? '',
+  description: produit?.description ?? '',
+  image: produit?.image ?? '',
+  statut: produit ? (produit.publie ? 'publie' : 'brouillon') : 'publie',
+};
+
+const entierSaisi = (v: string) => Number.parseInt(v.replace(/[^0-9]/g, ''), 10);
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const action = String(form.get('action') ?? '');
+  const champ = (n: string) => String(form.get(n) ?? '').trim();
+
+  // ----- Retirer de la boutique, ou y remettre -----
+  //
+  // Le même geste que la liste de Jia, gardé ici parce que c'est sur la fiche
+  // qu'on décide de retirer un produit. RETIRER N'EFFACE PAS : des commandes
+  // déjà passées le citent, et leur historique doit rester lisible.
+  if ((action === 'retirer' || action === 'remettre') && produit) {
+    const { data, error } = await sb.rpc('retirer_produit', {
+      p_slug: produit.slug,
+      p_remettre: action === 'remettre',
+    });
+    if (error || !data?.ok) erreur = direErreur(data?.erreur ?? error?.message);
+    else return Astro.redirect(`/vendeur/produits/${produit.slug}?ok=${action === 'remettre' ? 'remis' : 'retire'}`, 303);
+  }
+
+  // ----- Enregistrement de la fiche -----
+  if (action === 'enregistrer') {
+    saisie = {
+      nom: champ('nom'),
+      rayon: champ('rayon'),
+      prix: champ('prix'),
+      stock: champ('stock'),
+      tailles: champ('tailles'),
+      etiquette: champ('etiquette'),
+      accroche: champ('accroche'),
+      description: champ('description'),
+      image: champ('image'),
+      statut: champ('statut') === 'publie' ? 'publie' : 'brouillon',
+    };
+
+    const prixCfa = entierSaisi(saisie.prix);
+    const stock = saisie.stock === '' ? 0 : entierSaisi(saisie.stock);
+    const tailles = saisie.tailles
+      .split(',')
+      .map((x) => x.trim())
+      .filter(Boolean)
+      .slice(0, 6);
+
+    if (saisie.nom.length < 3) erreur = 'Donne un nom au produit, trois lettres au moins.';
+    else if (!RAYONS.some((r) => r.id === saisie.rayon)) erreur = 'Choisis un rayon dans la liste.';
+    else if (!Number.isFinite(prixCfa) || prixCfa <= 0 || prixCfa >= 1_000_000)
+      erreur = 'Indique un prix entre 1 et 999 999 FCFA.';
+    else if (!Number.isFinite(stock) || stock < 0 || stock > 99_999) erreur = 'Stock invalide.';
+    else if (saisie.accroche.length > 300) erreur = 'La phrase d’accroche est limitée à 300 caractères.';
+    else if (saisie.description.length > 2000) erreur = 'La description est limitée à 2 000 caractères.';
+
+    // La règle de publication de Jia, mot pour mot : « un produit sans photo
+    // reste en brouillon. Une fiche sans photo ne vend pas, et elle dégrade
+    // l'image de tout le catalogue. » Chez Jia c'est la base qui refuse, par
+    // `publier_produit()`. Ici `enregistrer_produit()` accepte tout, et les
+    // essais de la base comptent sur ce comportement : c'est donc cette page
+    // qui tient la règle. On enregistre en brouillon, rien n'est perdu, et
+    // l'écran suivant dit ce qu'il manque.
+    const veutPublier = saisie.statut === 'publie';
+    const incomplet: string[] = [];
+    if (!saisie.image) incomplet.push('visuel');
+    if (!saisie.description) incomplet.push('description');
+    const publie = veutPublier && incomplet.length === 0;
+
+    if (!erreur) {
+      const { data, error } = await sb.rpc('enregistrer_produit', {
+        p_slug: produit?.slug ?? '',
+        p_nom: saisie.nom,
+        p_rayon: saisie.rayon,
+        p_prix: prixCfa,
+        p_stock: stock,
+        p_resume: saisie.accroche,
+        p_description: saisie.description,
+        p_image: saisie.image || null,
+        p_etiquette: saisie.etiquette || null,
+        p_tailles: tailles,
+        p_publie: publie,
+      });
+      if (error || !data?.ok) {
+        console.error('enregistrer_produit', data?.erreur ?? error?.message);
+        erreur = direErreur(data?.erreur ?? error?.message);
+      } else {
+        const slug = String(data.slug ?? produit?.slug ?? '');
+        if (veutPublier && incomplet.length > 0) {
+          return Astro.redirect(`/vendeur/produits/${slug}?manque=${incomplet.join(',')}`, 303);
+        }
+        const quoi = creation ? 'cree' : publie ? 'publie' : 'enregistre';
+        return Astro.redirect(`/vendeur/produits/${slug}?ok=${quoi}`, 303);
+      }
+    }
+  }
+}
+
+// Les avis de ce produit. `avis_du_produit()` ne répond que pour un produit
+// publié : un brouillon n'a de toute façon jamais été commandé.
+let avis: any = null;
+if (produit?.publie) {
+  const { data } = await sb.rpc('avis_du_produit', { p_slug: produit.slug, p_combien: 10 });
+  if (data && Number(data.nombre) > 0) avis = data;
+}
+
+const MESSAGES: Record<string, string> = {
+  cree: 'Produit créé. Vérifie le visuel et le prix, puis publie-le.',
+  enregistre: 'Modifications enregistrées. La boutique les montre tout de suite.',
+  publie: 'Produit publié. Les clientes le voient dans la boutique.',
+  retire: 'Produit retiré de la boutique. Il reste ici, en brouillon, et ses anciennes commandes ne bougent pas.',
+  remis: 'Produit remis en vente.',
+};
+const succes = MESSAGES[Astro.url.searchParams.get('ok') ?? ''] ?? null;
+
+// Ce qui a empêché la publication, traduit en action à faire. Chaque manque se
+// comble dans un champ de cette page, il n'y a donc pas de lien à suivre.
+const LIBELLES_MANQUES: Record<string, { titre: string; texte: string }> = {
+  visuel: {
+    titre: 'Au moins un visuel',
+    texte:
+      'Un produit sans image ne se vend pas. Indique le fichier à montrer dans le bloc « Visuel », juste au-dessus.',
+  },
+  description: {
+    titre: 'Une description',
+    texte:
+      'Dis ce que c’est, ce qu’il y a dedans, comment ça s’utilise et comment ça se lave. C’est la première question de toute cliente.',
+  },
+};
+const manques = (Astro.url.searchParams.get('manque') ?? '')
+  .split(',')
+  .map((c) => LIBELLES_MANQUES[c])
+  .filter(Boolean) as { titre: string; texte: string }[];
+
+// Le visuel montré dans le bloc du haut : ce que le champ contient, pour que
+// l'aperçu suive la saisie même quand l'enregistrement a été refusé.
+const visuel = saisie.image || null;
+---
+
+<Vendeur titre={creation ? 'Nouveau produit' : 'Modifier le produit'} onglet="produits" sb={sb}>
+  <div class="section-serree alertes">
+    <Alerte message={succes} ton="succes" />
+    <Alerte message={erreur} />
+    {produit?.publie && (
+      <a href={`/boutique/${produit.slug}`} class="lien-public">
+        <Icone name="share" size={15} /> Voir la fiche publique
+      </a>
+    )}
+  </div>
+
+  {
+    manques.length > 0 && (
+      <section class="bloc section manques">
+        <div class="tete-manques">
+          <Icone name="warning" size={20} class="icone-manque" />
+          <div>
+            <h2 class="titre-bloc">Publication impossible pour l’instant</h2>
+            <p class="intro-manques">
+              Mousso Dambé demande ces éléments avant qu’un produit n’apparaisse dans la boutique. C’est ce qui
+              fait la différence avec les pages de vente où n’importe quoi est publié n’importe comment.
+            </p>
+          </div>
+        </div>
+        <ol class="liste-manques">
+          {manques.map((m) => (
+            <li>
+              <strong>{m.titre}</strong>
+              <span>{m.texte}</span>
+            </li>
+          ))}
+        </ol>
+        <p class="rassure">Ton produit est enregistré en brouillon. Rien n’est perdu.</p>
+      </section>
+    )
+  }
+
+  {/* Le bloc « Photos » de Jia, ramené à ce que la base garde : un chemin de
+      fichier. La grille et la vignette carrée sont celles de Jia. */}
+  <section class="bloc section">
+    <div class="entete-section">
+      <h2 class="titre-bloc">Visuel</h2>
+      <span class="lien-tout">{visuel ? '1 / 1' : '0 / 1'}</span>
+    </div>
+
+    <div class="grille-photos">
+      <div class="photo">
+        {visuel ? (
+          <img src={visuel} alt="" width="100" height="100" class="photo-couvrante" loading="lazy" />
+        ) : (
+          <span class="vignette-vide remplit" />
+        )}
+        {visuel && <span class="principale">Principale</span>}
+      </div>
+    </div>
+
+    <p class="aide-photo">
+      Les visuels sont des fichiers déposés dans le site, dans <code>public/produits/</code>. Colle ici le chemin
+      de la version 600 ; la boutique sert d’elle-même la 1200 aux grands écrans. Sans visuel, le produit reste
+      en brouillon.
+    </p>
+  </section>
+
+  <form method="post" class="formulaire">
+    <input type="hidden" name="action" value="enregistrer" />
+
+    <section class="bloc section">
+      <label class="champ">
+        <span class="etiquette-champ">Nom du produit</span>
+        <input name="nom" required minlength="3" maxlength="80" value={saisie.nom} />
+        <span class="aide">Dis ce que c’est, pas une référence. Exemple : « Serviettes nuit, 10 pièces ».</span>
+      </label>
+
+      <label class="champ">
+        <span class="etiquette-champ">Rayon</span>
+        <select name="rayon" required>
+          <option value="">Choisir un rayon</option>
+          {RAYONS.map((r) => (
+            <option value={r.id} selected={saisie.rayon === r.id}>{r.mot}</option>
+          ))}
+        </select>
+        <span class="aide">Le bon rayon fait apparaître le produit sur la page de ce rayon, et dans la recherche.</span>
+      </label>
+
+      <div class="rangee-champs">
+        <label class="champ">
+          <span class="etiquette-champ">Prix (FCFA)</span>
+          <input name="prix" inputmode="numeric" required maxlength="7" value={saisie.prix} placeholder="1500" />
+        </label>
+        <label class="champ">
+          <span class="etiquette-champ">Stock</span>
+          <input name="stock" type="number" min="0" max="99999" value={saisie.stock} />
+        </label>
+      </div>
+
+      <label class="champ">
+        <span class="etiquette-champ">Tailles</span>
+        <input name="tailles" maxlength="60" value={saisie.tailles} placeholder="S, M, L, XL" />
+        <span class="aide">
+          Séparées par des virgules, six au plus. Laisse vide si le produit n’a pas de taille : la base refuse
+          alors qu’on en choisisse une, et elle refuse de commander sans en choisir une quand il y en a.
+        </span>
+      </label>
+
+      <label class="champ">
+        <span class="etiquette-champ">Étiquette (facultatif)</span>
+        <input name="etiquette" maxlength="40" value={saisie.etiquette} placeholder="Le plus pris" />
+        <span class="aide">Le petit bandeau sur la vignette, dans la boutique. Deux mots, pas une phrase.</span>
+      </label>
+    </section>
+
+    <section class="bloc section">
+      <label class="champ">
+        <span class="etiquette-champ">Accroche</span>
+        <input
+          name="accroche"
+          maxlength="300"
+          value={saisie.accroche}
+          placeholder="Longues, avec ailettes, pour dormir tranquille."
+        />
+        <span class="aide">Une phrase, celle qui s’affiche sous le nom dans la boutique.</span>
+      </label>
+
+      <label class="champ">
+        <span class="etiquette-champ">Description</span>
+        <textarea
+          name="description"
+          maxlength="2000"
+          rows="6"
+          placeholder="Ce qu’il y a dans le paquet, à quoi ça sert, comment ça se lave…">{saisie.description}</textarea>
+      </label>
+
+      <label class="champ">
+        <span class="etiquette-champ">Visuel</span>
+        <input name="image" maxlength="200" value={saisie.image} placeholder="/produits/serviettes-nuit-600.webp" />
+        <span class="aide">Le chemin du fichier déjà déposé dans le site.</span>
+      </label>
+    </section>
+
+    <section class="bloc section">
+      {/* Deux choix, pas trois, comme chez Jia : publier ou garder pour soi. Un
+          produit qu'on ne veut plus vendre repasse en brouillon, et l'historique
+          des commandes n'y touche pas. */}
+      <fieldset class="champ statuts">
+        <legend class="etiquette-champ">Ce produit</legend>
+        <label class:list={['option-radio', 'option-publier', { choisi: saisie.statut === 'publie' }]}>
+          <input type="radio" name="statut" value="publie" checked={saisie.statut === 'publie'} class="lecteur-ecran-seul" />
+          <span class="puce" />
+          <span>
+            <span class="titre">En vente</span>
+            <span class="sous">Visible dans la boutique et commandable</span>
+          </span>
+        </label>
+        <label class:list={['option-radio', 'option-brouillon', { choisi: saisie.statut !== 'publie' }]}>
+          <input type="radio" name="statut" value="brouillon" checked={saisie.statut !== 'publie'} class="lecteur-ecran-seul" />
+          <span class="puce" />
+          <span><span class="titre">Brouillon</span><span class="sous">Gardé pour toi, à finir plus tard</span></span>
+        </label>
+      </fieldset>
+    </section>
+
+    <div class="section">
+      <button type="submit" class="btn btn-action">{creation ? 'Créer le produit' : 'Enregistrer'}</button>
+      <a href="/vendeur/produits" class="btn btn-contour espace">Retour à mes produits</a>
+    </div>
+  </form>
+
+  {
+    produit && (
+      <form method="post" class="section retrait">
+        <input type="hidden" name="action" value={produit.publie ? 'retirer' : 'remettre'} />
+        <button type="submit" class:list={['btn', produit.publie ? 'btn-contour' : 'btn-action-doux']}>
+          {produit.publie ? 'Retirer de la boutique' : 'Remettre en vente'}
+        </button>
+        <p class="note-retrait">
+          Retirer n’efface pas : le produit disparaît de la boutique, reste ici, et se remet en vente d’un geste.
+          Les commandes qui le citent gardent leur contenu.
+        </p>
+      </form>
+    )
+  }
+
+  {
+    avis && (
+      <section class="bloc section">
+        <div class="entete-section">
+          <h2 class="titre-bloc">Ce qu’en disent les clientes</h2>
+          <span class="lien-tout">
+            <span class="etoiles">{etoiles(Number(avis.moyenne ?? 0))}</span> {Number(avis.moyenne ?? 0).toFixed(1).replace('.', ',')} · {avis.nombre} avis
+          </span>
+        </div>
+        <p class="aide-avis">
+          Les avis sont anonymes, et c’est une décision : un prénom et un quartier sous un avis de culotte
+          menstruelle diraient publiquement ce qu’une cliente utilise. Chacun vient d’une commande livrée, aucun
+          ne peut être inventé, et aucun ne se modère.
+        </p>
+        {(avis.liste ?? []).map((a: any) => (
+          <article class="carte-avis">
+            <div class="tete">
+              <span class="etoiles">{etoiles(Number(a.note))}</span>
+              <span class="quand">{dateCourte(a.cree_le)}</span>
+            </div>
+            {a.texte && <p class="texte">{a.texte}</p>}
+            {(a.photos ?? []).length > 0 && (
+              <p class="photos-avis">
+                <Icone name="image" size={14} /> {a.photos.length} photo{a.photos.length > 1 ? 's' : ''}, visible
+                {a.photos.length > 1 ? 's' : ''} sur la fiche publique
+              </p>
+            )}
+          </article>
+        ))}
+      </section>
+    )
+  }
+</Vendeur>
+
+<script>
+  // Choix visuel des options radio, sans recharger. Le script de Jia, tel quel.
+  document.querySelectorAll<HTMLInputElement>('.statuts input[type=radio]').forEach((radio) => {
+    radio.addEventListener('change', () => {
+      document.querySelectorAll('.statuts .option-radio').forEach((o) => o.classList.remove('choisi'));
+      radio.closest('.option-radio')?.classList.add('choisi');
+    });
+  });
+</script>
+
+<style>
+  .option-publier { border-width: 2px; }
+  .option-publier .titre { font-size: 16px; }
+  .option-publier.choisi { border-color: var(--action); background: var(--action-clair); }
+  .option-brouillon .titre { font-size: 15px; }
+  .option-brouillon .sous { font-size: 12.5px; }
+
+  .manques { border: 1px solid var(--orange); }
+  .tete-manques { display: flex; gap: 11px; align-items: flex-start; }
+  .tete-manques :global(.icone-manque) { color: var(--orange); flex: 0 0 auto; margin-top: 2px; }
+  .intro-manques { margin: 6px 0 0; font-size: 14px; color: var(--texte-secondaire); line-height: 1.5; }
+  .liste-manques { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 14px; counter-reset: manque; }
+  .liste-manques li {
+    counter-increment: manque;
+    background: var(--surface-douce);
+    border: 1px solid var(--bordure);
+    border-radius: var(--r-moyen);
+    padding: 13px 14px;
+  }
+  .liste-manques strong { display: block; font-size: 15px; }
+  .liste-manques strong::before { content: counter(manque) '. '; color: var(--orange); }
+  .liste-manques span { display: block; font-size: 14px; color: var(--texte-secondaire); line-height: 1.5; margin-top: 4px; }
+  .rassure { font-size: 13px; color: var(--texte-tertiaire); margin: 14px 0 0; text-align: center; }
+
+  .alertes { display: grid; padding-top: 0; padding-bottom: 0; }
+  .alertes :global(.alerte) { margin-top: 12px; }
+  .lien-public { display: inline-flex; align-items: center; gap: 6px; margin-top: 12px; font-size: 14.5px; font-weight: 700; }
+
+  .bloc { margin-top: 10px; }
+  .titre-bloc { font-size: 16px; }
+
+  .grille-photos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+  .photo { position: relative; aspect-ratio: 1; border-radius: var(--r-moyen); overflow: hidden; background: var(--fond); }
+  .remplit { display: block; width: 100%; height: 100%; }
+  .principale {
+    position: absolute;
+    left: 6px;
+    top: 6px;
+    background: var(--action);
+    color: #FFFFFF;
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: var(--r-pilule);
+  }
+  .aide-photo { font-size: 13px; color: var(--texte-secondaire); line-height: 1.5; margin: 10px 0 0; }
+  .aide-photo code { font-family: inherit; font-weight: 700; color: var(--texte-corps); }
+
+  .rangee-champs { margin-top: 14px; }
+  .rangee-champs .champ + .champ { margin-top: 0; }
+  .statuts { border: none; padding: 0; margin: 0; }
+  .statuts legend { margin-bottom: 10px; }
+  .option-radio .titre, .option-radio .sous { display: block; }
+  .espace { margin-top: 9px; }
+
+  .retrait { padding-top: 0; }
+  .retrait .btn { width: auto; display: inline-flex; }
+  .note-retrait { font-size: 12.5px; color: var(--texte-tertiaire); line-height: 1.5; margin: 10px 0 0; }
+
+  .aide-avis { font-size: 13px; color: var(--texte-secondaire); line-height: 1.5; margin: 10px 0 12px; }
+  .entete-section .etoiles { letter-spacing: 1px; }
+  .carte-avis .tete .quand { font-size: 12.5px; color: var(--texte-tertiaire); }
+  .photos-avis { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--texte-tertiaire); margin: 8px 0 0; }
+</style>

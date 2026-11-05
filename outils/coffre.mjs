@@ -18,7 +18,29 @@
  */
 import fs from 'node:fs';
 
-export const COFFRE = 'C:/Users/larou/OneDrive/Desktop/Jarvis/secrets/.env';
+/**
+ * Ou vit le coffre, selon la machine.
+ *
+ * Arthur travaille sur deux PC, dont les comptes Windows ne portent pas le meme
+ * nom, et le dossier Jarvis n'est pas au meme endroit sur les deux. Un chemin
+ * unique ecrit en dur marchait donc sur une machine et echouait sur l'autre,
+ * avec un message qui n'expliquait rien (« Aucune adresse d'administrateur
+ * lisible dans le coffre »). On essaie les emplacements connus, dans l'ordre,
+ * et on garde le premier qui existe. Rien n'est devine : ce sont des chemins
+ * fixes, pas une recherche sur le disque.
+ */
+export const COFFRES_CONNUS = [
+  'C:/Users/larou/OneDrive/Desktop/Jarvis/secrets/.env',
+  'C:/Users/larou/Desktop/Jarvis/secrets/.env',
+  'C:/Users/USER/Desktop/Jarvis/secrets/.env',
+];
+
+/** Le premier coffre qui existe sur cette machine, sinon le premier de la liste. */
+export function trouverCoffre(candidats = COFFRES_CONNUS) {
+  return candidats.find((c) => fs.existsSync(c)) ?? candidats[0];
+}
+
+export const COFFRE = trouverCoffre();
 
 /** Toutes les lignes `nom = valeur` du coffre, dans l'ordre du fichier. */
 export function lignesDuCoffre(chemin = COFFRE) {

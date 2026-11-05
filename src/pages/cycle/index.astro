@@ -156,28 +156,31 @@ const enRetard = joursAvant < 0;
 const retard = enRetard ? -joursAvant : 0;
 
 // --- Ce que l'écran annonce au centre de l'anneau ---------------------------
-let grandChiffre = String(Math.abs(joursAvant));
-let grandMot = 'jours';
-let phraseCentre = 'avant tes prochaines règles';
+//
+// LES DEUX LIGNES ONT ÉCHANGÉ LEUR PLACE le 5 novembre 2026, à la demande
+// d'Arthur : « jour 9 de ton cycle devient en gras et en grand, et 20 jours
+// avant tes prochaines règles devient en bas et en petit ; ils changent de
+// place ».
+//
+// Pourquoi c'est le bon sens de lecture : le jour du cycle est un fait, il est
+// vrai au moment où elle regarde. Le nombre de jours avant les prochaines
+// règles est une prévision, calculée sur une moyenne qui peut se tromper de
+// plusieurs jours. Mettre le fait en grand et la prévision en petit dit la
+// vérité sur ce que l'application sait et ce qu'elle devine.
+const jourDuCycle = info?.jourDuCycle ?? 0;
+
+// La ligne du dessous : la prévision, ou l'état du jour quand il y en a un.
+let sousPhrase: string;
 if (info?.type === 'regles') {
-  grandChiffre = String(info.jourDuCycle);
-  grandMot = info.jourDuCycle === 1 ? 'er jour' : 'e jour';
-  phraseCentre = 'de tes règles';
+  sousPhrase = `${jourDuCycle}${jourDuCycle === 1 ? 'er' : 'e'} jour de tes règles`;
 } else if (info?.type === 'ovulation') {
-  grandChiffre = '';
-  grandMot = 'Ovulation';
-  phraseCentre = "aujourd'hui";
+  sousPhrase = 'Ovulation aujourd’hui';
 } else if (enRetard) {
-  grandChiffre = String(retard);
-  grandMot = retard === 1 ? 'jour' : 'jours';
-  phraseCentre = 'de retard';
+  sousPhrase = `${retard} jour${retard > 1 ? 's' : ''} de retard`;
 } else if (joursAvant === 0) {
-  grandChiffre = '';
-  grandMot = 'Aujourd’hui';
-  phraseCentre = 'tes règles sont attendues';
-} else if (joursAvant === 1) {
-  grandChiffre = '1';
-  grandMot = 'jour';
+  sousPhrase = 'Tes règles sont attendues aujourd’hui';
+} else {
+  sousPhrase = `${joursAvant} jour${joursAvant > 1 ? 's' : ''} avant tes prochaines règles`;
 }
 
 // --- Le risque de grossesse -------------------------------------------------
@@ -286,11 +289,11 @@ const enRegles = info?.type === 'regles';
               lien="/cycle/calendrier"
             >
               <span class="grand-chiffre">
-                {grandChiffre}
-                <span class="grand-mot">{grandMot}</span>
+                <span class="grand-mot">Jour</span>
+                {info.jourDuCycle}
               </span>
-              <span class="grand-phrase">{phraseCentre}</span>
-              <span class="grand-sous">Jour {info.jourDuCycle} de ton cycle</span>
+              <span class="grand-phrase">de ton cycle</span>
+              <span class="grand-sous">{sousPhrase}</span>
             </AnneauSegmente>
 
             <ul class="legende-anneau">
@@ -503,8 +506,16 @@ const enRegles = info?.type === 'regles';
     line-height: 1.25;
   }
 
+  /* La prévision, sous le jour du cycle. Elle tient maintenant une phrase
+     entière là où il n'y avait que « Jour 9 de ton cycle » : le centre de
+     l'anneau ne fait qu'environ 150 px de large, d'où un corps plus petit et
+     une interligne serrée, pour qu'elle tienne en deux lignes sans toucher
+     la couronne. */
   .grand-sous {
-    font-size: 14px;
+    margin-top: 3px;
+    max-width: 15ch;
+    font-size: 12.5px;
+    line-height: 1.3;
     color: var(--texte-3);
   }
 

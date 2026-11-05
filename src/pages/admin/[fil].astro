@@ -9,21 +9,86 @@
  * ne répond pas à quelqu'un qui n'est pas dans la table des administratrices,
  * donc cette page n'a rien à vérifier elle-même. Elle montre ce que la base a
  * voulu lui donner, et un écran de refus quand c'est rien.
+ *
+ * RHABILLÉE AUX COULEURS DE JIA le 5 novembre 2026. Arthur : « tu copies tout,
+ * tu copies absolument tout, même les couleurs ».
+ *
+ * CE QUI A CHANGÉ CE JOUR-LÀ : seulement l'habillage. Pas une ligne de la
+ * logique au-dessus du balisage. Elle est délicate (les vocaux, les cartes
+ * produits, le fil médecin qui ne doit pas afficher le nombre de commandes) et
+ * elle marche. Ce qui a bougé :
+ *
+ *   - le gabarit : `Admin`, avec `onglet="conversations"`, pour que l'en-tête
+ *     sombre et la rangée d'onglets de Jia soient là comme sur tout autre
+ *     écran de l'administration. On ne sort plus de l'administration en
+ *     ouvrant une conversation ;
+ *   - les icônes : celles de Jia (`IconeJia`), partout ;
+ *   - les bulles : celles de Jia, et littéralement les siennes. `.bulle`,
+ *     `.bulle-moi`, `.bulle-lui`, `.corps` et `.heure` sont des classes de
+ *     `src/styles/gestion/components.css`, copié octet pour octet de Jia. Ma
+ *     réponse est donc sur l'orange d'action, la sienne sur du blanc bordé, le
+ *     coin inférieur se referme à 3 px du côté de qui parle, et aucune de ces
+ *     valeurs n'est écrite ici ;
+ *   - les nombres et les dates : `format-gestion`, la copie du `format.ts` de
+ *     Jia. L'heure s'écrit « 15h42 » et le séparateur de jour dit
+ *     « Aujourd'hui », « Hier », puis « 14 sept. », comme chez Jia ;
+ *   - la zone d'écriture : celle de Jia, avec son rond d'envoi orange de 44 px.
+ *
+ * TROIS CHOSES SONT GARDÉES EN PLACE EXPRÈS, malgré le rhabillage :
+ *
+ *   1. Les classes `.ecrire`, `.zone-ecriture` et `.envoyer`. Elles ne sont pas
+ *      décoratives : `src/scripts/conversation.ts` et `src/scripts/vocal.ts`
+ *      les cherchent par leur nom pour faire grandir la case de texte,
+ *      rafraîchir le fil et piloter l'enregistrement. Les renommer aurait
+ *      cassé le vocal sans rien dire.
+ *
+ *   2. Le conteneur porte `fil` EN PLUS de `fil-messages`. `.fil` est la classe
+ *      de colonne de Jia, et c'est aussi ce que `conversation.ts` cherche pour
+ *      ouvrir la page sur le DERNIER message. Elle manquait : on arrivait en
+ *      haut d'une conversation de trois semaines.
+ *
+ *   3. `Avatar` et `VocalSaisie` restent les composants des clientes, parce
+ *      qu'ils savent des choses que personne d'autre ne sait (la galerie des
+ *      portraits, l'enregistrement du micro). Ils sont écrits avec les
+ *      variables de la feuille des clientes (`--rose`, `--e2`, `--texte-2`),
+ *      qui n'existent pas dans celle de Jia : d'où le petit bloc de
+ *      correspondance en bas de ce fichier, qui les fait tomber sur les
+ *      couleurs de Jia au lieu de rien du tout.
+ *
+ * L'ALERTE est écrite à la main plutôt que prise à `AlerteJia.astro` : ce
+ * composant importe un `./Icon.astro` qui n'existe pas dans ce dépôt, donc il
+ * ne compile pas. Le balisage ci-dessous est celui qu'il rend, aux mêmes
+ * classes de Jia (`encadre encadre-orange alerte`).
  */
-import Base from '../../layouts/Base.astro';
-import Icone from '../../components/Icone.astro';
+import Admin from '../../layouts/Admin.astro';
+import Icone from '../../components/IconeJia.astro';
 import VocalSaisie from '../../components/VocalSaisie.astro';
 import Avatar from '../../components/Avatar.astro';
-import Alerte from '../../components/Alerte.astro';
 import { clientSession, baseConfiguree } from '../../lib/supabase';
 import { visiteuse } from '../../lib/session';
-import { prixComplet, heureCourte, dateLongue, messageErreur } from '../../lib/format';
+import { prix, heure, dateCourte, telephone } from '../../lib/format-gestion';
+// `messageErreur` traduit un code d'erreur de la base en phrase française. Ce
+// n'est pas du formatage d'affichage, et `format-gestion` (la copie de Jia) ne
+// l'a pas : c'est la seule chose que cette page prend encore au `format.ts` des
+// clientes. Aucun prix n'en vient, ce qui est la raison de la règle.
+import { messageErreur } from '../../lib/format';
 
 if (!baseConfiguree()) return Astro.redirect('/', 302);
 const moi = await visiteuse(Astro);
 if (!moi) return Astro.redirect('/connexion', 302);
 
 const { fil } = Astro.params;
+
+// UN FIL EST UN UUID, ET RIEN D'AUTRE.
+//
+// Cette route attrape tout ce qui n'a pas de page à son nom sous /admin.
+// Depuis que la barre basse de l'administration a disparu, /admin/plus
+// n'existe plus, mais il répondait quand même 200 et affichait « Conversation »
+// avec un fil nommé « plus » : n'importe quelle adresse inventée se présentait
+// comme une page de l'application. Une adresse qui n'existe pas doit le dire.
+const EST_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+if (!fil || !EST_UUID.test(fil)) return Astro.rewrite('/404');
+
 const client = clientSession(Astro)!;
 
 let erreur = '';
@@ -46,7 +111,8 @@ const tete = (data?.tete ?? null) as {
   prenom: string;
   telephone: string;
   avatar_fichier: string | null;
-  commandes: number;
+  commandes: number | null;
+  sujet: 'boutique' | 'medecin';
 } | null;
 const messages = (data?.messages ?? []) as {
   id: string;
@@ -70,91 +136,111 @@ const lignes = messages.map((m) => {
 });
 ---
 
-<Base titre={ouvert ? `${tete?.prenom}` : 'Conversation'} nav={null}>
+<Admin titre={ouvert && tete ? tete.prenom : 'Conversation'} onglet="conversations">
   {
     !ouvert && (
-      <main class="page refus">
-        <span class="refus-rond"><Icone nom="cadenas" taille={28} /></span>
-        <h1>Cette conversation ne s'ouvre pas</h1>
-        <p>Soit elle n'existe pas, soit cet espace n'est pas pour toi.</p>
-        <a class="btn btn-rose" href="/">Retour à l'accueil</a>
-      </main>
+      <div class="etat-vide">
+        <Icone name="lock" size={32} class="icone-vide" />
+        <div class="titre">Cette conversation ne s'ouvre pas</div>
+        <p class="texte">Soit elle n'existe pas, soit cet espace n'est pas pour toi.</p>
+        <a class="btn btn-contour espace" href="/admin/conversations">Retour aux conversations</a>
+      </div>
     )
   }
 
   {
     ouvert && tete && (
-      <main class="conversation">
-        <header class="barre">
-          <a class="retour" href="/admin" aria-label="Retour à la boîte de réception">
-            <Icone nom="retour" taille={22} />
+      <>
+        {/* La barre de la conversation : qui, son numéro, et de quoi l'appeler.
+            `.entete-page` est la barre collante de Jia ; le reste est accroché
+            dessus. */}
+        <header class="entete-page barre-fil">
+          <a class="retour" href="/admin/conversations" aria-label="Retour aux conversations">
+            <Icone name="chevron-left" size={20} stroke={2} />
           </a>
-          <Avatar fichier={tete.avatar_fichier} prenom={tete.prenom} taille={38} />
+          <Avatar fichier={tete.avatar_fichier} prenom={tete.prenom} taille={38} contour={false} />
           <span class="qui">
-            <b>{tete.prenom}</b>
-            <span>
-              {tete.telephone ? tete.telephone : 'Pas de numéro'}
-              {tete.commandes > 0 && ` · ${tete.commandes} commande${tete.commandes > 1 ? 's' : ''}`}
+            <strong>{tete.prenom}</strong>
+            <span class="sous-qui">
+              {tete.sujet === 'medecin' ? 'Question au médecin' : 'Question à la boutique'}
+              {tete.telephone ? ` · ${telephone(tete.telephone)}` : ' · pas de numéro'}
+              {tete.commandes !== null && tete.commandes > 0 &&
+                ` · ${tete.commandes} commande${tete.commandes > 1 ? 's' : ''}`}
             </span>
           </span>
-          {
-            tete.telephone && (
-              <a class="appeler" href={`tel:${tete.telephone}`} aria-label={`Appeler ${tete.prenom}`}>
-                <Icone nom="micro" taille={18} />
-              </a>
-            )
-          }
+          {tete.telephone && (
+            <a class="acces-entete" href={`tel:${tete.telephone}`} aria-label={`Appeler ${tete.prenom}`}>
+              <Icone name="phone" size={20} />
+            </a>
+          )}
         </header>
 
-        <div class="fil-messages">
-          {
-            lignes.map((m) => (
-              <>
-                {m.nouveauJour && <p class="jour">{dateLongue(m.jour)}</p>}
-                <div class:list={['ligne', m.de === 'boutique' ? 'de-moi' : 'de-elle']}>
-                  <div class="bulle">
-                    {m.produit && (
-                      <a class="carte-jointe" href={`/boutique/${m.produit.slug}`}>
-                        {m.produit.image ? (
-                          <img src={m.produit.image} alt="" width="48" height="48" loading="lazy" />
-                        ) : (
-                          <span class="carte-sans-image"><Icone nom="paquet" taille={20} /></span>
-                        )}
-                        <span>
-                          <b>{m.produit.nom}</b>
-                          <span class="carte-prix">{prixComplet(m.produit.prix_cfa)}</span>
+        <div class="fil fil-messages">
+          {lignes.length === 0 && <p class="debut">Aucun message dans ce fil.</p>}
+          {lignes.map((m) => (
+            <>
+              {m.nouveauJour && <div class="jour">{dateCourte(m.jour)}</div>}
+              <div class:list={['bulle', m.de === 'boutique' ? 'bulle-moi' : 'bulle-lui']}>
+                <div class="corps">
+                  {m.produit && (
+                    <a class="produit-joint" href={`/boutique/${m.produit.slug}`}>
+                      {m.produit.image ? (
+                        <img
+                          src={m.produit.image}
+                          alt=""
+                          width="46"
+                          height="46"
+                          loading="lazy"
+                          class="photo-couvrante"
+                        />
+                      ) : (
+                        <span class="vignette-sans-photo">
+                          <Icone name="package" size={20} />
                         </span>
-                      </a>
-                    )}
-                    {m.vocal_secondes ? (
-                      <div class="vocal-bulle">
-                        <span class="vocal-etiquette">
-                          <Icone nom="micro" taille={15} />
-                          Message vocal · {Math.floor(m.vocal_secondes / 60)}:{String(m.vocal_secondes % 60).padStart(2, '0')}
-                        </span>
-                        {/* Le médecin écoute ici. Le son passe par /vocal/<id>,
-                            qui demande à la base si l'administratrice a le droit. */}
-                        <audio class="vocal-lecteur" controls preload="none" src={`/vocal/${m.id}`}></audio>
-                      </div>
-                    ) : (
-                      <p class="texte">{m.texte}</p>
-                    )}
-                    <span class="pied">
-                      {heureCourte(m.quand)}
-                      {m.de === 'boutique' && <span class="statut-lu">{m.lu ? ' · Lu' : ' · Non lu'}</span>}
+                      )}
+                      <span class="infos-joint">
+                        <strong>{m.produit.nom}</strong>
+                        <span class="prix">{prix(m.produit.prix_cfa)}</span>
+                      </span>
+                    </a>
+                  )}
+
+                  {m.vocal_secondes ? (
+                    <span class="vocal-joint">
+                      <span class="etiquette-vocal">
+                        <Icone name="mic" size={15} />
+                        Message vocal · {Math.floor(m.vocal_secondes / 60)}:
+                        {String(m.vocal_secondes % 60).padStart(2, '0')}
+                      </span>
+                      {/* Le son passe par /vocal/<id>, qui demande à la base si
+                          l'administratrice a le droit de l'écouter. */}
+                      <audio class="audio-joint" controls preload="none" src={`/vocal/${m.id}`}></audio>
                     </span>
-                  </div>
+                  ) : (
+                    <span class="texte-message">{m.texte}</span>
+                  )}
                 </div>
-              </>
-            ))
-          }
+                <div class="heure">
+                  {heure(m.quand)}
+                  {m.de === 'boutique' && (m.lu ? ' · lu' : ' · non lu')}
+                </div>
+              </div>
+            </>
+          ))}
         </div>
 
-        {erreur && <div class="dans-la-page"><Alerte type="erreur" texte={erreur} /></div>}
+        {erreur && (
+          <div class="section-serree zone-alerte">
+            <div class="encadre encadre-orange alerte" role="alert">
+              <Icone name="warning" size={17} />
+              <span>{erreur}</span>
+            </div>
+          </div>
+        )}
 
         <form class="ecrire" method="post">
           <div class="zone-ecriture">
-            <label class="lecture-seule" for="texte">Ta réponse</label>
+            <label class="lecteur-ecran-seul" for="texte">Ta réponse</label>
             <textarea
               id="texte"
               name="texte"
@@ -167,275 +253,196 @@ const lignes = messages.map((m) => {
                 aussi doit pouvoir en envoyer »). */}
             <VocalSaisie fil={fil ?? undefined} />
             <button class="envoyer" type="submit" aria-label="Envoyer">
-              <Icone nom="envoyer" taille={20} />
+              <Icone name="send" size={20} />
             </button>
           </div>
         </form>
-      </main>
+      </>
     )
   }
-</Base>
+</Admin>
 
 <script>
   import '../../scripts/conversation';
   import '../../scripts/vocal';
 </script>
 
-<style>
-  .refus {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--e3);
-    padding-top: 20vh;
-    text-align: center;
+{/* LE BLOC DE CORRESPONDANCE. `Avatar` et `VocalSaisie` sont écrits avec les
+    variables de la feuille des clientes, que cette page ne charge pas : sans
+    ces cinq lignes, le point qui bat pendant un enregistrement serait
+    transparent et le rond d'envoi du vocal sans couleur. Chacune tombe sur son
+    équivalent chez Jia, donc ces deux composants s'habillent en orange d'action
+    comme le reste de l'écran. `is:global` parce qu'une variable posée dans un
+    style scopé n'atteindrait pas l'intérieur d'un composant. */}
+<style is:global>
+  :root {
+    --rose: var(--action);
+    --texte-2: var(--texte-corps);
+    --texte-3: var(--texte-tertiaire);
+    --texte: 'Karla', system-ui, -apple-system, sans-serif;
+    --e2: 8px;
   }
+</style>
 
-  .refus-rond {
+<style>
+  .etat-vide :global(.icone-vide) { color: var(--texte-tertiaire); }
+  .espace { margin-top: 16px; }
+
+  /* ---------- La barre de la conversation ---------- */
+  /* `.entete-page` de Jia colle en haut, et l'en-tête sombre de l'administration
+     colle déjà à la même place : les deux se recouvraient au défilement. Celle
+     de la conversation lâche donc la position collante, et c'est l'en-tête de
+     l'administration qui reste. Tout le reste de `.entete-page` est conservé :
+     le fond blanc, le filet du bas, l'écartement, la zone tactile de 44 px de
+     la flèche de retour. */
+  .barre-fil { position: static; gap: 10px; }
+  .qui { flex: 1; min-width: 0; }
+  .qui strong {
+    display: block;
+    font-family: 'Outfit', sans-serif;
+    font-size: 16px;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .sous-qui {
+    display: block;
+    margin-top: 1px;
+    font-size: 12.5px;
+    color: var(--texte-secondaire);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  /* Le rond d'accès de l'en-tête de Jia, repris tel quel. */
+  .acces-entete {
     display: grid;
     place-items: center;
-    width: 64px;
-    height: 64px;
+    flex: 0 0 auto;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
-    background: var(--surface-douce);
-    color: var(--rose);
-  }
-
-  .refus h1 {
-    font-size: 24.5px;
-  }
-
-  .refus p {
-    max-width: 300px;
-    font-size: 15.5px;
-    color: var(--texte-2);
-  }
-
-  .conversation {
-    display: flex;
-    flex-direction: column;
-    min-height: 100dvh;
-    max-width: 560px;
-    margin: 0 auto;
-    padding-bottom: 90px;
-  }
-
-  .barre {
-    position: sticky;
-    top: 0;
-    z-index: 5;
-    display: flex;
-    align-items: center;
-    gap: var(--e2);
-    padding: var(--e3) var(--e4);
-    border-bottom: 1px solid var(--bordure);
-    background: var(--surface);
-  }
-
-  .retour {
-    display: flex;
-    margin-left: -6px;
+    background: none;
     color: var(--encre);
   }
+  .acces-entete:hover { color: var(--encre); background: var(--fond); }
 
-  .qui {
-    flex: 1;
-    min-width: 0;
-  }
-
-  .qui b {
-    display: block;
-    font-size: 17px;
-    line-height: 1.2;
-  }
-
-  .qui span {
-    font-size: 13px;
-    color: var(--texte-3);
-  }
-
-  .appeler {
-    display: grid;
-    place-items: center;
-    width: 38px;
-    height: 38px;
-    flex: none;
-    border-radius: 50%;
-    background: var(--surface-douce);
-    color: var(--rose);
-  }
-
+  /* ---------- Le fil ---------- */
   .fil-messages {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: var(--e2);
-    padding: var(--e4);
+    gap: 9px;
+    padding: 16px var(--gouttiere) 120px;
+    min-height: 50vh;
   }
-
+  .debut { text-align: center; font-size: 14px; color: var(--texte-tertiaire); margin: 30px 20px; }
+  /* La pilule du changement de jour, celle de Jia. */
   .jour {
     align-self: center;
-    margin: var(--e2) 0;
+    margin: 6px 0;
     padding: 3px 10px;
-    border-radius: var(--r-ronde);
-    background: var(--surface-douce);
-    font-size: 12.5px;
-    font-weight: 600;
-    color: var(--texte-2);
-  }
-
-  .ligne {
-    display: flex;
-  }
-
-  .de-moi {
-    justify-content: flex-end;
-  }
-
-  .bulle {
-    max-width: 82%;
-    padding: 10px 13px;
-    border-radius: 18px;
-    font-size: 16px;
-    line-height: 1.45;
-  }
-
-  .de-moi .bulle {
-    border-bottom-right-radius: 6px;
-    background: var(--encre);
-    color: #fff;
-  }
-
-  .de-elle .bulle {
     border: 1px solid var(--bordure);
-    border-bottom-left-radius: 6px;
+    border-radius: var(--r-pilule);
     background: var(--surface);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--texte-tertiaire);
   }
+  /* `.bulle`, `.bulle-moi`, `.bulle-lui`, `.corps` et `.heure` viennent des
+     styles de Jia : rien à redéclarer ici. Seul le retour à la ligne d'un
+     message tapé au clavier est à dire. */
+  .texte-message { display: block; white-space: pre-wrap; overflow-wrap: anywhere; }
 
-  .vocal-bulle {
-    min-width: 220px;
+  /* ---------- Le produit attaché à un message ---------- */
+  .produit-joint {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+    padding: 7px;
+    border-radius: var(--r-moyen);
+    background: var(--fond);
+    color: var(--encre);
   }
+  .produit-joint:hover { color: var(--encre); }
+  .produit-joint img,
+  .vignette-sans-photo {
+    width: 46px;
+    height: 46px;
+    flex: none;
+    border-radius: var(--r-petit);
+    object-fit: cover;
+  }
+  .vignette-sans-photo {
+    display: grid;
+    place-items: center;
+    background: var(--surface);
+    color: var(--texte-tertiaire);
+  }
+  .infos-joint { flex: 1; min-width: 0; }
+  .infos-joint strong {
+    display: block;
+    font-size: 14.5px;
+    line-height: 1.25;
+    color: var(--nom-produit);
+  }
+  .infos-joint .prix { display: block; font-size: 14px; margin-top: 2px; }
 
-  .vocal-etiquette {
+  /* ---------- Le vocal ---------- */
+  .vocal-joint { display: block; min-width: 210px; }
+  .etiquette-vocal {
     display: flex;
     align-items: center;
     gap: 6px;
     margin-bottom: 6px;
     font-size: 14px;
-    font-weight: 600;
+    font-weight: 700;
   }
+  /* Les mesures du lecteur audio de Jia. */
+  .audio-joint { display: block; width: 100%; max-width: 100%; height: 40px; }
 
-  .vocal-lecteur {
-    display: block;
-    width: 100%;
-    height: 38px;
-  }
-
-  .texte {
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
-  }
-
-  .statut-lu {
-    font-weight: 600;
-  }
-
-  .pied {
-    display: block;
-    margin-top: 3px;
-    font-size: 12px;
-    text-align: right;
-    opacity: 0.7;
-  }
-
-  .carte-jointe {
-    display: flex;
-    align-items: center;
-    gap: var(--e2);
-    margin-bottom: 8px;
-    padding: 7px;
-    border-radius: 13px;
-    background: var(--surface-douce);
-    color: var(--encre);
-  }
-
-  .carte-jointe img {
-    border-radius: 9px;
-    object-fit: cover;
-  }
-
-  .carte-sans-image {
-    display: grid;
-    place-items: center;
-    width: 48px;
-    height: 48px;
-    flex: none;
-    border-radius: 9px;
-    background: var(--surface);
-    color: var(--rose);
-  }
-
-  .carte-jointe b {
-    display: block;
-    font-size: 14.5px;
-    line-height: 1.2;
-  }
-
-  .carte-prix {
-    font-size: 13.5px;
-    color: var(--texte-2);
-  }
-
-  .dans-la-page {
-    padding: 0 var(--e4);
-  }
-
+  /* ---------- Répondre ---------- */
+  .zone-alerte { padding-bottom: 0; }
   .ecrire {
     position: fixed;
     left: 0;
     right: 0;
     bottom: 0;
-    z-index: 10;
-    max-width: 560px;
+    z-index: 20;
+    max-width: 480px;
     margin: 0 auto;
-    padding: var(--e2) var(--e4) calc(var(--e3) + env(safe-area-inset-bottom, 0px));
+    padding: 10px var(--gouttiere) calc(12px + env(safe-area-inset-bottom, 0px));
     border-top: 1px solid var(--bordure);
     background: var(--surface);
   }
-
-  .zone-ecriture {
-    display: flex;
-    align-items: flex-end;
-    gap: var(--e2);
-  }
-
+  .zone-ecriture { display: flex; align-items: flex-end; gap: 6px; }
   .zone-ecriture textarea {
     flex: 1;
-    min-height: 46px;
-    max-height: 140px;
-    padding: 12px 14px;
-    border: 1px solid var(--bordure);
-    border-radius: 23px;
-    background: var(--surface-douce);
-    font-family: var(--texte);
-    font-size: 17px;
-    line-height: 1.35;
+    min-width: 0;
+    max-height: 120px;
     resize: none;
+    padding: 11px 14px;
+    border: 1.5px solid var(--bordure);
+    border-radius: 20px;
+    background: var(--surface-douce);
+    font-family: 'Karla', 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
+    font-size: 15px;
+    line-height: 1.4;
+    outline: none;
   }
-
+  .zone-ecriture textarea:focus { border-color: var(--action); }
   .envoyer {
-    display: grid;
-    place-items: center;
-    width: 46px;
-    height: 46px;
-    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    flex: 0 0 auto;
     border: none;
     border-radius: 50%;
-    background: var(--encre);
-    color: #fff;
+    background: var(--action);
+    color: #FFFFFF;
+    cursor: pointer;
   }
-
-  .envoyer:active {
-    transform: scale(0.93);
-  }
+  .envoyer:hover { background: var(--action-fonce); }
+  .envoyer:active { transform: scale(0.93); }
 </style>

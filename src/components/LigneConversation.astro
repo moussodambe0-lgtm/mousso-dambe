@@ -1,0 +1,281 @@
+---
+/**
+ * UNE LIGNE DE LA MESSAGERIE, copiée de `src/components/LigneConversation.astro`
+ * de Jia, le 5 novembre 2026.
+ *
+ * Arthur, le 5 novembre 2026 : « tu copies tout, tu copies absolument tout,
+ * même les couleurs ».
+ *
+ * CE QUI EST REPRIS TEL QUEL, d'après la maquette d'Arthur du 29 septembre 2026
+ * que Jia applique : avatar de 56 px, pastille des non-lus EN HAUT À GAUCHE,
+ * puis trois niveaux de texte (le nom et l'heure, ce dont on parle, le dernier
+ * message). Chaque ligne est tronquée d'un seul trait : une conversation qui
+ * passe sur deux lignes décale toutes les suivantes et la liste ne se parcourt
+ * plus d'un coup d'œil. Les couleurs, les tailles, les graisses, le coin plié,
+ * tout vient du fichier de Jia.
+ *
+ * LA DEUXIÈME LIGNE. Chez Alibaba elle porte le nom de l'entreprise sous le nom
+ * de la personne. Chez Jia l'interlocuteur EST la boutique, alors cette place
+ * sert à dire de quel produit on parle. Ici l'interlocutrice est la cliente, et
+ * ce qui manque vraiment quand on retrouve une conversation trois semaines plus
+ * tard, c'est À QUI elle écrivait (la boutique ou le médecin) et son numéro.
+ * C'est donc ça qui occupe la ligne.
+ *
+ * LES BRANCHES DE JIA QUI SONT COUPÉES, et pourquoi :
+ *
+ *   - `shop_verifiee` et sa coche. Jia vérifie les boutiques tierces qui
+ *     entrent sur sa place de marché. Mousso Dambé est sa propre et unique
+ *     boutique, et personne ne vérifie une cliente : la coche ne pourrait
+ *     jamais s'allumer.
+ *
+ *   - `produit`. Chez Jia un fil s'ouvre par produit. Ici le produit est
+ *     attaché au MESSAGE et pas au fil (migration `20261012140000_messagerie`,
+ *     décision n°1 : « ouvrir un fil par produit donnerait dix conversations
+ *     avec la même personne »). Il n'y a donc pas de produit à mettre sur la
+ *     ligne, il se voit dans le fil, sur sa carte.
+ *
+ *   - `marquee`, et le menu qui pose le repère. Jia a `marquer_conversation` en
+ *     base ; cette base-ci ne l'a pas. Le coin plié de Jia, lui, est GARDÉ, à
+ *     la même place et dans la même couleur (`--repere-marque`) : il porte ici
+ *     la seule distinction qui existe entre deux fils, le sujet médecin. Un
+ *     fil médical se reconnaît ainsi avant d'être ouvert, ce que l'ancienne
+ *     boîte de réception faisait déjà avec un filet rose à gauche.
+ *
+ *   - le dictionnaire `APERCUS` ('📷 Photo', '🎤 Note vocale'…). Inutile ici :
+ *     c'est la BASE qui écrit l'aperçu, et elle nomme déjà le vocal
+ *     (« Message vocal · 12 s », migration `20261013170000_vocaux_boutique`).
+ *     Le refaire en TypeScript ferait deux vérités pour une seule phrase.
+ *
+ *   - `mascotte` et son `<slot name="avatar">`. Ils servent chez Jia à poser
+ *     l'assistant en tête de liste. Les questions posées à IA Dambé N'ENTRENT
+ *     PAS dans la gestion : règle posée le 12 octobre 2026, la base elle-même
+ *     les refuse à l'administration. Pas de ligne d'assistante, donc pas de
+ *     mascotte.
+ */
+import { telephone } from '../lib/format-gestion';
+
+/**
+ * Une ligne telle que `boite_de_reception()` la rend. Le nom du type suit la
+ * base d'ici (`fils`) et non celui de Jia (`conversations`) : c'est le même
+ * objet, il ne s'appelle pas pareil des deux côtés.
+ */
+export interface LigneFil {
+  fil: string;
+  sujet: 'boutique' | 'medecin';
+  prenom: string;
+  telephone: string;
+  avatar_fichier: string | null;
+  apercu: string;
+  apercu_de: 'elle' | 'boutique';
+  quand: string | null;
+  non_lus: number;
+}
+
+interface Props {
+  fil: LigneFil;
+  /** Où mène la ligne. Par défaut, le fil lui-même. */
+  href?: string;
+  /**
+   * Étiquettes posées PAR LA PAGE, dans la rangée de pilules de Jia. Il n'y a
+   * pas de table d'étiquettes ici comme chez Jia : la rangée existe, et chaque
+   * écran y met ce qu'il a à dire. L'administration y met le nombre de messages
+   * du fil, qui est l'information de sa page de conversations.
+   */
+  etiquettes?: string[];
+}
+
+const { fil: f, href, etiquettes = [] } = Astro.props;
+
+const apercu = f.apercu
+  ? `${f.apercu_de === 'boutique' ? 'Toi : ' : ''}${f.apercu}`
+  : 'Nouvelle conversation';
+
+// À qui elle écrit, et son numéro. Jia écrit « Question à la boutique » quand
+// un fil ne porte pas de produit : la phrase est reprise mot pour mot.
+const aQui = f.sujet === 'medecin' ? 'Question au médecin' : 'Question à la boutique';
+// Le numero passe par le formateur de Jia (« +226 70 12 34 56 ») : la base le
+// garde collé, et collé il ne se lit pas d'un coup d'œil.
+const second = f.telephone ? `${aQui} · ${telephone(f.telephone)}` : aQui;
+
+// L'heure si c'est d'aujourd'hui, la date sinon : format demandé par Arthur.
+const quand = !f.quand ? null : (() => {
+  const d = new Date(f.quand);
+  if (d.toDateString() === new Date().toDateString()) {
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  }
+  return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+})();
+
+// Au-delà de 99, le chiffre ne tiendrait plus dans la pastille, et savoir s'il
+// y en a 140 ou 260 ne change rien à ce qu'on va faire.
+const nonLus = f.non_lus > 99 ? '99+' : String(f.non_lus);
+---
+
+<a href={href ?? `/admin/${f.fil}`} class:list={['ligne', { 'non-lue': f.non_lus > 0 }]}>
+  <span class="porte-avatar">
+    {/* Le fond orange ne sert qu'a porter l'initiale. Chez Jia un logo de
+        boutique est souvent transparent : pose dessus, il se retrouvait sur un
+        rond orange qui n'est pas le sien (retour d'Arthur, 29 septembre 2026).
+        Le fond blanc et le cercle discret sont gardes pour la meme raison. */}
+    <span class:list={['avatar', { 'avec-image': !!f.avatar_fichier }]}>
+      {f.avatar_fichier ? (
+        <img src={`/avatars/${f.avatar_fichier}`} alt="" width="56" height="56" loading="lazy" />
+      ) : (
+        f.prenom.slice(0, 1)
+      )}
+    </span>
+    {f.non_lus > 0 && <span class="pastille">{nonLus}</span>}
+  </span>
+
+  <span class="texte">
+    <span class="premiere">
+      <strong class="nom">{f.prenom}</strong>
+      {quand && <span class="quand">{quand}</span>}
+    </span>
+
+    <span class="second">{second}</span>
+
+    <span class="apercu">{apercu}</span>
+
+    {etiquettes.length > 0 && (
+      <span class="etiquettes">
+        {etiquettes.map((e) => <span class="etiquette-ligne">{e}</span>)}
+      </span>
+    )}
+  </span>
+
+  {f.sujet === 'medecin' && <span class="repere" aria-hidden="true"></span>}
+  {f.sujet === 'medecin' && <span class="lecteur-ecran-seul">Question au médecin</span>}
+</a>
+
+<style>
+  .ligne {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px var(--gouttiere);
+    background: var(--surface);
+    color: inherit;
+    transition: background-color 120ms ease-out;
+  }
+  .ligne:hover { color: inherit; background: var(--surface-douce); }
+  .ligne:active { background: var(--fond); }
+
+  .porte-avatar { position: relative; flex: 0 0 auto; }
+  .avatar {
+    display: grid;
+    place-items: center;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: var(--action);
+    color: #FFFFFF;
+    font-family: 'Outfit', sans-serif;
+    font-weight: 800;
+    font-size: 22px;
+  }
+  /* Avec une image : fond blanc et un cercle discret, comme chez Jia. */
+  .avatar.avec-image {
+    background: var(--surface);
+    border: 1px solid var(--bordure);
+    color: var(--encre);
+  }
+  /* Jia recadre en `contain` parce qu'un logo de boutique ne se coupe pas. Ici
+     l'image est un PORTRAIT carre choisi dans la galerie : en `contain` il
+     laissait deux croissants blancs dans le rond. */
+  .avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+  /* La pastille est en HAUT A GAUCHE, comme sur la maquette. C'est inhabituel,
+     et c'est justement ce qui la fait voir : l'oeil descend la colonne des
+     avatars, et elle depasse du cote ou il n'y a rien d'autre. */
+  .pastille {
+    position: absolute;
+    top: -3px;
+    left: -4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 10px;
+    background: var(--pastille-rouge);
+    color: #FFFFFF;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1;
+  }
+
+  .texte { flex: 1; min-width: 0; }
+
+  .premiere { display: flex; align-items: flex-start; gap: 8px; }
+  .nom {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--encre);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .quand { flex: 0 0 auto; padding-top: 2px; font-size: 13px; color: var(--texte-tertiaire); }
+
+  .second {
+    display: block;
+    margin-top: 2px;
+    font-size: 14px;
+    color: var(--texte-tertiaire);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .apercu {
+    display: block;
+    margin-top: 8px;
+    font-size: 16px;
+    color: var(--texte-secondaire);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  /* Non lu : l'apercu passe a l'encre et s'epaissit. La pastille dit combien,
+     le gras dit lequel, sans avoir a comparer les pastilles entre elles. */
+  .non-lue .apercu { color: var(--encre); font-weight: 700; }
+
+  .etiquettes { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  /* `.etiquette` tout court existe deja dans les styles de Jia, en pastille
+     pleine sur une photo de produit. Celle-ci est l'etiquette de la messagerie,
+     et porte donc son propre nom pour ne pas heriter de l'autre. */
+  .etiquette-ligne {
+    padding: 2px 8px;
+    border: 1px solid var(--action-bordure);
+    border-radius: var(--r-pilule);
+    background: var(--action-clair);
+    color: var(--action-fonce);
+    font-size: 11.5px;
+    font-weight: 700;
+  }
+
+  /* Le coin plie, en haut a droite. Un triangle plein, et non une etoile,
+     parce qu'il ne doit rien couter en place a une ligne deja pleine. */
+  .repere {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 0;
+    height: 0;
+    border-left: 14px solid transparent;
+    border-top: 14px solid var(--repere-marque);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ligne { transition: none; }
+  }
+</style>

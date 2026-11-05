@@ -1,0 +1,27 @@
+---
+// Message de retour après une action : erreur ou confirmation.
+// role="alert" pour que les lecteurs d'écran l'annoncent sans qu'on déplace le focus.
+
+// Le fichier de Jia importe `./Icon.astro`, qui n'existe pas ici : son jeu
+// d'icônes a été copié sous le nom `IconeJia.astro`, pour ne pas écraser
+// l'`Icone.astro` des clientes. Seule la ligne d'import change.
+import Icon from './IconeJia.astro';
+
+interface Props {
+  message: string | null | undefined;
+  ton?: 'erreur' | 'succes' | 'info';
+}
+
+const { message, ton = 'erreur' } = Astro.props;
+const classe = { erreur: 'encadre-orange', succes: 'encadre-action', info: 'encadre-neutre' }[ton];
+const icone = ton === 'erreur' ? 'warning' : ton === 'succes' ? 'check-circle' : 'info';
+---
+
+{
+  message && (
+    <div class:list={['encadre', classe, 'alerte']} role={ton === 'erreur' ? 'alert' : 'status'}>
+      <Icon name={icone} size={17} />
+      <span>{message}</span>
+    </div>
+  )
+}

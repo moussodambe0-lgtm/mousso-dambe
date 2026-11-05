@@ -1,0 +1,76 @@
+---
+// Le socle des écrans de gestion, copié de `Base.astro` de Jia.
+//
+// Arthur, le 5 novembre 2026 : « tu copies tout, tu copies absolument tout,
+// même les couleurs ». D'où un socle à part, qui charge les quatre feuilles de
+// style de Jia telles quelles (`src/styles/gestion/`) et ses deux polices,
+// Outfit pour les titres et Karla pour le texte.
+//
+// POURQUOI UN SOCLE SÉPARÉ DE CELUI DES CLIENTES. Les deux déclarent les mêmes
+// variables (`--encre`, `--bordure`, `--surface`) avec des valeurs différentes :
+// Mousso Dambé est rose, Jia est orange et noire. Chargées sur une même page,
+// la dernière gagnerait, et on obtiendrait un mélange qui n'est ni l'une ni
+// l'autre. Chaque page choisit donc son socle, et aucune ne charge les deux.
+// L'application des clientes ne bouge pas d'un pixel.
+//
+// Ce qui a été retiré de la copie, et pourquoi : le panier, les favoris, la
+// mascotte flottante, le service worker, le compteur de messages du haut. Ce
+// sont les mécaniques de la boutique de Jia côté acheteur ; aucun écran de
+// gestion ne les utilise, et les garder aurait chargé du script qui appelle des
+// adresses (`/api/favoris`, `/api/compteurs`) qui n'existent pas ici.
+
+import '../styles/gestion/fonts.css';
+import '../styles/gestion/tokens.css';
+import '../styles/gestion/components.css';
+import '../styles/gestion/animations.css';
+
+interface Props {
+  titre: string;
+  description: string;
+  /** Réserve la place d'une barre d'action collante au-dessus de la navigation. */
+  avecBarreAction?: boolean;
+  /** Sans navigation basse : l'administration a ses onglets en haut. */
+  sansNav?: boolean;
+}
+
+const { titre, description, avecBarreAction = false, sansNav = false } = Astro.props;
+
+const classesBody = [
+  sansNav ? 'sans-nav' : '',
+  avecBarreAction ? 'avec-barre-action' : '',
+]
+  .filter(Boolean)
+  .join(' ');
+---
+
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light" />
+    {/* La couleur de la barre du navigateur : le rose qui agit, celui des
+        boutons. C'était l'orange de Jia jusqu'à ce qu'Arthur demande, le
+        5 novembre 2026, de ne garder de Jia que la structure. */}
+    <meta name="theme-color" content="#D0206A" />
+
+    <title>{titre} — Mousso Dambé</title>
+    <meta name="description" content={description} />
+    {/* La gestion ne s'indexe jamais : elle montre des noms, des numéros et
+        des adresses de clientes. */}
+    <meta name="robots" content="noindex, nofollow" />
+
+    {/* Les deux polices présentes sur chaque écran de gestion. Les trois
+        autres graisses se chargent d'elles-mêmes quand elles servent. */}
+    <link rel="preload" href="/fonts/karla-400.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/outfit-700.woff2" as="font" type="font/woff2" crossorigin />
+
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  </head>
+
+  <body class={classesBody || undefined}>
+    <div class="page">
+      <slot />
+    </div>
+  </body>
+</html>

@@ -1,205 +1,94 @@
 ---
 /**
- * Les messages de la boutique, côté vendeur.
+ * LA BOÎTE DE RÉCEPTION, VUE DE L'ESPACE VENDEUR.
  *
- * Arthur, le 14 octobre 2026 : « les messages de ceux qui écrivent à la
- * boutique ». Seulement ceux-là : les questions posées au médecin restent
- * dans l'espace d'administration, qui est l'autre métier.
+ * Copie de `src/pages/vendeur/messages.astro` de Jia, le 5 novembre 2026.
+ * Arthur, le même jour : « tu copies tout, tu copies absolument tout, même les
+ * couleurs ».
  *
- * La conversation elle-même s'ouvre sur `/admin/[fil]`, qui sait déjà tout
- * faire (lire, répondre, répondre par un vocal, marquer lu). La dupliquer
- * n'apporterait rien et ferait deux endroits à corriger le jour d'un défaut.
+ * CE QUI EST REPRIS TEL QUEL : le gabarit vendeur avec son onglet « Messages »,
+ * le sous-titre qui compte les non-lus à côté du titre de la page, l'état vide
+ * avec son icône de bulle en gris tertiaire, et la liste de la messagerie de
+ * Jia (fond blanc d'un bord à l'autre, lignes séparées par `--filet-liste`,
+ * une `LigneConversation` par fil). Le commentaire d'ouverture de Jia disait
+ * l'essentiel et reste vrai ici : « répondre vite compte : un acheteur qui
+ * attend une réponse achète souvent ailleurs dans l'heure ».
+ *
+ * CETTE PAGE AVAIT DISPARU, et la voici revenue. Elle ne contenait plus qu'une
+ * redirection 301 vers `/admin`, posée le 5 novembre 2026 au motif qu'il n'y a
+ * pas de vendeur tiers ici et donc pas deux boîtes à tenir. Le motif était bon
+ * mais la conclusion mauvaise : ce ne sont pas deux boîtes, c'est UNE boîte et
+ * DEUX métiers. Le vendeur ouvre cette page pour répondre à ses clientes ;
+ * l'administration ouvre `/admin/conversations` pour chercher dans tout ce qui
+ * s'est dit. Chez Jia les deux existent, et c'est ce que nous copions.
+ *
+ * ELLE MONTRE LES DEUX SUJETS, boutique et médecin, sans filtre. Le compteur de
+ * la barre basse (`NavVendeur`, nourri par le gabarit) additionne les deux : si
+ * cette page en cachait la moitié, la pastille annoncerait des messages
+ * introuvables. Le tri par sujet est sur la page de l'administration, qui est
+ * celle où l'on cherche.
+ *
+ * CE QUE JIA A ET QUE NOUS N'AVONS PAS : le bouton « tout marquer comme lu ».
+ * Jia a `tout_marquer_lu(p_cote)` en base ; ici `marquer_lu` prend un fil et un
+ * seul. Le bouton existerait sans rien faire.
+ *
+ * La porte est `exigerGestion()`, qui ne laisse entrer qu'une ligne de la table
+ * `administrateurs`. Aucun écran de gestion ne lit le cycle d'une cliente, ni
+ * son journal, ni ses questions à IA Dambé : règle du 12 octobre 2026, tenue
+ * par la base elle-même, pas seulement par cette page.
  */
 import Vendeur from '../../layouts/Vendeur.astro';
-import Avatar from '../../components/Avatar.astro';
-import Icone from '../../components/Icone.astro';
-import { clientSession, baseConfiguree } from '../../lib/supabase';
-import { visiteuse } from '../../lib/session';
-import { quandCourt } from '../../lib/format';
+import Icone from '../../components/IconeJia.astro';
+import LigneConversation, { type LigneFil } from '../../components/LigneConversation.astro';
+import { exigerGestion } from '../../lib/gestion';
 
-if (!baseConfiguree()) return Astro.redirect('/', 302);
-const moi = await visiteuse(Astro);
-if (!moi) return Astro.redirect('/connexion', 302);
+const acces = await exigerGestion(Astro);
+if (acces instanceof Response) return acces;
+const { sb } = acces;
 
-const client = clientSession(Astro)!;
-const { data: admin } = await client.rpc('est_admin');
-if (admin !== true) return Astro.redirect('/admin', 302);
-
-const cherche = (Astro.url.searchParams.get('q') ?? '').trim();
-const { data } = await client.rpc('boite_de_reception', {
-  p_recherche: cherche || null,
-  p_depuis: 0,
-  p_sujet: 'boutique',
+const { data: boite, error } = await sb.rpc('boite_de_reception', {
+  p_recherche: null,
+  p_sujet: null,
 });
-const fils = (data?.fils ?? []) as any[];
+if (error) console.error('boite_de_reception', error.message);
 
-const { data: tab } = await client.rpc('tableau_vendeur');
+const fils = ((boite as any)?.fils ?? []) as LigneFil[];
+const nonLus = Number((boite as any)?.non_lus ?? 0);
 ---
 
-<Vendeur titre="Messages" onglet="messages" aPreparer={tab?.a_preparer ?? 0} messages={tab?.messages_boutique ?? 0}>
-  <h1 class="titre-page">Messages de la boutique</h1>
-
-  <form class="chercher" method="get">
-    <Icone nom="recherche" taille={18} />
-    <label class="lecture-seule" for="q">Chercher un prénom ou un numéro</label>
-    <input id="q" type="search" name="q" value={cherche} placeholder="Prénom ou numéro" />
-    {cherche && (
-      <a class="vider" href="/vendeur/messages" aria-label="Vider la recherche">
-        <Icone nom="croix" taille={16} />
-      </a>
-    )}
-  </form>
-
+<Vendeur
+  titre="Messages clientes"
+  onglet="messages"
+  sb={sb}
+  sousTitre={nonLus > 0 ? `${nonLus} non lu${nonLus > 1 ? 's' : ''}` : undefined}
+>
   {
     fils.length === 0 ? (
-      <p class="rien">
-        {cherche ? 'Personne ne correspond à cette recherche.' : "Personne n'a écrit à la boutique pour l'instant."}
-      </p>
+      <div class="etat-vide">
+        <Icone name="message" size={34} class="icone-vide" />
+        <div class="titre">Aucun message pour l'instant</div>
+        <p class="texte">
+          Les questions des clientes sur tes produits arrivent ici. Réponds vite : ça compte dans tes ventes.
+        </p>
+      </div>
     ) : (
-      <ul class="liste">
+      <ul class="liste-conversations">
         {fils.map((f) => (
           <li>
-            <a class="fil" href={`/admin/${f.fil}`}>
-              <Avatar fichier={f.avatar_fichier} prenom={f.prenom} taille={46} />
-              <span class="fil-corps">
-                <span class="fil-haut">
-                  <span class="fil-nom">{f.prenom}</span>
-                  <span class="fil-heure">{quandCourt(f.quand)}</span>
-                </span>
-                <span class="fil-apercu">
-                  {f.apercu_de === 'boutique' && <span class="de-nous">Toi : </span>}
-                  {f.apercu}
-                </span>
-              </span>
-              {f.non_lus > 0 && <span class="pastille-nombre">{f.non_lus}</span>}
-            </a>
+            <LigneConversation fil={f} />
           </li>
         ))}
       </ul>
     )
   }
-
-  <p class="note">
-    Les questions posées au médecin ne sont pas ici : elles restent dans l'espace d'administration.
-  </p>
 </Vendeur>
 
 <style>
-  .titre-page {
-    margin: var(--e4) 0 var(--e3);
-    font-size: 25px;
-  }
+  .etat-vide :global(.icone-vide) { color: var(--texte-tertiaire); }
 
-  .chercher {
-    display: flex;
-    align-items: center;
-    gap: 9px;
-    margin-bottom: var(--e4);
-    padding: 0 var(--e3);
-    border: 1px solid var(--bordure);
-    border-radius: var(--r-champ);
-    background: var(--surface);
-    color: var(--texte-3);
-  }
-
-  .chercher input {
-    flex: 1;
-    min-width: 0;
-    min-height: 46px;
-    border: none;
-    background: none;
-    font-family: var(--texte);
-    font-size: 15px;
-    color: var(--encre);
-  }
-
-  .chercher input:focus {
-    outline: none;
-  }
-
-  .liste {
-    display: flex;
-    flex-direction: column;
-    gap: var(--e2);
-    list-style: none;
-  }
-
-  .fil {
-    display: flex;
-    align-items: center;
-    gap: var(--e3);
-    padding: var(--e3);
-    border: 1px solid var(--bordure);
-    border-radius: var(--r-carte);
-    background: var(--surface);
-  }
-
-  .fil:active {
-    transform: scale(0.99);
-  }
-
-  .fil-corps {
-    flex: 1;
-    min-width: 0;
-  }
-
-  .fil-haut {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: var(--e2);
-  }
-
-  .fil-nom {
-    font-size: 15px;
-    font-weight: 700;
-  }
-
-  .fil-heure {
-    flex: none;
-    font-size: 12px;
-    color: var(--texte-3);
-  }
-
-  .fil-apercu {
-    display: block;
-    margin-top: 2px;
-    font-size: 13.5px;
-    color: var(--texte-2);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .de-nous {
-    color: var(--texte-3);
-  }
-
-  .pastille-nombre {
-    display: grid;
-    place-items: center;
-    flex: none;
-    min-width: 22px;
-    height: 22px;
-    padding: 0 6px;
-    border-radius: 999px;
-    background: var(--rose);
-    color: #fff;
-    font-size: 12px;
-    font-weight: 700;
-  }
-
-  .rien {
-    padding: var(--e5);
-    border: 1px dashed var(--bordure);
-    border-radius: var(--r-carte);
-    color: var(--texte-2);
-    text-align: center;
-  }
-
-  .note {
-    margin-top: var(--e4);
-    font-size: 13px;
-    color: var(--texte-3);
-  }
+  /* La liste de la messagerie de Jia : pas de carte, pas de rayon, le blanc va
+     d'un bord a l'autre et un filet separe deux conversations. C'est ce qui
+     permet de la parcourir au pouce sans compter les cartes. */
+  .liste-conversations { list-style: none; margin: 8px 0 0; padding: 0; background: var(--surface); }
+  .liste-conversations li + li { border-top: 1px solid var(--filet-liste); }
 </style>
