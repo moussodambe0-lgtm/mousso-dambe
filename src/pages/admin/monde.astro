@@ -1,67 +1,94 @@
 ---
 /**
- * MONDE : qui vient sur Mousso Dambé.
+ * MONDE : tout ce qui se passe sur la plateforme.
  *
- * L'écran que Jia appelle « Monde », adapté. Chez Jia il compte aussi les
- * vendeurs qui arrivent et les visiteurs sans compte ; ici il n'y a pas de
- * vendeur tiers, et aucune table ne suit les visiteuses anonymes. Cet écran
- * s'en tient donc à ce qui est vrai : les comptes créés, et ce qu'ils font.
+ * Arthur, le 5 novembre 2026 : « au niveau de Monde, il faudra mettre le nombre
+ * de personnes qui se sont connectées. Je dois pouvoir voir les comptes qui
+ * sont connectés, le nombre de personnes qui sont venues sur la plateforme, qui
+ * ont visité la plateforme. Toutes les informations possibles. »
  *
- * Aucun prénom, aucun numéro n'apparaît : des nombres. La fonction `monde()`
- * ne lit ni les cycles, ni le journal, ni les questions posées à Dambé, et
- * c'est écrit dans sa migration.
+ * L'écran est donc rangé du plus large au plus étroit, et c'est l'ordre dans
+ * lequel on cherche quand on ouvre une page de chiffres : combien sont venues,
+ * combien ont un compte, combien de ces comptes vivent encore, combien
+ * achètent.
  *
- * RHABILLÉ LE 5 NOVEMBRE 2026, après Arthur : « tu copies tout, tu copies
- * absolument tout, même les couleurs ». Ses requêtes et ses calculs n'ont PAS
- * bougé d'une ligne : c'est toujours `monde()`, les mêmes trente jours, les
- * mêmes pourcentages. Ce qui a changé, c'est la peau :
- *
- *   - la rangée de quatre chiffres est maintenant celle de Jia
- *     (`.section-serree.chiffres` collée sous l'en-tête, quatre colonnes
- *     égales, `<strong class="chiffre">` et son `<span>` dessous) et non plus
- *     quatre cartes sur deux lignes ;
- *   - les classes et variables de l'application des clientes (`--rose`,
- *     `--e2`…`--e5`, `--r-carte`, `--texte-2`, `--texte-3`) ont disparu :
- *     elles n'existent pas dans les feuilles de Jia, et les écrire ici donnait
- *     des marges nulles et du texte noir là où il devait être gris. À leur
- *     place, les jetons de Jia : `--gouttiere`, `--r-grand`, `--bordure`,
- *     `--texte-secondaire`, `--texte-tertiaire`, `--action`, `--encre` ;
- *   - le rose des barres d'inscriptions est devenu l'orange d'action de Jia, et
- *     les commandes gardent l'encre. Deux couleurs de la palette de Jia, pas
- *     une de plus ;
- *   - la page d'attente de migration et l'état « rien à compter » prennent la
- *     forme de l'état vide de Jia (`.etat-vide`), et la promesse du bas celle
- *     de son encadré de politique (`.encadre.encadre-neutre`) ;
- *   - LA PAGE DE REFUS EN DOUBLE EST PARTIE. Elle existait ici en copie, avec
- *     son propre gabarit `Base` et sa propre icône, dans toutes les pages de
- *     l'administration. `exigerGestion()` la rend désormais lui-même, en 403,
- *     à un seul endroit. Vingt lignes de balisage recopiées dans chaque page
- *     finissent par diverger, et c'est ce qui était en train d'arriver.
+ * CE QUI N'APPARAÎT PAS, et ce n'est pas un oubli. Aucun prénom, aucun numéro,
+ * aucune page visitée par quelqu'un en particulier. `monde()` ne lit ni les
+ * cycles, ni le journal, ni les questions posées à Dambé, et la table des
+ * visites ne contient que trois nombres par date : il n'y a rien à montrer de
+ * plus, parce qu'il n'y a rien d'enregistré de plus. Le détail du choix est en
+ * tête de `20261105190000_ce_qui_se_passe_sur_la_plateforme.sql`.
  */
 import Admin from '../../layouts/Admin.astro';
 import Icone from '../../components/IconeJia.astro';
 import { exigerGestion } from '../../lib/gestion';
-import { entier } from '../../lib/format-gestion';
+import { entier, dateCourte } from '../../lib/format-gestion';
 
 const acces = await exigerGestion(Astro);
 if (acces instanceof Response) return acces;
 const { sb } = acces;
 
 const { data, error } = await sb.rpc('monde');
-// La fonction naît avec la migration du 5 novembre 2026. Tant qu'elle n'est
-// pas appliquée sur une base, on le dit au lieu d'afficher des zéros, qui
-// feraient croire que personne ne vient.
 const pasEncore = !!error || data?.ok !== true;
 const d: any = pasEncore ? {} : data;
 
-const jours = (d.jours ?? []) as { jour: string; inscriptions: number; commandes: number }[];
-const maxJour = Math.max(1, ...jours.map((j) => Math.max(j.inscriptions, j.commandes)));
+type Jour = { jour: string; inscriptions: number; commandes: number; visites: number; pages: number };
+const jours = (d.jours ?? []) as Jour[];
+
+const v = (d.visites ?? {}) as Record<string, any>;
 
 const comptes = Number(d.comptes ?? 0);
 const ontCommande = Number(d.ont_commande ?? 0);
 const partAcheteuses = comptes > 0 ? Math.round((ontCommande / comptes) * 100) : null;
 const questionnaire = Number(d.questionnaire_fait ?? 0);
 const partQuestionnaire = comptes > 0 ? Math.round((questionnaire / comptes) * 100) : null;
+const jamaisRevenues = Number(d.jamais_revenues ?? 0);
+const partRevenues = comptes > 0 ? Math.round(((comptes - jamaisRevenues) / comptes) * 100) : null;
+
+// La courbe porte trois séries, et les visites écrasent les deux autres : il y
+// a toujours beaucoup plus de passages que d'inscriptions. Chaque série est
+// donc mise à l'échelle de SON propre maximum. On ne compare pas leurs
+// hauteurs entre elles, on regarde la forme de chacune dans le temps.
+const maxVisites = Math.max(1, ...jours.map((j) => Number(j.visites ?? 0)));
+const maxActes = Math.max(1, ...jours.map((j) => Math.max(j.inscriptions, j.commandes)));
+
+const record = d.visites?.record ?? null;
+
+/** Les lignes d'un bloc de chiffres, à plat : libellé, valeur, précision. */
+type Ligne = { mot: string; valeur: string; apres?: string | null };
+
+const frequentation: Ligne[] = [
+  { mot: 'Visiteuses aujourd’hui', valeur: entier(Number(v.jour ?? 0)), apres: `${entier(Number(v.pages_jour ?? 0))} pages` },
+  { mot: 'Sur 7 jours', valeur: entier(Number(v.semaine ?? 0)), apres: `${entier(Number(v.pages_semaine ?? 0))} pages` },
+  { mot: 'Sur 30 jours', valeur: entier(Number(v.mois ?? 0)), apres: `${entier(Number(v.pages_mois ?? 0))} pages` },
+  {
+    mot: 'Pages ouvertes par quelqu’un de connecté',
+    valeur: v.part_connectee === null || v.part_connectee === undefined ? '—' : `${v.part_connectee} %`,
+    apres: null,
+  },
+];
+
+const presence: Ligne[] = [
+  { mot: 'En ce moment', valeur: entier(Number(d.connectees_maintenant ?? 0)), apres: 'dernier quart d’heure' },
+  { mot: 'Aujourd’hui', valeur: entier(Number(d.connectees_jour ?? 0)), apres: null },
+  { mot: 'Cette semaine', valeur: entier(Number(d.connectees_7j ?? 0)), apres: null },
+  { mot: 'Ce mois', valeur: entier(Number(d.connectees_30j ?? 0)), apres: null },
+];
+
+const fidelite: Ligne[] = [
+  {
+    mot: 'Comptes revenus au moins une fois',
+    valeur: entier(comptes - jamaisRevenues),
+    apres: partRevenues === null ? null : `${partRevenues} %`,
+  },
+  { mot: 'Jamais revenues après l’inscription', valeur: entier(jamaisRevenues), apres: null },
+  {
+    mot: 'Questionnaire d’ouverture fini',
+    valeur: entier(questionnaire),
+    apres: partQuestionnaire === null ? null : `${partQuestionnaire} %`,
+  },
+  { mot: 'Ont recommandé', valeur: entier(Number(d.ont_recommande ?? 0)), apres: null },
+];
 ---
 
 <Admin titre="Monde" onglet="monde">
@@ -71,15 +98,19 @@ const partQuestionnaire = comptes > 0 ? Math.round((questionnaire / comptes) * 1
         <Icone name="user" size={34} class="icone-vide" />
         <div class="titre">Rien à compter pour l'instant</div>
         <div class="texte">
-          Cet écran attend la migration <strong>20261105120000_monde.sql</strong>. Tant qu'elle n'est pas appliquée sur
-          cette base, aucun nombre affiché ici ne voudrait dire quelque chose.
+          Cet écran attend les migrations du 5 novembre 2026. Tant qu'elles ne sont pas appliquées sur cette base,
+          aucun nombre affiché ici ne voudrait dire quelque chose.
         </div>
       </div>
     ) : (
       <>
         <section class="section-serree chiffres">
+          <div><strong class="chiffre">{entier(Number(v.jour ?? 0))}</strong><span>visiteuses aujourd’hui</span></div>
+          <div>
+            <strong class="chiffre">{entier(Number(d.connectees_maintenant ?? 0))}</strong>
+            <span>connectées là</span>
+          </div>
           <div><strong class="chiffre">{entier(comptes)}</strong><span>comptes en tout</span></div>
-          <div><strong class="chiffre">{entier(Number(d.comptes_7j ?? 0))}</strong><span>nouveaux 7 j</span></div>
           <div>
             <strong class="chiffre">
               {entier(ontCommande)}
@@ -87,34 +118,100 @@ const partQuestionnaire = comptes > 0 ? Math.round((questionnaire / comptes) * 1
             </strong>
             <span>ont commandé</span>
           </div>
-          <div><strong class="chiffre">{entier(Number(d.ont_recommande ?? 0))}</strong><span>ont recommandé</span></div>
         </section>
 
         <section class="section">
           <h2 class="titre-section">Les trente derniers jours</h2>
           <div class="bloc-courbe">
-            <div class="courbe" role="img" aria-label="Inscriptions et commandes des trente derniers jours">
+            <div class="courbe" role="img" aria-label="Visites, inscriptions et commandes des trente derniers jours">
               {jours.map((j) => (
-                <span class="jour" title={`${j.jour} : ${j.inscriptions} inscription(s), ${j.commandes} commande(s)`}>
-                  <span class="barre barre-inscription" style={`height:${(j.inscriptions / maxJour) * 100}%`} />
-                  <span class="barre barre-commande" style={`height:${(j.commandes / maxJour) * 100}%`} />
+                <span
+                  class="jour"
+                  title={`${j.jour} : ${j.visites ?? 0} visiteuse(s), ${j.inscriptions} inscription(s), ${j.commandes} commande(s)`}
+                >
+                  <span class="barre barre-visite" style={`height:${(Number(j.visites ?? 0) / maxVisites) * 100}%`} />
+                  <span class="barre barre-inscription" style={`height:${(j.inscriptions / maxActes) * 100}%`} />
+                  <span class="barre barre-commande" style={`height:${(j.commandes / maxActes) * 100}%`} />
                 </span>
               ))}
             </div>
             <div class="legende">
+              <span><i class="puce puce-visite" />Visites</span>
               <span><i class="puce puce-inscription" />Inscriptions</span>
               <span><i class="puce puce-commande" />Commandes</span>
             </div>
           </div>
+          {record && Number(record.visiteuses) > 0 && (
+            <p class="record">
+              Meilleur jour : <strong>{dateCourte(record.jour)}</strong>, {entier(Number(record.visiteuses))} visiteuse
+              {Number(record.visiteuses) > 1 ? 's' : ''}.
+            </p>
+          )}
+        </section>
 
-          <h2 class="titre-section">Le questionnaire</h2>
+        <section class="section">
+          <h2 class="titre-section">La fréquentation</h2>
+          <div class="carte">
+            {frequentation.map((l) => (
+              <div class="ligne-mention">
+                <span>{l.mot}</span>
+                <strong>
+                  {l.valeur}
+                  {l.apres && <span class="part"> · {l.apres}</span>}
+                </strong>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section class="section">
+          <h2 class="titre-section">Les comptes qui se connectent</h2>
+          <div class="carte">
+            {presence.map((l) => (
+              <div class="ligne-mention">
+                <span>{l.mot}</span>
+                <strong>
+                  {l.valeur}
+                  {l.apres && <span class="part"> · {l.apres}</span>}
+                </strong>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section class="section">
+          <h2 class="titre-section">Est-ce qu’elles restent</h2>
+          <div class="carte">
+            {fidelite.map((l) => (
+              <div class="ligne-mention">
+                <span>{l.mot}</span>
+                <strong>
+                  {l.valeur}
+                  {l.apres && <span class="part"> · {l.apres}</span>}
+                </strong>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section class="section">
+          <h2 class="titre-section">Ce qui se vend</h2>
           <div class="carte">
             <div class="ligne-mention">
-              <span>Questionnaire d'ouverture fini</span>
-              <strong>
-                {entier(questionnaire)} compte{questionnaire > 1 ? 's' : ''}
-                {partQuestionnaire !== null && <span class="part"> · {partQuestionnaire} %</span>}
-              </strong>
+              <span>Commandes aujourd’hui</span>
+              <strong>{entier(Number(d.commandes_jour ?? 0))}</strong>
+            </div>
+            <div class="ligne-mention">
+              <span>Commandes sur 7 jours</span>
+              <strong>{entier(Number(d.commandes_7j ?? 0))}</strong>
+            </div>
+            <div class="ligne-mention">
+              <span>Nouveaux comptes sur 7 jours</span>
+              <strong>{entier(Number(d.comptes_7j ?? 0))}</strong>
+            </div>
+            <div class="ligne-mention">
+              <span>Nouveaux comptes sur 30 jours</span>
+              <strong>{entier(Number(d.comptes_30j ?? 0))}</strong>
             </div>
           </div>
         </section>
@@ -133,26 +230,31 @@ const partQuestionnaire = comptes > 0 ? Math.round((questionnaire / comptes) * 1
   .etat-vide :global(.icone-vide) { color: var(--texte-tertiaire); }
 
   .titre-section { font-size: 16px; margin: 20px 0 12px; }
-  .note { font-size: 13px; color: var(--texte-tertiaire); line-height: 1.5; margin: 0; }
 
-  /* Une courbe sans bibliothèque : trente colonnes, deux barres par jour.
+  /* Une courbe sans bibliothèque : trente colonnes, trois barres par jour.
      Rien à télécharger, et ça se lit sur un téléphone. */
   .bloc-courbe { background: var(--surface); border: 1px solid var(--bordure); border-radius: var(--r-grand); padding: 14px; }
   .courbe { display: flex; align-items: flex-end; gap: 3px; height: 120px; }
   .jour { display: flex; align-items: flex-end; gap: 1px; flex: 1; height: 100%; }
   .barre { flex: 1; min-height: 2px; border-radius: 2px 2px 0 0; }
+  /* Les visites en pâle et derrière, les deux gestes en plein devant : il y a
+     cent fois plus de passages que d'inscriptions, et la barre pâle est le
+     décor sur lequel les autres se lisent. */
+  .barre-visite { background: var(--action-bordure); }
   .barre-inscription { background: var(--action); }
   .barre-commande { background: var(--encre); }
 
-  .legende { display: flex; gap: 16px; margin-top: 11px; font-size: 12.5px; color: var(--texte-secondaire); }
+  .legende { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 11px; font-size: 12.5px; color: var(--texte-secondaire); }
   .puce { display: inline-block; width: 10px; height: 10px; margin-right: 6px; border-radius: 3px; }
+  .puce-visite { background: var(--action-bordure); }
   .puce-inscription { background: var(--action); }
   .puce-commande { background: var(--encre); }
 
-  .carte { background: var(--surface); border: 1px solid var(--bordure); border-radius: var(--r-grand); padding: 14px; }
-  .ligne-mention { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; }
-  /* Le premier span seulement : le second vit dans le <strong> et porte le
-     pourcentage, qui a sa propre couleur juste dessous. */
+  .record { margin: 10px 0 0; font-size: 13px; color: var(--texte-secondaire); }
+
+  .carte { background: var(--surface); border: 1px solid var(--bordure); border-radius: var(--r-grand); padding: 4px 14px; }
+  .ligne-mention { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 10px 0; font-size: 14px; }
+  .ligne-mention + .ligne-mention { border-top: 1px solid var(--bordure); }
   .ligne-mention > span:first-child { color: var(--texte-secondaire); }
   .ligne-mention strong { white-space: nowrap; }
   .part { color: var(--texte-tertiaire); font-weight: 700; }

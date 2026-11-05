@@ -14,6 +14,8 @@ import { defineMiddleware } from 'astro:middleware';
 import { cheminPublic } from './lib/cache';
 import { hoteDemande, estHoteAdmin, verdict } from './lib/hotes';
 import { defautDeConfiguration } from './lib/configuration';
+import { estPageComptable, jourCourant, COOKIE_JOUR } from './lib/visites';
+import { clientPublic, clientSession, baseConfiguree } from './lib/supabase';
 import { PUBLIC_SUPABASE_URL } from 'astro:env/client';
 import { MD_CLE_SERVEUR, ADMIN_HOST } from 'astro:env/server';
 
@@ -59,6 +61,55 @@ export const onRequest = defineMiddleware(async (contexte, suite) => {
     reponse = new Response(rendue.body, { status: 404, headers: rendue.headers });
   } else {
     reponse = await suite();
+
+    // ---- COMPTER LA VISITE -------------------------------------------------
+    //
+    // Arthur, le 5 novembre 2026 : « je dois pouvoir voir le nombre de
+    // personnes qui sont venues sur la plateforme ».
+    //
+    // QUATRE CONDITIONS, et chacune évite un chiffre faux :
+    //   - sur l'adresse des clientes seulement : les allées et venues d'Arthur
+    //     dans sa propre gestion ne sont pas de la fréquentation ;
+    //   - sur une vraie page, jamais sur une police, une photo ou une note
+    //     vocale (voir lib/visites.ts) ;
+    //   - sur une réponse qui s'est bien passée : une page introuvable n'est
+    //     pas une visite ;
+    //   - avec une base branchée, sinon l'appel échouerait à chaque page.
+    //
+    // Le cookie `md_jour` ne contient qu'une date. Il ne sert qu'à savoir si ce
+    // navigateur a déjà été compté aujourd'hui, et il ne permet de reconnaître
+    // personne, ni d'un jour à l'autre, ni dans la journée.
+    if (
+      !surHoteAdmin &&
+      baseConfiguree() &&
+      estPageComptable(chemin) &&
+      reponse.status >= 200 &&
+      reponse.status < 400
+    ) {
+      const aujourdhui = jourCourant();
+      const dejaVue = contexte.cookies.get(COOKIE_JOUR)?.value === aujourdhui;
+      try {
+        // Le client de la session quand elle existe : c'est lui qui porte
+        // l'identité, et la fonction en a besoin pour marquer la présence du
+        // compte. Sans session, le client public suffit à compter la page.
+        const client = clientSession(contexte as never) ?? clientPublic(contexte as never);
+        await client.rpc('enregistrer_passage', { p_nouvelle: !dejaVue });
+        if (!dejaVue) {
+          contexte.cookies.set(COOKIE_JOUR, aujourdhui, {
+            path: '/',
+            httpOnly: true,
+            sameSite: 'lax',
+            secure: import.meta.env.PROD,
+            // Deux jours : assez pour couvrir un changement de date pendant
+            // qu'une page est ouverte, trop court pour servir à autre chose.
+            maxAge: 60 * 60 * 48,
+          });
+        }
+      } catch {
+        // Un compteur n'est pas une raison de casser une page. Si la base ne
+        // répond pas, la visiteuse ne doit rien en savoir.
+      }
+    }
   }
 
   // Dit aux vieux navigateurs ce que frame-ancestors dit aux récents :
