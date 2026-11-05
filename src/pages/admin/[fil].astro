@@ -60,7 +60,7 @@
  * ne compile pas. Le balisage ci-dessous est celui qu'il rend, aux mêmes
  * classes de Jia (`encadre encadre-orange alerte`).
  */
-import Admin from '../../layouts/Admin.astro';
+import BaseGestion from '../../layouts/BaseGestion.astro';
 import Icone from '../../components/IconeJia.astro';
 import VocalSaisie from '../../components/VocalSaisie.astro';
 import Avatar from '../../components/Avatar.astro';
@@ -136,7 +136,22 @@ const lignes = messages.map((m) => {
 });
 ---
 
-<Admin titre={ouvert && tete ? tete.prenom : 'Conversation'} onglet="conversations">
+{/* PAS D'EN-TÊTE D'ADMINISTRATION SUR UN FIL OUVERT.
+    Arthur, le 5 novembre 2026, en ouvrant la conversation de Bintou : « en
+    haut il y a "Administration Mousso Dambé / Bintou / Espace vendeur / Vue
+    d'ensemble / Commandes…", enlève ça ».
+    Il avait raison : la page porte déjà sa propre barre, avec la photo de la
+    personne, son numéro et la flèche de retour. L'en-tête sombre et ses cinq
+    onglets venaient se poser par-dessus, ce qui faisait deux barres l'une sur
+    l'autre et repoussait le premier message hors de l'écran. Une conversation
+    qu'on lit est un endroit où l'on est entré : on en sort par la flèche, pas
+    par un menu.
+    D'où le socle nu plutôt que le gabarit `Admin`. */}
+<BaseGestion
+  titre={ouvert && tete ? tete.prenom : 'Conversation'}
+  description="Conversation avec une cliente de Mousso Dambé."
+  sansNav
+>
   {
     !ouvert && (
       <div class="etat-vide">
@@ -260,7 +275,7 @@ const lignes = messages.map((m) => {
       </>
     )
   }
-</Admin>
+</BaseGestion>
 
 <script>
   import '../../scripts/conversation';
@@ -289,13 +304,13 @@ const lignes = messages.map((m) => {
   .espace { margin-top: 16px; }
 
   /* ---------- La barre de la conversation ---------- */
-  /* `.entete-page` de Jia colle en haut, et l'en-tête sombre de l'administration
-     colle déjà à la même place : les deux se recouvraient au défilement. Celle
-     de la conversation lâche donc la position collante, et c'est l'en-tête de
-     l'administration qui reste. Tout le reste de `.entete-page` est conservé :
-     le fond blanc, le filet du bas, l'écartement, la zone tactile de 44 px de
-     la flèche de retour. */
-  .barre-fil { position: static; gap: 10px; }
+  /* Elle garde la position collante de `.entete-page` de Jia : c'est la seule
+     barre de cette page depuis qu'Arthur a fait retirer l'en-tête de
+     l'administration, le 5 novembre 2026. Elle avait dû y renoncer tant que
+     les deux se posaient au même endroit et se recouvraient au défilement.
+     Qu'elle colle importe ici plus qu'ailleurs : dans une conversation longue,
+     on fait défiler, et il faut pouvoir ressortir sans remonter tout le fil. */
+  .barre-fil { gap: 10px; }
   .qui { flex: 1; min-width: 0; }
   .qui strong {
     display: block;
