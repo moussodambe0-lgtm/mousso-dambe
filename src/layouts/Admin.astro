@@ -32,7 +32,7 @@
  */
 import BaseGestion from './BaseGestion.astro';
 
-export type OngletAdmin = 'vue' | 'commandes' | 'conversations' | 'produits' | 'monde';
+export type OngletAdmin = 'vue' | 'commandes' | 'conversations' | 'monde';
 
 interface Props {
   titre: string;
@@ -41,11 +41,17 @@ interface Props {
 
 const { titre, onglet } = Astro.props;
 
+// QUATRE ONGLETS. « Produits » a été retiré le 5 novembre 2026, à la demande
+// d'Arthur : « au niveau de administrateur, la partie Produits, là où ça montre
+// les différents produits, on va enlever ça ». Il avait raison : le catalogue
+// se tient dans l'espace vendeur, où on peut changer un prix, un stock, une
+// photo. L'écran d'administration ne faisait que le montrer, avec deux boutons
+// qui existent déjà là-bas. Deux endroits pour la même chose, c'est deux
+// endroits à corriger le jour d'un défaut.
 const onglets = [
   { cle: 'vue', libelle: 'Vue d’ensemble', href: '/admin' },
   { cle: 'commandes', libelle: 'Commandes', href: '/admin/commandes' },
   { cle: 'conversations', libelle: 'Conversations', href: '/admin/conversations' },
-  { cle: 'produits', libelle: 'Produits', href: '/admin/produits' },
   { cle: 'monde', libelle: 'Monde', href: '/admin/monde' },
 ] as const;
 ---
@@ -65,7 +71,7 @@ const onglets = [
         <a href="/vendeur" class="sortie">Espace vendeur</a>
       </div>
     </div>
-    <nav class="onglets" aria-label="Administration">
+    <nav class="onglets" aria-label="Administration" data-onglets-admin>
       {onglets.map((o) => (
         <a
           href={o.href}
@@ -80,6 +86,36 @@ const onglets = [
 
   <slot />
 </BaseGestion>
+
+<script>
+  // LA RANGÉE D'ONGLETS S'OUVRE SUR CELUI QUI EST ACTIF.
+  //
+  // Arthur, le 5 novembre 2026 : « quand je clique sur Produits, la page
+  // s'affiche en bas, mais en haut ça revient au niveau de Vue d'ensemble,
+  // Commandes. Le truc rose montre que je suis sur Produits, mais en haut ça
+  // ne reste pas sur la page où il y a Produits. »
+  //
+  // Les cinq onglets ne tiennent pas dans 390 px : la rangée défile
+  // horizontalement, et un navigateur l'ouvre toujours à son début. Le trait
+  // rose était donc bien sous « Produits », mais hors de l'écran, et la barre
+  // semblait dire qu'on était ailleurs.
+  //
+  // Sans JavaScript, la barre se pousse encore au doigt : cette ligne fait
+  // gagner un geste, elle n'en conditionne aucun.
+  const barre = document.querySelector('[data-onglets-admin]');
+  const actif = barre?.querySelector('.onglet.actif');
+  if (barre instanceof HTMLElement && actif instanceof HTMLElement) {
+    // Mesuré à l'écran plutôt qu'avec `offsetLeft` : l'en-tête est collant,
+    // donc positionné, et `offsetLeft` se compterait depuis lui et non depuis
+    // la rangée. On centre l'onglet quand il y a la place des deux côtés.
+    const cadreBarre = barre.getBoundingClientRect();
+    const cadreActif = actif.getBoundingClientRect();
+    const ecart = cadreActif.left - cadreBarre.left - (cadreBarre.width - cadreActif.width) / 2;
+    // Sans animation : la page vient de s'ouvrir, une barre qui glisse toute
+    // seule au premier regard se lit comme un défaut.
+    barre.scrollLeft += ecart;
+  }
+</script>
 
 <style>
   .entete-admin { position: sticky; top: 0; z-index: 10; padding-bottom: 0; }
