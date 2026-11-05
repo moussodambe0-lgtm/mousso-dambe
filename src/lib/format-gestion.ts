@@ -85,7 +85,26 @@ export function depuis(iso: string): string {
 
 /**
  * Lien WhatsApp pré-rempli. WhatsApp reste le canal de repli de toute la
- * plateforme : un acheteur bloqué écrit sur WhatsApp, pas un courriel.
+ * plateforme : une cliente bloquée écrit sur WhatsApp, pas un courriel.
+ *
+ * UNE RÈGLE QUI NE SE DISCUTE PAS : LE MESSAGE NE NOMME JAMAIS UN PRODUIT.
+ *
+ * On écrit « au sujet de ta commande MD-2611-00001 », jamais « au sujet de ta
+ * commande de culottes menstruelles ». Un message WhatsApp s'affiche sur un
+ * écran verrouillé, et un téléphone se partage à la maison. Toute
+ * l'application est construite autour de ça : le colis est neutre, les
+ * notifications sont discrètes, rien ne dit ce qu'il y a dedans. Un seul
+ * message pré-rempli qui nomme le produit annule tout le reste d'un coup.
+ *
+ * Vérifié le 5 novembre 2026, après le rapport du Juriste : les deux seuls
+ * appels de ce projet (une cliente au sujet de sa commande, un livreur au
+ * sujet de sa course) ne portent qu'un numéro de commande et un prénom. Si tu
+ * ajoutes un appel, garde-le ainsi.
+ *
+ * À savoir aussi, et c'est le Juriste qui l'a relevé : ce lien fait partir le
+ * numéro de la cliente et le texte chez Meta, hors du Burkina Faso. C'est
+ * déclaré depuis cette date, et c'est une raison de plus de n'y mettre que le
+ * strict nécessaire.
  */
 export function lienWhatsApp(numero: string, message: string): string {
   const propre = numero.replace(/[^0-9]/g, '');
