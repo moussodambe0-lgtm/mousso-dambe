@@ -1,4 +1,26 @@
 /**
+ * Les appels d'authentification qu'on fait à la main, parce que supabase-js
+ * ne sait pas les faire sur un serveur.
+ *
+ * Deux pannes du 6 novembre 2026 ont la même racine, et il y en aura d'autres :
+ * le client d'authentification de supabase-js est écrit pour un navigateur.
+ * Il attend un stockage, une session déjà chargée et un verrou qui sérialise
+ * ses opérations. Sur un serveur, avec `persistSession: false`, il se suspend
+ * ou rend des réponses vides, sans jamais lever d'erreur.
+ *
+ *   - `auth.refreshSession()` ne revient jamais. Toutes les pages de toutes
+ *     les femmes connectées depuis plus d'une heure rendaient 504.
+ *   - `auth.signInAnonymously()` rend `{ session: null, error: null }`. Le
+ *     bouton « Commencer » de l'écran d'ouverture ne faisait rien : aucune
+ *     visiteuse nouvelle ne pouvait entrer dans l'application.
+ *
+ * LA RÈGLE QUI EN SORT. Côté serveur, on n'appelle de `auth.*` que ce qui est
+ * prouvé sans danger (`getUser(jeton)` l'est). Tout le reste est une requête
+ * HTTP ordinaire vers `/auth/v1/…`, écrite ici, bornée dans le temps, et
+ * couverte par `supabase/tests/rafraichir.test.mjs`.
+ *
+ * ----------------------------------------------------------------------------
+ *
  * Échanger un jeton de rafraîchissement, sans passer par supabase-js.
  *
  * POURQUOI CE FICHIER EXISTE. C'est la panne du 6 novembre 2026, et elle a
@@ -70,6 +92,83 @@ export async function sansDepasser<T>(
 export interface JetonsRafraichis {
   access_token: string;
   refresh_token: string;
+}
+
+/**
+ * Ouvrir une session anonyme, sans passer par supabase-js.
+ *
+ * C'est ce que fait le bouton « Commencer » de l'écran d'ouverture : Supabase
+ * crée une identité sans email ni mot de passe, avec un vrai jeton signé, et
+ * toutes les règles d'accès de la base continuent de marcher.
+ *
+ * POURQUOI PAS `auth.signInAnonymously()`. Sur le serveur, il rend
+ * `{ data: { user: null, session: null }, error: null }` : ni session, ni
+ * erreur, rien à quoi se raccrocher. Le 6 novembre 2026, aucune visiteuse
+ * nouvelle ne pouvait entrer dans l'application, et la page renvoyait
+ * simplement vers l'accueil sans rien dire. Arthur : « quand j'appuie
+ * commencer, ça ne marche pas, ça ne m'envoie pas à la page suivante. »
+ *
+ * La route `/auth/v1/signup` avec un corps vide est exactement l'appel que la
+ * bibliothèque est censée faire. Rendu ainsi, un échec est un échec : un
+ * statut, un code, et de quoi savoir quoi réparer.
+ *
+ * Rend les jetons, ou un code de refus. Jamais d'exception.
+ */
+export async function connexionAnonyme(
+  urlBase: string,
+  cleAnonyme: string,
+  delaiMs: number = DELAI_RAFRAICHISSEMENT_MS,
+  chercher: typeof fetch = fetch
+): Promise<{ jetons: JetonsRafraichis } | { motif: string }> {
+  if (!urlBase || !cleAnonyme) return { motif: 'base_non_configuree' };
+
+  let minuteur: ReturnType<typeof setTimeout> | undefined;
+  const trancher = new Promise<null>((resoudre) => {
+    minuteur = setTimeout(() => resoudre(null), delaiMs);
+  });
+
+  try {
+    const reponse = await Promise.race([
+      chercher(`${urlBase.replace(/\/+$/, '')}/auth/v1/signup`, {
+        method: 'POST',
+        headers: {
+          apikey: cleAnonyme,
+          Authorization: `Bearer ${cleAnonyme}`,
+          'Content-Type': 'application/json',
+        },
+        body: '{}',
+        signal: AbortSignal.timeout(delaiMs),
+      }),
+      trancher,
+    ]);
+
+    if (!reponse) return { motif: 'delai_depasse' };
+
+    const corps = (await reponse.json().catch(() => null)) as Record<string, unknown> | null;
+
+    if (!reponse.ok) {
+      // Supabase nomme ses refus : `anonymous_provider_disabled` quand le
+      // réglage est fermé, `over_request_rate_limit` quand on insiste. Le code
+      // est repris tel quel, parce qu'il dit quoi réparer.
+      const code =
+        (typeof corps?.error_code === 'string' && corps.error_code) ||
+        (typeof corps?.code === 'string' && corps.code) ||
+        `http_${reponse.status}`;
+      return { motif: code };
+    }
+
+    const acces = corps?.access_token;
+    const rafraichissement = corps?.refresh_token;
+    if (typeof acces !== 'string' || typeof rafraichissement !== 'string') {
+      return { motif: 'reponse_sans_jetons' };
+    }
+
+    return { jetons: { access_token: acces, refresh_token: rafraichissement } };
+  } catch {
+    return { motif: 'base_injoignable' };
+  } finally {
+    if (minuteur) clearTimeout(minuteur);
+  }
 }
 
 /**

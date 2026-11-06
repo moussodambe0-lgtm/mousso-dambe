@@ -22,8 +22,10 @@
  * renvoie là où elle en était.
  */
 import type { APIRoute } from 'astro';
-import { clientPublic, poserSession, baseConfiguree } from '../lib/supabase';
+import { poserSession, baseConfiguree } from '../lib/supabase';
 import { visiteuse } from '../lib/session';
+import { connexionAnonyme } from '../lib/rafraichir';
+import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from 'astro:env/client';
 
 export const prerender = false;
 
@@ -35,9 +37,13 @@ export const POST: APIRoute = async (astro) => {
     return astro.redirect(deja.questionnaireFini ? '/' : '/bienvenue', 303);
   }
 
-  const { data, error } = await clientPublic(astro).auth.signInAnonymously();
+  // L'appel passe par une requête HTTP écrite à la main, et non par
+  // `auth.signInAnonymously()` : sur le serveur, celui-ci rend une réponse
+  // vide, sans session ET sans erreur. Le détail est en tête de
+  // src/lib/rafraichir.ts.
+  const r = await connexionAnonyme(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY);
 
-  if (error || !data?.session) {
+  if ('motif' in r) {
     // UN ÉCHEC QUI NE DIT RIEN EST UN ÉCHEC QU'ON NE RÉPARE PAS.
     //
     // Arthur, le 6 novembre 2026 : « quand j'appuie Commencer, ça ne marche
@@ -52,21 +58,12 @@ export const POST: APIRoute = async (astro) => {
     // sans cela on ne peut toujours rien diagnostiquer à distance. Ce qui part
     // est un CODE, jamais un message : « anonymous_provider_disabled » dit à
     // qui sait lire qu'un réglage est fermé, et rien sur personne.
-    console.error(
-      'commencer: signInAnonymously a échoué',
-      JSON.stringify({ statut: error?.status ?? null, code: error?.code ?? null, message: error?.message ?? null })
-    );
-    const code = (error?.code ?? (error?.status ? `http_${error.status}` : 'sans_session'))
-      .toString()
-      .replace(/[^a-z0-9_]/gi, '')
-      .slice(0, 40);
+    console.error('commencer: la connexion anonyme a échoué', r.motif);
+    const code = r.motif.replace(/[^a-z0-9_]/gi, '').slice(0, 40);
     return astro.redirect(`/?entree=impossible&motif=${code}`, 303);
   }
 
-  poserSession(astro, {
-    access_token: data.session.access_token,
-    refresh_token: data.session.refresh_token,
-  });
+  poserSession(astro, r.jetons);
 
   return astro.redirect('/bienvenue', 303);
 };

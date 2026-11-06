@@ -19,7 +19,12 @@
 //
 // Lancer : node supabase/tests/rafraichir.test.mjs
 import { verifier, bilan, titre } from './banc.mjs';
-import { rafraichirJetons, sansDepasser, DELAI_RAFRAICHISSEMENT_MS } from '../../src/lib/rafraichir.ts';
+import {
+  rafraichirJetons,
+  connexionAnonyme,
+  sansDepasser,
+  DELAI_RAFRAICHISSEMENT_MS,
+} from '../../src/lib/rafraichir.ts';
 
 const URL_BASE = 'https://exemple.supabase.co';
 const CLE = 'cle-publiable-du-banc';
@@ -163,6 +168,63 @@ titre('La limite générique, pour ce qui passe encore par supabase-js');
     leve = e.message === 'vraie erreur';
   }
   verifier('une vraie erreur reste une erreur, elle n\'est pas masquée', leve);
+}
+
+titre('La connexion anonyme : le bouton « Commencer »');
+{
+  // Le 6 novembre 2026, aucune visiteuse nouvelle ne pouvait entrer dans
+  // l'application : `auth.signInAnonymously()` de supabase-js rendait
+  // `{ session: null, error: null }` sur le serveur, et la page renvoyait vers
+  // l'accueil sans rien dire. Ce que ces vérifications tiennent : que l'appel
+  // soit la bonne requête, et surtout QU'UN ÉCHEC SOIT NOMMÉ.
+  const journal = [];
+  const ok = await connexionAnonyme(
+    URL_BASE,
+    CLE,
+    5000,
+    faux(reponseJson(200, { access_token: 'acces', refresh_token: 'rafraichissement' }), journal)
+  );
+  verifier('une session anonyme rend ses deux jetons', ok.jetons?.access_token === 'acces' && ok.jetons?.refresh_token === 'rafraichissement');
+  verifier(
+    "l'adresse appelée est celle de l'inscription",
+    journal[0].url === `${URL_BASE}/auth/v1/signup`,
+    journal[0].url
+  );
+  verifier('le corps est vide, c\'est ce qui la rend anonyme', journal[0].options.body === '{}');
+  verifier('une limite de temps est posée', !!journal[0].options.signal);
+
+  // LE CAS QU'ARTHUR A VU : le réglage est fermé côté Supabase.
+  const ferme = await connexionAnonyme(URL_BASE, CLE, 5000, faux(reponseJson(422, { error_code: 'anonymous_provider_disabled' })));
+  verifier(
+    'un réglage fermé est nommé, pas avalé',
+    ferme.motif === 'anonymous_provider_disabled',
+    JSON.stringify(ferme)
+  );
+
+  const trop = await connexionAnonyme(URL_BASE, CLE, 5000, faux(reponseJson(429, { code: 'over_request_rate_limit' })));
+  verifier('une limite de débit est nommée', trop.motif === 'over_request_rate_limit', JSON.stringify(trop));
+
+  const sansCode = await connexionAnonyme(URL_BASE, CLE, 5000, faux(reponseJson(500, {})));
+  verifier('un refus sans code garde au moins son statut', sansCode.motif === 'http_500', JSON.stringify(sansCode));
+
+  const vide = await connexionAnonyme(URL_BASE, CLE, 5000, faux(reponseJson(200, { user: null })));
+  verifier(
+    "une réponse sans jetons est un échec nommé, pas un succès vide",
+    vide.motif === 'reponse_sans_jetons',
+    JSON.stringify(vide)
+  );
+
+  const coupe = await connexionAnonyme(URL_BASE, CLE, 5000, async () => { throw new Error('reseau'); });
+  verifier('un réseau coupé est nommé', coupe.motif === 'base_injoignable', JSON.stringify(coupe));
+
+  verifier('sans configuration, on ne tente rien', (await connexionAnonyme('', CLE, 5000, faux(reponseJson(200, {})))).motif === 'base_non_configuree');
+
+  const debut = Date.now();
+  const suspendu = await connexionAnonyme(URL_BASE, CLE, 100, (_u, o) =>
+    new Promise((_r, rejeter) => o.signal.addEventListener('abort', () => rejeter(new Error('abandonne'))))
+  );
+  verifier('un appel suspendu rend la main', !!suspendu.motif, JSON.stringify(suspendu));
+  verifier(`et tout de suite (${Date.now() - debut} ms)`, Date.now() - debut < 2000);
 }
 
 bilan("L'échange du jeton de rafraîchissement");
