@@ -38,9 +38,29 @@ export const POST: APIRoute = async (astro) => {
   const { data, error } = await clientPublic(astro).auth.signInAnonymously();
 
   if (error || !data?.session) {
-    // On ne laisse pas la visiteuse devant une page blanche : l'accueil sait
-    // dire que la base n'est pas joignable.
-    return astro.redirect('/?entree=impossible', 303);
+    // UN ÉCHEC QUI NE DIT RIEN EST UN ÉCHEC QU'ON NE RÉPARE PAS.
+    //
+    // Arthur, le 6 novembre 2026 : « quand j'appuie Commencer, ça ne marche
+    // pas, ça ne m'envoie pas à la page suivante. » Cette ligne renvoyait
+    // vers /?entree=impossible sans conserver la moindre trace de la cause,
+    // et il a fallu rejouer l'appel à la main contre la base de production
+    // pour seulement savoir où chercher. Le motif de Supabase est maintenant
+    // écrit dans le journal du serveur.
+    //
+    // Il est aussi recopié dans l'adresse, et c'est volontaire : les journaux
+    // d'exécution de Vercel ne sont pas lisibles par l'API sur ce plan, donc
+    // sans cela on ne peut toujours rien diagnostiquer à distance. Ce qui part
+    // est un CODE, jamais un message : « anonymous_provider_disabled » dit à
+    // qui sait lire qu'un réglage est fermé, et rien sur personne.
+    console.error(
+      'commencer: signInAnonymously a échoué',
+      JSON.stringify({ statut: error?.status ?? null, code: error?.code ?? null, message: error?.message ?? null })
+    );
+    const code = (error?.code ?? (error?.status ? `http_${error.status}` : 'sans_session'))
+      .toString()
+      .replace(/[^a-z0-9_]/gi, '')
+      .slice(0, 40);
+    return astro.redirect(`/?entree=impossible&motif=${code}`, 303);
   }
 
   poserSession(astro, {
