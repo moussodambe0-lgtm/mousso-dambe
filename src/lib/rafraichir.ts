@@ -35,6 +35,37 @@
  * n'est pas une lenteur qu'on risque, c'est une page morte.
  */
 
+/**
+ * Borner n'importe quelle promesse, et rendre une valeur de repli au-delà.
+ *
+ * Sert à tout ce qui passe encore par le client d'authentification de
+ * supabase-js, en particulier `auth.setSession()`, qui rafraîchit le jeton
+ * tout seul quand il le trouve expiré et se suspend alors comme
+ * `refreshSession()`. Les deux écrans concernés (lier un compte Google, et
+ * changer son email ou son mot de passe) n'ont pas été vus tomber, mais ils
+ * tiennent exactement le même mécanisme : les borner coûte trois lignes, les
+ * laisser coûte une page morte le jour où quelqu'un y arrive avec un jeton
+ * d'une heure et une minute.
+ *
+ * Elle ne masque pas une erreur : une promesse qui échoue échoue encore. Elle
+ * ne borne que le temps.
+ */
+export async function sansDepasser<T>(
+  promesse: PromiseLike<T>,
+  delaiMs: number,
+  repli: T
+): Promise<T> {
+  let minuteur: ReturnType<typeof setTimeout> | undefined;
+  const trancher = new Promise<T>((resoudre) => {
+    minuteur = setTimeout(() => resoudre(repli), delaiMs);
+  });
+  try {
+    return await Promise.race([promesse, trancher]);
+  } finally {
+    if (minuteur) clearTimeout(minuteur);
+  }
+}
+
 /** Ce que Supabase rend quand l'échange réussit. */
 export interface JetonsRafraichis {
   access_token: string;

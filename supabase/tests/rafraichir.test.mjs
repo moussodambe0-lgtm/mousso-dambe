@@ -19,7 +19,7 @@
 //
 // Lancer : node supabase/tests/rafraichir.test.mjs
 import { verifier, bilan, titre } from './banc.mjs';
-import { rafraichirJetons, DELAI_RAFRAICHISSEMENT_MS } from '../../src/lib/rafraichir.ts';
+import { rafraichirJetons, sansDepasser, DELAI_RAFRAICHISSEMENT_MS } from '../../src/lib/rafraichir.ts';
 
 const URL_BASE = 'https://exemple.supabase.co';
 const CLE = 'cle-publiable-du-banc';
@@ -139,5 +139,30 @@ verifier(
   DELAI_RAFRAICHISSEMENT_MS > 0 && DELAI_RAFRAICHISSEMENT_MS <= 8000,
   `${DELAI_RAFRAICHISSEMENT_MS} ms`
 );
+
+titre('La limite générique, pour ce qui passe encore par supabase-js');
+{
+  // `auth.setSession()` rafraîchit le jeton de lui-même quand il le trouve
+  // expiré, donc il se suspend de la même façon. Deux écrans l'appellent
+  // encore : lier un compte Google, et changer son email ou son mot de passe.
+  verifier(
+    'une promesse qui répond à temps passe telle quelle',
+    (await sansDepasser(Promise.resolve('la vraie valeur'), 500, 'repli')) === 'la vraie valeur'
+  );
+
+  const debut = Date.now();
+  const r = await sansDepasser(new Promise(() => {}), 100, 'repli');
+  const duree = Date.now() - debut;
+  verifier('une promesse suspendue rend le repli', r === 'repli');
+  verifier(`et elle rend la main tout de suite (${duree} ms)`, duree < 2000, `${duree} ms`);
+
+  let leve = false;
+  try {
+    await sansDepasser(Promise.reject(new Error('vraie erreur')), 500, 'repli');
+  } catch (e) {
+    leve = e.message === 'vraie erreur';
+  }
+  verifier('une vraie erreur reste une erreur, elle n\'est pas masquée', leve);
+}
 
 bilan("L'échange du jeton de rafraîchissement");

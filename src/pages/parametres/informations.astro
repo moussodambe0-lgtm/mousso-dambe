@@ -29,6 +29,7 @@ import Alerte from '../../components/Alerte.astro';
 import { clientSession, jetonDeSession, baseConfiguree } from '../../lib/supabase';
 import { visiteuse, lirePanier, comptePanier } from '../../lib/session';
 import { messageErreur } from '../../lib/format';
+import { sansDepasser, DELAI_RAFRAICHISSEMENT_MS } from '../../lib/rafraichir';
 
 if (!baseConfiguree()) return Astro.redirect('/', 302);
 const moi = await visiteuse(Astro);
@@ -67,10 +68,18 @@ if (Astro.request.method === 'POST') {
       const client = createClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY, {
         auth: { persistSession: false, autoRefreshToken: false },
       });
-      const { error: erreurSession } = await client.auth.setSession({
-        access_token: jeton.access_token,
-        refresh_token: jeton.refresh_token,
-      });
+      // Borné : `setSession` rafraîchit le jeton de lui-même quand il le
+      // trouve expiré, et se suspend alors (panne du 6 novembre 2026, voir
+      // lib/rafraichir.ts). Au-delà du délai, on le traite comme une session
+      // expirée : elle recharge et réessaie, au lieu de voir un 504.
+      const { error: erreurSession } = await sansDepasser(
+        client.auth.setSession({
+          access_token: jeton.access_token,
+          refresh_token: jeton.refresh_token,
+        }),
+        DELAI_RAFRAICHISSEMENT_MS,
+        { error: new Error('delai depasse') } as never
+      );
       if (erreurSession) {
         erreur = 'Ta session a expiré. Recharge la page et réessaie.';
       } else if (action === 'email') {

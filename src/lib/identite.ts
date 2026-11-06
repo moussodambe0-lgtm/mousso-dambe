@@ -42,6 +42,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from 'astro:env/client';
 import { jetonDeSession, type ContexteAstro } from './supabase';
 import { stockageDansObjet } from './oauth';
+import { sansDepasser, DELAI_RAFRAICHISSEMENT_MS } from './rafraichir';
 
 /**
  * Un client dont la partie « auth » connaît vraiment la visiteuse.
@@ -70,10 +71,18 @@ export async function clientAuthentifie(
     },
   });
 
-  const { data, error } = await client.auth.setSession({
-    access_token: jeton.access_token,
-    refresh_token: jeton.refresh_token,
-  });
+  // Borné : `setSession` rafraîchit le jeton de lui-même quand il le trouve
+  // expiré, et se suspend alors comme le faisait `refreshSession` (panne du
+  // 6 novembre 2026, voir lib/rafraichir.ts). Au-delà du délai, on répond
+  // « pas de session », ce qui mène à l'écran de connexion au lieu d'un 504.
+  const { data, error } = await sansDepasser(
+    client.auth.setSession({
+      access_token: jeton.access_token,
+      refresh_token: jeton.refresh_token,
+    }),
+    DELAI_RAFRAICHISSEMENT_MS,
+    { data: null, error: null } as never
+  );
   if (error || !data?.session) return null;
 
   return client;

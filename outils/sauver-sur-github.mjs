@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Sauver Mousso Dambé sur GitHub sans passer par le transport Git.
  *
  * Sur ce réseau, `git push` se fige : `git ls-remote` ne répond pas, et
@@ -97,6 +97,9 @@ const DOSSIERS_EXCLUS = new Set([
 function exclu(relatif, nom, estDossier) {
   if (estDossier) return DOSSIERS_EXCLUS.has(nom);
   if (nom === 'disc_tmp.html' || nom === 'Thumbs.db' || nom === '.DS_Store') return true;
+  // Le brouillon du message de commit : il sert a fabriquer le commit, il n'a
+  // rien a faire dedans.
+  if (relatif === 'outils/message-du-commit.txt') return true;
   if (nom.endsWith('.log')) return true;
   if (nom === '.env.example') return false;
   if (nom === '.env' || nom.startsWith('.env.')) return true;
@@ -187,46 +190,27 @@ const arbre = await api('/git/trees', {
 });
 console.log(`Arbre : ${arbre.sha.slice(0, 7)}`);
 
-// Le message du commit. A changer AVANT chaque envoi : ce script ne le
-// demande pas, et un message laisse de la fois d'avant raconte le mauvais
-// travail. (A outiller le jour ou cela gene : le lire dans un fichier ou sur
-// la ligne de commande.)
-const MESSAGE = `L'echange du jeton ne passe plus par supabase-js : le site etait a terre
-
-LA PANNE. Toute femme connectee depuis plus d'une heure voyait
-« 504 FUNCTION_INVOCATION_TIMEOUT » sur CHACUNE de ses pages : l'accueil, le
-cycle, le journal, Dambe, le compte, la boutique. Pendant ce temps le site
-repondait en 200 ms a qui n'etait pas connecte, et paraissait donc parfait.
-
-LA CAUSE. Un jeton d'acces Supabase vit une heure. Passe ce delai, visiteuse()
-appelait auth.refreshSession({ refresh_token }) de supabase-js. Sur le
-serveur, cet appel NE REVIENT JAMAIS : il ne leve pas d'erreur, il ne rend pas
-une reponse vide, il reste suspendu. Son client d'authentification est fait
-pour un navigateur ; il serialise ses operations derriere un verrou et attend
-une initialisation de session qui, sans stockage et sans session en cours,
-ne vient pas. La page attend, et Vercel la tue a 15 secondes.
-
-COMMENT ELLE A ETE TROUVEE, apres deux fausses pistes (le compteur de visites,
-puis une boucle non bornee de l'accueil, deux vrais defauts mais pas celui-la).
-La seule difference etablie entre Arthur et mes essais etait sa session. Un
-cookie md_session portant deux jetons faux suffit a provoquer la panne : 504 en
-15,5 secondes, cinq fois sur cinq. Le meme cookie sans jeton de
-rafraichissement repondait en 170 ms. Le coupable etait isole.
-
-LA CORRECTION. L'echange est une simple requete HTTP vers
-/auth/v1/token?grant_type=refresh_token, dans lib/rafraichir.ts, avec deux
-protections qui ne font pas double emploi : un signal d'abandon, et une course
-contre la montre qui garantit que la fonction rend la main meme si l'appel
-ignorait le signal. 21 verifications dans rafraichir.test.mjs.
-
-LA REGLE : tout appel reseau d'une page a une limite de temps. Sans elle, ce
-n'est pas une lenteur qu'on risque, c'est une page morte. Et on ne fait pas
-reposer une page sur la promesse qu'une bibliotheque va revenir.
-
-Restent a examiner, meme famille : les deux auth.setSession() de
-lib/identite.ts et de parametres/informations.astro.
-
-Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>`;
+// Le message du commit, lu dans un fichier plutot qu'ecrit ici.
+//
+// POURQUOI UN FICHIER. Le message vivait dans ce script, en dur. Trois fois
+// de suite le 6 novembre 2026, le message de l'envoi precedent y est reste
+// pendant que j'ecrivais le nouveau au-dessus : un commit raconte alors le
+// mauvais travail, et l'outil se remplit de messages morts. Le fichier est
+// efface apres chaque envoi reussi, ce qui rend l'oubli impossible : sans
+// fichier, le script refuse de partir.
+const FICHIER_MESSAGE = path.join(RACINE, 'outils', 'message-du-commit.txt');
+if (!fs.existsSync(FICHIER_MESSAGE)) {
+  console.error(
+    `\nPas de message de commit.\n\nEcris-le dans :\n  ${FICHIER_MESSAGE}\n\n` +
+      `Premiere ligne : le resume. Ligne vide. Puis le corps.`
+  );
+  process.exit(1);
+}
+const MESSAGE = fs.readFileSync(FICHIER_MESSAGE, 'utf8').trim();
+if (!MESSAGE) {
+  console.error('\nLe fichier de message est vide.');
+  process.exit(1);
+}
 
 const nouveau = await api('/git/commits', {
   method: 'POST',
@@ -240,5 +224,8 @@ await api(`/git/refs/heads/${BRANCHE}`, {
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({ sha: nouveau.sha, force: false }),
 });
+
+// Le message a servi : on l'efface, pour qu'il ne puisse pas resservir.
+fs.rmSync(FICHIER_MESSAGE, { force: true });
 
 console.log(`\nSauve. https://github.com/${PROPRIETAIRE}/${DEPOT}/commit/${nouveau.sha}`);
