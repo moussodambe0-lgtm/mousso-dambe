@@ -85,6 +85,61 @@ export function plusDeJours(iso: string, n: number): string {
   return enIso(new Date(enDate(iso).getTime() + n * JOUR_MS));
 }
 
+/**
+ * Le plus long épisode de règles qu'on accepte de dérouler jour par jour.
+ *
+ * Des règles de plus de deux mois n'existent pas : au-delà, ce n'est pas un
+ * cycle, c'est une donnée fausse. 60 est donc large à dessein, pour ne jamais
+ * amputer un cas réel tout en bornant le cas absurde.
+ */
+export const MAX_JOURS_EPISODE = 60;
+
+/**
+ * Les jours couverts par un épisode de règles, du début à la fin incluse.
+ *
+ * POURQUOI CETTE FONCTION EXISTE PLUTÔT QU'UNE BOUCLE DANS LA PAGE.
+ *
+ * L'accueil déroulait cet intervalle à la main :
+ *
+ *     for (let d = c.debut; d <= fin; d = plusDeJours(d, 1)) confirmes.add(d);
+ *
+ * Cette boucle n'a pas de borne. Elle avance d'un jour à chaque tour et
+ * s'arrête quand elle dépasse `fin`, une valeur qui vient de la base. Une
+ * seule ligne portant une date de fin aberrante (une année à quatre chiffres
+ * tapée de travers, une valeur sentinelle comme 9999-12-31) la fait tourner
+ * des millions de fois et remplir un ensemble de millions de chaînes. La page
+ * ne rend jamais la main, et Vercel la tue au bout de ses 15 secondes :
+ * « 504 FUNCTION_INVOCATION_TIMEOUT ».
+ *
+ * Le défaut ne se voit ni en local, ni déconnecté, ni sur un compte neuf : il
+ * faut une session, des cycles enregistrés, ET une ligne abîmée. C'est
+ * exactement le genre de chose qui ne casse que chez une personne.
+ *
+ * La règle qu'on en tire : AUCUNE BOUCLE DE RENDU NE DOIT DÉPENDRE D'UNE
+ * DONNÉE NON BORNÉE. Une page se construit en un nombre d'étapes qu'on peut
+ * annoncer d'avance.
+ *
+ * Une fin absente, antérieure au début, illisible ou trop lointaine rend le
+ * seul jour de début : on préfère afficher un jour de règles au lieu de
+ * plusieurs plutôt que de ne rien afficher du tout.
+ */
+export function joursDuCycle(debut: string, fin: string | null | undefined): string[] {
+  const depart = enDate(debut);
+  if (Number.isNaN(depart.getTime())) return [];
+
+  const arrivee = fin ? enDate(fin) : depart;
+  if (Number.isNaN(arrivee.getTime())) return [debut.slice(0, 10)];
+
+  const jours = Math.round((arrivee.getTime() - depart.getTime()) / JOUR_MS);
+  // Une fin avant le début, ou un épisode plus long que tout épisode réel :
+  // la donnée est fausse, on ne déroule rien.
+  if (jours < 0 || jours > MAX_JOURS_EPISODE) return [enIso(depart)];
+
+  const sortie: string[] = [];
+  for (let i = 0; i <= jours; i += 1) sortie.push(enIso(new Date(depart.getTime() + i * JOUR_MS)));
+  return sortie;
+}
+
 export function ecartEnJours(a: string, b: string): number {
   return Math.round((enDate(a).getTime() - enDate(b).getTime()) / JOUR_MS);
 }

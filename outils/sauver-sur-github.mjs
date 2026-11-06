@@ -191,34 +191,34 @@ console.log(`Arbre : ${arbre.sha.slice(0, 7)}`);
 // demande pas, et un message laisse de la fois d'avant raconte le mauvais
 // travail. (A outiller le jour ou cela gene : le lire dans un fichier ou sur
 // la ligne de commande.)
-const MESSAGE = `Un compteur ne doit jamais pouvoir retarder une page
+const MESSAGE = `Aucune boucle de rendu ne doit dependre d'une donnee non bornee
 
-Le site rendait « 504 FUNCTION_INVOCATION_TIMEOUT » par intermittence : une
-visiteuse voyait une page d'erreur, la suivante voyait le site marcher.
-Arthur l'a photographie ce matin sur son telephone, sur moussodambe.com.
+Deuxieme passe sur le « 504 FUNCTION_INVOCATION_TIMEOUT » : la premiere
+(bornage du compteur de visites) n'a pas suffi, Arthur revoit l'erreur.
 
-La cause etait le comptage des visites ajoute la veille dans le middleware.
-Il partait sur CHAQUE page, en attente bloquante, entoure d'un try/catch. Or
-un try/catch attrape une erreur, il n'attrape pas une lenteur : quand la base
-tardait, la page attendait sans limite, jusqu'a ce que Vercel tue la fonction
-au bout de ses 15 secondes (maxDuration dans astro.config.mjs).
+L'accueil deroulait a la main l'intervalle debut -> fin de chaque episode de
+regles :
 
-Ce qui change :
+    for (let d = c.debut; d <= fin; d = plusDeJours(d, 1)) confirmes.add(d);
 
-  - le comptage passe par compterPassage(), qui abandonne au bout de 500 ms
-    et ne leve jamais rien. Deux protections, differentes : un signal qui
-    coupe la requete vers la base, et une course contre la montre qui garantit
-    que la fonction rend la main meme si le signal etait ignore ;
-  - le cookie md_jour est pose AVANT le comptage et sans dependre de lui. Une
-    base lente ne doit pas faire recompter le meme navigateur a chaque page,
-    c'est ce qui transformait une base poussive en base matraquee ;
-  - supabase/tests/visites.test.mjs tient la regle a notre place : une base
-    muette, une base qui refuse et un client casse doivent tous rendre la main
-    tout de suite. 23 verifications.
+Cette boucle n'a pas de borne. Elle s'arrete quand elle depasse la valeur de
+fin, qui vient de la base. Une seule ligne portant une date de fin aberrante
+(une annee tapee de travers, une sentinelle du genre 9999-12-31) la fait
+tourner des millions de fois et remplir un ensemble de millions de chaines.
+La page ne rend jamais la main et Vercel la tue a 15 secondes.
 
-La regle, ecrite en tete de lib/visites.ts : savoir combien de femmes sont
-venues est utile, le leur faire payer en attente ne l'est pas. Perdre un
-passage dans la statistique ne coute rien, perdre une visiteuse coute tout.
+Ce defaut ne se voit ni en local, ni deconnecte, ni sur un compte neuf : il
+faut une session, des cycles enregistres, ET une ligne abimee. C'est pour cela
+qu'il frappe Arthur sur son telephone et personne pendant les essais.
+
+Le deroule passe desormais par joursDuCycle(), dans lib/cycle-calcul.ts :
+bornee a 60 jours, elle rend le seul jour de debut quand la fin est absente,
+anterieure au debut, illisible ou trop lointaine. Onze verifications nouvelles
+dans cycle-calcul.test.mjs, dont le cas 9999-12-31.
+
+Ce commit ne prouve pas encore que c'etait LA cause chez Arthur : les journaux
+d'execution de Vercel ne sont pas lisibles par l'API sur ce plan. Mais le
+defaut est reel, il a exactement la forme du symptome, et il devait partir.
 
 Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>`;
 

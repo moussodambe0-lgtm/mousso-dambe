@@ -15,6 +15,8 @@ import {
   alertesSante,
   plusDeJours,
   ecartEnJours,
+  joursDuCycle,
+  MAX_JOURS_EPISODE,
 } from '../../src/lib/cycle-calcul.ts';
 import { verifier, bilan, titre } from './banc.mjs';
 
@@ -208,6 +210,63 @@ titre('Les alertes de santé');
   verifier(
     'aucune alerte ne nomme une maladie comme cause',
     toutes.every((a) => !/cancer|infection|tumeur|kyste|fibrome/i.test(a.texte))
+  );
+}
+
+titre("Dérouler un épisode de règles sans jamais partir en boucle");
+{
+  // Ce que ces vérifications protègent. L'accueil déroulait l'intervalle
+  // début → fin à la main, sans borne. Une seule ligne de la base portant une
+  // date de fin aberrante faisait tourner la page des millions de fois, et
+  // Vercel la tuait à 15 secondes : « 504 FUNCTION_INVOCATION_TIMEOUT ». Le
+  // défaut ne se voyait que chez une femme connectée ayant des cycles, donc
+  // chez personne pendant les essais.
+  verifier(
+    'un épisode normal donne tous ses jours',
+    JSON.stringify(joursDuCycle('2026-10-05', '2026-10-09')) ===
+      JSON.stringify(['2026-10-05', '2026-10-06', '2026-10-07', '2026-10-08', '2026-10-09'])
+  );
+  verifier(
+    'un épisode d\'un seul jour donne ce jour',
+    JSON.stringify(joursDuCycle('2026-10-05', '2026-10-05')) === JSON.stringify(['2026-10-05'])
+  );
+  verifier(
+    'une fin absente donne le seul jour de début',
+    JSON.stringify(joursDuCycle('2026-10-05', null)) === JSON.stringify(['2026-10-05'])
+  );
+  verifier(
+    'une fin avant le début ne déroule rien',
+    JSON.stringify(joursDuCycle('2026-10-05', '2026-09-30')) === JSON.stringify(['2026-10-05'])
+  );
+
+  // LE CAS QUI TUAIT LA PAGE.
+  const debut = Date.now();
+  const absurde = joursDuCycle('2026-10-05', '9999-12-31');
+  const duree = Date.now() - debut;
+  verifier(
+    'une date de fin aberrante ne déroule pas des millions de jours',
+    absurde.length === 1,
+    `${absurde.length} jours rendus`
+  );
+  verifier(`et elle répond tout de suite (${duree} ms)`, duree < 100, `${duree} ms`);
+
+  verifier(
+    'un épisode juste à la limite passe encore',
+    joursDuCycle('2026-01-01', plusDeJours('2026-01-01', MAX_JOURS_EPISODE)).length ===
+      MAX_JOURS_EPISODE + 1
+  );
+  verifier(
+    'un jour de plus que la limite est refusé',
+    joursDuCycle('2026-01-01', plusDeJours('2026-01-01', MAX_JOURS_EPISODE + 1)).length === 1
+  );
+  verifier('une date illisible ne fait pas tomber la page', joursDuCycle('n/importe/quoi', null).length <= 1);
+  verifier(
+    'une fin illisible rend quand même le début',
+    JSON.stringify(joursDuCycle('2026-10-05', 'pas une date')) === JSON.stringify(['2026-10-05'])
+  );
+  verifier(
+    "une fin horodatée est lue comme une date",
+    joursDuCycle('2026-10-05', '2026-10-07T00:00:00+00:00').length === 3
   );
 }
 

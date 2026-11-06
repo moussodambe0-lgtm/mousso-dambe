@@ -36,6 +36,7 @@ import {
   moyenneCycles,
   ecartEnJours,
   plusDeJours,
+  joursDuCycle,
   type ReglagesCycle,
   type TypeJour,
 } from '../lib/cycle-calcul';
@@ -103,9 +104,11 @@ if (moi) {
       dureeCycle: moyenneCycles(debuts) ?? moi.cycleMoyen,
     };
 
+    // Le déroulé passe par `joursDuCycle`, qui est borné. La boucle écrite ici
+    // avant le 6 novembre 2026 ne l'était pas : voir le commentaire de cette
+    // fonction dans lib/cycle-calcul.ts, et la règle qui en découle.
     for (const c of cyclesBase ?? []) {
-      const fin = (c as { fin: string | null }).fin ?? c.debut;
-      for (let d = c.debut; d <= fin; d = plusDeJours(d, 1)) confirmes.add(d);
+      for (const d of joursDuCycle(c.debut, (c as { fin: string | null }).fin)) confirmes.add(d);
     }
 
     const { data: notes } = await client
