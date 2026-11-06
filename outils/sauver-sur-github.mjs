@@ -187,17 +187,38 @@ const arbre = await api('/git/trees', {
 });
 console.log(`Arbre : ${arbre.sha.slice(0, 7)}`);
 
-const MESSAGE = `L'espace vendeur et l'administration, copies de ceux de Jia
+// Le message du commit. A changer AVANT chaque envoi : ce script ne le
+// demande pas, et un message laisse de la fois d'avant raconte le mauvais
+// travail. (A outiller le jour ou cela gene : le lire dans un fichier ou sur
+// la ligne de commande.)
+const MESSAGE = `Un compteur ne doit jamais pouvoir retarder une page
 
-La presentation vient de Jia, ecran par ecran : en-tete collant et barre basse
-a quatre onglets cote vendeur, en-tete sombre et onglets en haut cote
-administration. Les couleurs sont celles de Mousso Dambe, et seules les valeurs
-changent : les noms des variables de Jia sont gardes, sinon il aurait fallu
-retoucher chaque ligne copiee.
+Le site rendait « 504 FUNCTION_INVOCATION_TIMEOUT » par intermittence : une
+visiteuse voyait une page d'erreur, la suivante voyait le site marcher.
+Arthur l'a photographie ce matin sur son telephone, sur moussodambe.com.
 
-Demande d'Arthur, le 5 novembre 2026 : « tu copies tout, tu copies absolument
-tout, meme les couleurs », puis « les couleurs, tu utilises seulement les
-couleurs de Mousso Dambe ».
+La cause etait le comptage des visites ajoute la veille dans le middleware.
+Il partait sur CHAQUE page, en attente bloquante, entoure d'un try/catch. Or
+un try/catch attrape une erreur, il n'attrape pas une lenteur : quand la base
+tardait, la page attendait sans limite, jusqu'a ce que Vercel tue la fonction
+au bout de ses 15 secondes (maxDuration dans astro.config.mjs).
+
+Ce qui change :
+
+  - le comptage passe par compterPassage(), qui abandonne au bout de 500 ms
+    et ne leve jamais rien. Deux protections, differentes : un signal qui
+    coupe la requete vers la base, et une course contre la montre qui garantit
+    que la fonction rend la main meme si le signal etait ignore ;
+  - le cookie md_jour est pose AVANT le comptage et sans dependre de lui. Une
+    base lente ne doit pas faire recompter le meme navigateur a chaque page,
+    c'est ce qui transformait une base poussive en base matraquee ;
+  - supabase/tests/visites.test.mjs tient la regle a notre place : une base
+    muette, une base qui refuse et un client casse doivent tous rendre la main
+    tout de suite. 23 verifications.
+
+La regle, ecrite en tete de lib/visites.ts : savoir combien de femmes sont
+venues est utile, le leur faire payer en attente ne l'est pas. Perdre un
+passage dans la statistique ne coute rien, perdre une visiteuse coute tout.
 
 Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>`;
 

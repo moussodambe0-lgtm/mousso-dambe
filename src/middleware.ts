@@ -14,7 +14,7 @@ import { defineMiddleware } from 'astro:middleware';
 import { cheminPublic } from './lib/cache';
 import { hoteDemande, estHoteAdmin, verdict } from './lib/hotes';
 import { defautDeConfiguration } from './lib/configuration';
-import { estPageComptable, jourCourant, COOKIE_JOUR } from './lib/visites';
+import { estPageComptable, jourCourant, compterPassage, COOKIE_JOUR } from './lib/visites';
 import { clientPublic, clientSession, baseConfiguree } from './lib/supabase';
 import { PUBLIC_SUPABASE_URL } from 'astro:env/client';
 import { MD_CLE_SERVEUR, ADMIN_HOST } from 'astro:env/server';
@@ -79,6 +79,14 @@ export const onRequest = defineMiddleware(async (contexte, suite) => {
     // Le cookie `md_jour` ne contient qu'une date. Il ne sert qu'à savoir si ce
     // navigateur a déjà été compté aujourd'hui, et il ne permet de reconnaître
     // personne, ni d'un jour à l'autre, ni dans la journée.
+    //
+    // LE COMPTAGE NE PEUT PLUS RETARDER LA PAGE. Il passe par
+    // `compterPassage`, qui abandonne au bout d'un demi-seconde et ne lève
+    // jamais rien. Le 6 novembre 2026, l'appel direct qui se trouvait ici a
+    // fait rendre « 504 FUNCTION_INVOCATION_TIMEOUT » au site : le `try/catch`
+    // attrapait les erreurs mais pas la lenteur, et la page attendait la base
+    // jusqu'à ce que Vercel tue la fonction. Le détail est en tête de
+    // lib/visites.ts, avec la règle qui en découle.
     if (
       !surHoteAdmin &&
       baseConfiguree() &&
@@ -88,27 +96,27 @@ export const onRequest = defineMiddleware(async (contexte, suite) => {
     ) {
       const aujourdhui = jourCourant();
       const dejaVue = contexte.cookies.get(COOKIE_JOUR)?.value === aujourdhui;
-      try {
-        // Le client de la session quand elle existe : c'est lui qui porte
-        // l'identité, et la fonction en a besoin pour marquer la présence du
-        // compte. Sans session, le client public suffit à compter la page.
-        const client = clientSession(contexte as never) ?? clientPublic(contexte as never);
-        await client.rpc('enregistrer_passage', { p_nouvelle: !dejaVue });
-        if (!dejaVue) {
-          contexte.cookies.set(COOKIE_JOUR, aujourdhui, {
-            path: '/',
-            httpOnly: true,
-            sameSite: 'lax',
-            secure: import.meta.env.PROD,
-            // Deux jours : assez pour couvrir un changement de date pendant
-            // qu'une page est ouverte, trop court pour servir à autre chose.
-            maxAge: 60 * 60 * 48,
-          });
-        }
-      } catch {
-        // Un compteur n'est pas une raison de casser une page. Si la base ne
-        // répond pas, la visiteuse ne doit rien en savoir.
+
+      // Le cookie est posé AVANT le comptage, et sans dépendre de lui. Une
+      // base lente ne doit pas faire recompter ce navigateur à chaque page :
+      // c'est ce qui transformait une base poussive en base matraquée.
+      if (!dejaVue) {
+        contexte.cookies.set(COOKIE_JOUR, aujourdhui, {
+          path: '/',
+          httpOnly: true,
+          sameSite: 'lax',
+          secure: import.meta.env.PROD,
+          // Deux jours : assez pour couvrir un changement de date pendant
+          // qu'une page est ouverte, trop court pour servir à autre chose.
+          maxAge: 60 * 60 * 48,
+        });
       }
+
+      // Le client de la session quand elle existe : c'est lui qui porte
+      // l'identité, et la fonction en a besoin pour marquer la présence du
+      // compte. Sans session, le client public suffit à compter la page.
+      const client = clientSession(contexte as never) ?? clientPublic(contexte as never);
+      await compterPassage(client as never, !dejaVue);
     }
   }
 
