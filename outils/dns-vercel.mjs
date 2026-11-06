@@ -57,8 +57,24 @@ const TYPES_PERMIS = new Set(['TXT', 'CNAME', 'MX']);
  */
 const NOMS_INTOUCHABLES = new Set(['', '@', 'www', 'admin']);
 
+/*
+ * LE JETON, et pourquoi il y en a deux.
+ *
+ * Le jeton Vercel ordinaire du coffre est limite au projet : il gere les
+ * domaines d'un projet (c'est lui qui a branche admin.moussodambe.com) mais
+ * repond 403 sur les enregistrements DNS, qui vivent au niveau du compte.
+ *
+ * Il faut donc un second jeton, de compte celui-la, range sous un nom
+ * contenant « vercel » et « dns ». On le cherche EN PREMIER et on ne se rabat
+ * sur l'autre que faute de mieux : sans cet ordre, le dernier jeton lu dans le
+ * fichier gagnerait, ce qui dependrait de l'ordre des lignes du coffre.
+ *
+ * Un jeton de compte peut tout faire sur le Vercel d'Arthur, y compris
+ * supprimer un projet. C'est pour cela que cet outil, lui, ne sait qu'ajouter.
+ */
 const COFFRE = 'C:/Users/USER/Desktop/Jarvis/secrets/.env';
-let JETON = null;
+let JETON_DNS = null;
+let JETON_PROJET = null;
 for (const l of fs.readFileSync(COFFRE, 'utf8').split(/\r?\n/)) {
   const s = l.trim();
   if (!s || s.startsWith('#')) continue;
@@ -66,9 +82,18 @@ for (const l of fs.readFileSync(COFFRE, 'utf8').split(/\r?\n/)) {
   if (i < 0) continue;
   const nom = s.slice(0, i).trim();
   const val = s.slice(i + 1).trim();
-  if (/vercel/i.test(nom) && /mousso/i.test(nom) && val) JETON = val;
+  if (!val || !/vercel/i.test(nom)) continue;
+  if (/dns/i.test(nom)) JETON_DNS = val;
+  else if (/mousso/i.test(nom)) JETON_PROJET = val;
 }
+const JETON = JETON_DNS ?? JETON_PROJET;
 if (!JETON) { console.log('Pas de jeton Vercel dans le coffre.'); process.exit(1); }
+if (!JETON_DNS) {
+  console.log(
+    'Avertissement : pas de jeton de compte (nom contenant « vercel » et « dns »).\n' +
+      'Le jeton de projet sera essaye, mais Vercel refusera les enregistrements DNS.\n'
+  );
+}
 
 const vercel = async (chemin, options = {}) => {
   const r = await fetch(`https://api.vercel.com${chemin}`, {
