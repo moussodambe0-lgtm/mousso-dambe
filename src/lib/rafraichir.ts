@@ -164,8 +164,14 @@ export async function connexionAnonyme(
     }
 
     return { jetons: { access_token: acces, refresh_token: rafraichissement } };
-  } catch {
-    return { motif: 'base_injoignable' };
+  } catch (e) {
+    // Le motif dit LAQUELLE des pannes possibles s'est produite. « Injoignable »
+    // tout court a coûté un aller-retour de plus : une adresse introuvable, un
+    // certificat refusé et un délai dépassé demandent trois réparations
+    // différentes, et rien ne les distinguait.
+    const cause = (e as { name?: string; cause?: { code?: string } } | null) ?? {};
+    const code = cause.cause?.code ?? cause.name ?? 'inconnu';
+    return { motif: `injoignable_${String(code).replace(/[^a-z0-9_]/gi, '').slice(0, 24)}` };
   } finally {
     if (minuteur) clearTimeout(minuteur);
   }

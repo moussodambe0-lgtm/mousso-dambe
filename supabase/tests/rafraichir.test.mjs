@@ -214,8 +214,18 @@ titre('La connexion anonyme : le bouton « Commencer »');
     JSON.stringify(vide)
   );
 
-  const coupe = await connexionAnonyme(URL_BASE, CLE, 5000, async () => { throw new Error('reseau'); });
-  verifier('un réseau coupé est nommé', coupe.motif === 'base_injoignable', JSON.stringify(coupe));
+  const coupe = await connexionAnonyme(URL_BASE, CLE, 5000, async () => {
+    const e = new Error('fetch failed');
+    e.cause = { code: 'ENOTFOUND' };
+    throw e;
+  });
+  verifier(
+    'une adresse introuvable est nommée précisément',
+    coupe.motif === 'injoignable_ENOTFOUND',
+    JSON.stringify(coupe)
+  );
+  const sansCause = await connexionAnonyme(URL_BASE, CLE, 5000, async () => { throw new TypeError('reseau'); });
+  verifier('et sans détail, on garde au moins le genre de panne', sansCause.motif === 'injoignable_TypeError', JSON.stringify(sansCause));
 
   verifier('sans configuration, on ne tente rien', (await connexionAnonyme('', CLE, 5000, faux(reponseJson(200, {})))).motif === 'base_non_configuree');
 
