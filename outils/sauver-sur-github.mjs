@@ -191,34 +191,40 @@ console.log(`Arbre : ${arbre.sha.slice(0, 7)}`);
 // demande pas, et un message laisse de la fois d'avant raconte le mauvais
 // travail. (A outiller le jour ou cela gene : le lire dans un fichier ou sur
 // la ligne de commande.)
-const MESSAGE = `Aucune boucle de rendu ne doit dependre d'une donnee non bornee
+const MESSAGE = `L'echange du jeton ne passe plus par supabase-js : le site etait a terre
 
-Deuxieme passe sur le « 504 FUNCTION_INVOCATION_TIMEOUT » : la premiere
-(bornage du compteur de visites) n'a pas suffi, Arthur revoit l'erreur.
+LA PANNE. Toute femme connectee depuis plus d'une heure voyait
+« 504 FUNCTION_INVOCATION_TIMEOUT » sur CHACUNE de ses pages : l'accueil, le
+cycle, le journal, Dambe, le compte, la boutique. Pendant ce temps le site
+repondait en 200 ms a qui n'etait pas connecte, et paraissait donc parfait.
 
-L'accueil deroulait a la main l'intervalle debut -> fin de chaque episode de
-regles :
+LA CAUSE. Un jeton d'acces Supabase vit une heure. Passe ce delai, visiteuse()
+appelait auth.refreshSession({ refresh_token }) de supabase-js. Sur le
+serveur, cet appel NE REVIENT JAMAIS : il ne leve pas d'erreur, il ne rend pas
+une reponse vide, il reste suspendu. Son client d'authentification est fait
+pour un navigateur ; il serialise ses operations derriere un verrou et attend
+une initialisation de session qui, sans stockage et sans session en cours,
+ne vient pas. La page attend, et Vercel la tue a 15 secondes.
 
-    for (let d = c.debut; d <= fin; d = plusDeJours(d, 1)) confirmes.add(d);
+COMMENT ELLE A ETE TROUVEE, apres deux fausses pistes (le compteur de visites,
+puis une boucle non bornee de l'accueil, deux vrais defauts mais pas celui-la).
+La seule difference etablie entre Arthur et mes essais etait sa session. Un
+cookie md_session portant deux jetons faux suffit a provoquer la panne : 504 en
+15,5 secondes, cinq fois sur cinq. Le meme cookie sans jeton de
+rafraichissement repondait en 170 ms. Le coupable etait isole.
 
-Cette boucle n'a pas de borne. Elle s'arrete quand elle depasse la valeur de
-fin, qui vient de la base. Une seule ligne portant une date de fin aberrante
-(une annee tapee de travers, une sentinelle du genre 9999-12-31) la fait
-tourner des millions de fois et remplir un ensemble de millions de chaines.
-La page ne rend jamais la main et Vercel la tue a 15 secondes.
+LA CORRECTION. L'echange est une simple requete HTTP vers
+/auth/v1/token?grant_type=refresh_token, dans lib/rafraichir.ts, avec deux
+protections qui ne font pas double emploi : un signal d'abandon, et une course
+contre la montre qui garantit que la fonction rend la main meme si l'appel
+ignorait le signal. 21 verifications dans rafraichir.test.mjs.
 
-Ce defaut ne se voit ni en local, ni deconnecte, ni sur un compte neuf : il
-faut une session, des cycles enregistres, ET une ligne abimee. C'est pour cela
-qu'il frappe Arthur sur son telephone et personne pendant les essais.
+LA REGLE : tout appel reseau d'une page a une limite de temps. Sans elle, ce
+n'est pas une lenteur qu'on risque, c'est une page morte. Et on ne fait pas
+reposer une page sur la promesse qu'une bibliotheque va revenir.
 
-Le deroule passe desormais par joursDuCycle(), dans lib/cycle-calcul.ts :
-bornee a 60 jours, elle rend le seul jour de debut quand la fin est absente,
-anterieure au debut, illisible ou trop lointaine. Onze verifications nouvelles
-dans cycle-calcul.test.mjs, dont le cas 9999-12-31.
-
-Ce commit ne prouve pas encore que c'etait LA cause chez Arthur : les journaux
-d'execution de Vercel ne sont pas lisibles par l'API sur ce plan. Mais le
-defaut est reel, il a exactement la forme du symptome, et il devait partir.
+Restent a examiner, meme famille : les deux auth.setSession() de
+lib/identite.ts et de parametres/informations.astro.
 
 Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>`;
 

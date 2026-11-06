@@ -5,8 +5,8 @@
  * rafraîchit une fois ; si ça échoue, on la déconnecte proprement plutôt que
  * de montrer une page à moitié vide.
  */
-import { createClient } from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from 'astro:env/client';
+import { rafraichirJetons } from './rafraichir';
 import {
   clientSession,
   jetonDeSession,
@@ -88,19 +88,24 @@ export async function visiteuse(astro: ContexteAstro): Promise<Visiteuse | null>
 
   // Le jeton d'accès ne vit qu'une heure. Elle ne doit pas être déconnectée
   // pour autant : on échange le jeton de rafraîchissement, une seule fois.
+  //
+  // L'ÉCHANGE NE PASSE PLUS PAR supabase-js. Son `auth.refreshSession()` ne
+  // revient jamais sur le serveur : il reste suspendu, la page attend, et
+  // Vercel la tue au bout de 15 secondes. C'est la panne du 6 novembre 2026,
+  // qui a mis à terre toutes les pages de toutes les femmes connectées depuis
+  // plus d'une heure, pendant que le site répondait parfaitement à qui n'était
+  // pas connecté. Le détail est en tête de lib/rafraichir.ts.
   if (!compte?.user && jeton.refresh_token) {
-    const neuf = createClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
-    const { data } = await neuf.auth.refreshSession({ refresh_token: jeton.refresh_token });
-    if (data?.session) {
-      poserSession(astro, {
-        access_token: data.session.access_token,
-        refresh_token: data.session.refresh_token,
-      });
+    const neufs = await rafraichirJetons(
+      PUBLIC_SUPABASE_URL,
+      PUBLIC_SUPABASE_ANON_KEY,
+      jeton.refresh_token
+    );
+    if (neufs) {
+      poserSession(astro, neufs);
       client = clientSession(astro);
       if (!client) return null;
-      compte = (await client.auth.getUser(data.session.access_token)).data;
+      compte = (await client.auth.getUser(neufs.access_token)).data;
     } else {
       retirerSession(astro);
       return null;
