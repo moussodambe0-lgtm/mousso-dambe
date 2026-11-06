@@ -100,7 +100,12 @@ titre('Google en grand, le mot de passe rangé derrière');
   verifier('la version en grand existe vraiment', bouton.includes('btn-google-grand'));
   verifier(
     'le mot de passe est replié dans un details, pas en second bouton',
-    page.includes('<details class="replie">')
+    // La balise porte depuis le 6 novembre 2026 un attribut `open` qui déplie
+    // le formulaire sur l'hôte d'administration, où l'on ne peut pas entrer
+    // par Google. Ce test cherchait la chaîne exacte, sans attribut, et
+    // tombait sur un ajout qui ne change rien à ce qu'il vérifie. On regarde
+    // donc la balise et sa classe, pas sa ponctuation.
+    /<details class="replie"[\s>]/.test(page)
   );
   verifier(
     'le repli marche sans JavaScript : aucun script ne le pilote',

@@ -22,6 +22,16 @@ import { visiteuse, lirePanier, comptePanier } from '../lib/session';
 import { ollamaConfigure, demanderOllama, ErreurOllama } from '../lib/ollama';
 import { alerte, messagesPour, nettoyer, SUGGESTIONS, type ContexteAssistante } from '../lib/assistante';
 import { prix, messageErreur } from '../lib/format';
+import {
+  VERSION_ACCORD_ASSISTANTE,
+  TITRE_ACCORD_ASSISTANTE,
+  PARAGRAPHES_ACCORD_ASSISTANTE,
+  BOUTON_ACCORD_OUI,
+  BOUTON_ACCORD_NON,
+  LIGNE_SOUS_LA_SAISIE,
+  PARAGRAPHE_ACCUEIL,
+  texteAccordAssistante,
+} from '../lib/accords';
 
 if (!baseConfiguree()) return Astro.redirect('/', 302);
 const moi = await visiteuse(Astro);
@@ -39,11 +49,50 @@ if (!moi.compteReel) return Astro.redirect('/connexion?pour=messagerie', 302);
 const client = clientSession(Astro)!;
 let erreur = '';
 
+/**
+ * A-t-elle donné son accord, et pour la version actuelle du texte ?
+ *
+ * L'article 26 de la loi n°037-2026/ALP n'exige pas un consentement, il
+ * INTERDIT de traiter des données de santé sans consentement exprès. Tant
+ * qu'il n'est pas donné, cette page ne doit rien envoyer nulle part : c'est
+ * l'accord qui lève l'interdiction, pas une case rangée ailleurs.
+ *
+ * La version compte autant que le oui : si le texte change, l'accord d'hier
+ * portait sur un autre texte, et il faut le redemander.
+ */
+async function accordDonne(): Promise<boolean> {
+  const { data } = await client.rpc('consentement_etat', { p_objet: 'assistante' });
+  return data?.ok === true && data.accorde === true && data.version === VERSION_ACCORD_ASSISTANTE;
+}
+let aAccepte = await accordDonne();
+
 if (Astro.request.method === 'POST') {
+  // Le corps d'une requête ne se lit qu'une fois : tout ce qui vient du
+  // formulaire est pris ici, et nulle part ailleurs.
   const f = await Astro.request.formData();
+  const geste = String(f.get('geste') ?? '');
   const question = String(f.get('question') ?? '').trim();
 
-  if (question.length < 2) {
+  // Elle renonce : on ne garde rien, on ne note aucun refus. Un non n'est pas
+  // une donnée à conserver, c'est l'absence d'un oui.
+  if (geste === 'refus') return Astro.redirect('/', 303);
+
+  if (geste === 'accord') {
+    const { data } = await client.rpc('consentement_noter', {
+      p_objet: 'assistante',
+      p_accorde: true,
+      p_version: VERSION_ACCORD_ASSISTANTE,
+      p_texte: texteAccordAssistante(),
+    });
+    if (data?.ok !== true) erreur = "Ton accord n'a pas pu être enregistré. Réessaie.";
+    else return Astro.redirect('/dambe', 303);
+  } else if (!aAccepte) {
+    // DERNIER VERROU, CÔTÉ SERVEUR. L'écran ne montre pas la case de saisie
+    // sans accord, mais une page ne se protège pas avec ce qu'elle affiche :
+    // une requête forgée arriverait ici sans jamais l'avoir vu. C'est ici que
+    // l'interdiction de l'article 26 est réellement tenue.
+    erreur = "Il faut d'abord lire et accepter ce qui est écrit au-dessus.";
+  } else if (question.length < 2) {
     erreur = 'Écris ta question.';
   } else {
     // 1. La base enregistre et compte. Si elle refuse, on s'arrête là : aucun
@@ -167,6 +216,9 @@ const branchee = ollamaConfigure();
             Les douleurs, le retard, l'hygiène, les protections, ce qui est normal et ce qui ne l'est pas. Ce que tu
             n'oses pas demander ailleurs.
           </p>
+          {/* Ce qu'elle doit savoir avant d'écrire, et pas dans un document
+              qu'elle n'ouvrira jamais (Juriste, 5 novembre 2026, § 1.4 B). */}
+          <p class="doux ce-quil-faut-savoir">{PARAGRAPHE_ACCUEIL}</p>
         </div>
       ) : (
         <div class="fil">
@@ -222,7 +274,7 @@ const branchee = ollamaConfigure();
     }
 
     {
-      messages.length === 0 && (
+      messages.length === 0 && aAccepte && (
         <div class="suggestions">
           {SUGGESTIONS.map((s) => (
             <form method="POST">
@@ -258,6 +310,33 @@ const branchee = ollamaConfigure();
       Le vrai vocal, celui qu'on enregistre et qu'on envoie, est dans la
       discussion avec le médecin : là-bas un humain écoute, donc le moré et le
       dioula passent, et aucun son ne sort vers un service extérieur. */}
+  {
+    !aAccepte ? (
+      /* L'ACCORD, DEMANDÉ UNE SEULE FOIS, AVANT LA PREMIÈRE QUESTION.
+         Il prend la place de la case de saisie plutôt que de se poser
+         par-dessus : une fenêtre qui recouvre se ferme d'un geste distrait, et
+         l'article 26 demande un oui donné en connaissance de cause, pas un
+         obstacle qu'on écarte. Tant qu'il n'est pas donné, il n'y a nulle part
+         où écrire. */
+      <section class="accord" aria-labelledby="titre-accord">
+        <div class="page accord-dedans">
+          <h2 id="titre-accord">{TITRE_ACCORD_ASSISTANTE}</h2>
+          {PARAGRAPHES_ACCORD_ASSISTANTE.map((p) => (
+            <p>{p}</p>
+          ))}
+          <div class="accord-boutons">
+            <form method="POST">
+              <input type="hidden" name="geste" value="accord" />
+              <button class="btn btn-rose btn-plein" type="submit">{BOUTON_ACCORD_OUI}</button>
+            </form>
+            <form method="POST">
+              <input type="hidden" name="geste" value="refus" />
+              <button class="btn btn-contour btn-plein" type="submit">{BOUTON_ACCORD_NON}</button>
+            </form>
+          </div>
+        </div>
+      </section>
+    ) : (
   <form method="POST" class="saisie">
     <div class="page saisie-dedans">
       <label class="lecture-seule" for="question">Ta question</label>
@@ -281,7 +360,14 @@ const branchee = ollamaConfigure();
     {/* Ce que le micro entend, dit à voix haute pour le lecteur d'écran :
         `aria-live` fait relire la ligne à chaque changement. */}
     <p class="page dictee-dit" aria-live="polite" hidden></p>
+    {/* LA LIGNE PERMANENTE. Le Juriste la tient pour la plus importante des
+        trois : elle est là au moment où elle écrit, et pas dans un document
+        qu'elle n'ouvrira jamais (5 novembre 2026, § 1.4 A). Elle ne se cache
+        pas quand la conversation est longue, et elle ne se replie pas. */}
+    <p class="page sous-la-saisie">{LIGNE_SOUS_LA_SAISIE}</p>
   </form>
+    )
+  }
 
   {/* Le modèle que `dambe-attente.ts` recopie quand elle envoie sa question
       (Arthur, 14 octobre 2026 : « ça doit partir, ensuite la tête de la
@@ -527,6 +613,70 @@ const branchee = ollamaConfigure();
     z-index: 19;
     background: var(--fond);
     border-top: 1px solid var(--bordure);
+  }
+
+  /* La ligne permanente, sous la case. Petite, mais jamais effacée ni repliée :
+     c'est elle qui informe au moment qui compte. */
+  .sous-la-saisie {
+    margin: 0;
+    padding: 0 0 9px;
+    font-size: 11.5px;
+    line-height: 1.4;
+    color: var(--texte-tertiaire);
+  }
+
+  /* Le paragraphe de l'écran d'accueil : même ton que le texte doux au-dessus,
+     un cran plus discret, pour qu'il informe sans faire peur. */
+  .ce-quil-faut-savoir {
+    margin-top: 14px;
+    font-size: 13px;
+    color: var(--texte-tertiaire);
+  }
+
+  /* L'écran d'accord. Il occupe la place de la case de saisie, au même
+     endroit : c'est là qu'elle regarde quand elle veut écrire. */
+  .accord {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: calc(var(--nav-hauteur) + env(safe-area-inset-bottom, 0px));
+    z-index: 19;
+    background: var(--surface);
+    border-top: 1px solid var(--bordure);
+    box-shadow: 0 -10px 30px rgb(0 0 0 / 7%);
+    max-height: 72vh;
+    overflow-y: auto;
+  }
+
+  .accord-dedans {
+    padding: 18px 0 16px;
+  }
+
+  .accord h2 {
+    margin: 0 0 10px;
+    font-size: 17px;
+  }
+
+  .accord p {
+    margin: 0 0 10px;
+    font-size: 13.5px;
+    line-height: 1.55;
+    color: var(--texte-corps);
+  }
+
+  .accord-boutons {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 16px;
+  }
+
+  .accord-boutons form {
+    display: contents;
+  }
+
+  .accord-boutons :global(.btn) {
+    width: 100%;
   }
 
   .saisie-dedans {

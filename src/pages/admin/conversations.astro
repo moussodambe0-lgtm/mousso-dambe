@@ -50,12 +50,18 @@ type FilIA = {
 const fils = (data?.fils ?? []) as FilIA[];
 const totalFils = Number(data?.total_fils ?? 0);
 const totalMessages = Number(data?.total_messages ?? 0);
+const fermes = Number(data?.fermes_faute_accord ?? 0);
 ---
 
 <Admin titre="Conversations" onglet="conversations">
   <section class="section-serree chiffres">
     <div><strong class="chiffre">{totalFils}</strong><span>ont parlé à Dambé</span></div>
     <div><strong class="chiffre">{totalMessages}</strong><span>questions posées</span></div>
+    {/* Les fils qui existent et ne se lisent pas, faute d'accord. Un nombre,
+        jamais un prénom : le constat ne doit rien apprendre sur celles qu'il
+        protège. Il est là pour qu'un écran vide se comprenne au lieu de
+        passer pour une panne. */}
+    {fermes > 0 && <div><strong class="chiffre">{fermes}</strong><span>fermés, sans accord</span></div>}
   </section>
 
   <section class="section">

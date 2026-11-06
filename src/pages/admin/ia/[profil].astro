@@ -41,6 +41,9 @@ const { data, error } = await sb.rpc('fil_ia', { p_profil: profil });
 if (error) console.error('fil_ia', error.message);
 
 const ouvert = data?.ok === true;
+// Le fil existe, mais elle n'a pas accepté qu'on le relise. Ce n'est pas la
+// même chose qu'un fil introuvable, et l'écran ne doit pas dire la même chose.
+const sansAccord = data?.erreur === 'sans_accord';
 const tete = ouvert ? data.tete : null;
 
 type MessageIA = {
@@ -74,7 +77,14 @@ const lignes = messages.map((m) => {
   {!ouvert && (
     <div class="etat-vide">
       <Icone name="lock" size={32} class="icone-vide" />
-      <div class="titre">Cet échange ne s'ouvre pas</div>
+      <div class="titre">
+        {sansAccord ? "Elle n'a pas donné son accord" : "Cet échange ne s'ouvre pas"}
+      </div>
+      {/* La raison, et une seule ligne. Un refus muet se prend pour un défaut
+          de la page, et on finit par chercher un bogue là où la loi travaille.
+          Article 26 de la loi n°037-2026/ALP : sans accord exprès, lire est
+          l'acte interdit. */}
+      {sansAccord && <div class="texte">Tant qu'elle n'accepte pas, ce fil ne se lit pas.</div>}
       <a class="btn btn-contour espace" href="/admin/conversations">Retour aux conversations</a>
     </div>
   )}
