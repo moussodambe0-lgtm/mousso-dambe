@@ -30,8 +30,27 @@ import { verifier, bilan, titre } from './banc.mjs';
 const RACINE = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const lire = (p) => fs.readFileSync(path.join(RACINE, p), 'utf8');
 
+/*
+ * L'ESPACE VENDEUR A QUITTE CE DEPOT le 7 novembre 2026 au soir.
+ *
+ * Arthur : « de la meme maniere que Jia est separe de jia-admin, je veux la
+ * meme chose pour mousso dambe ». L'administration et l'espace vendeur vivent
+ * desormais dans moussodambe0-lgtm/mousso-dambe-admin.
+ *
+ * CE QUI SE PERD ICI, ET QU'IL FAUT DIRE PLUTOT QUE TAIRE. Trois des
+ * verifications de ce fichier portaient sur `vendeur/commandes.astro` : que le
+ * numero y reste visible (c'est l'outil d'Arthur, et sans reference il ne peut
+ * plus relier un message WhatsApp a une commande), et surtout que les DEUX
+ * messages WhatsApp qui en partent — vers la cliente et vers le livreur — ne
+ * le citent PAS, puisqu'ils arrivent sur leurs telephones.
+ *
+ * Ces trois-la doivent etre reprises dans le depot de l'administration. Elles
+ * sont ecrites plus bas, mises de cote, pretes a y etre recopiees.
+ */
+const CHEMIN_VENDEUR = 'src/pages/vendeur/commandes.astro';
+const vendeurIci = fs.existsSync(path.join(RACINE, CHEMIN_VENDEUR));
+
 const livreur = lire('src/pages/livreur/[jeton].astro');
-const vendeur = lire('src/pages/vendeur/commandes.astro');
 const confirmee = lire('src/pages/commande-confirmee.astro');
 const liste = lire('src/pages/commandes/[etat].astro');
 const suivre = lire('src/pages/commandes/suivre/[numero].astro');
@@ -84,9 +103,34 @@ titre('Le livreur ne voit aucun numero');
 }
 
 titre('Les messages WhatsApp ne le portent pas non plus');
-{
+if (!vendeurIci) {
+  /*
+   * CES TROIS VERIFICATIONS SONT A REPRENDRE DANS LE DEPOT DE
+   * L'ADMINISTRATION, ou l'espace vendeur vit depuis le 7 novembre 2026 au
+   * soir. Elles ne sont pas abandonnees : elles sont deplacees.
+   *
+   * Ce qu'elles protegent, mot pour mot, pour qui les recopiera :
+   *   - le message WhatsApp vers la CLIENTE ne cite pas le numero de
+   *     commande, il donne la date (« ta commande du 7 novembre ») ;
+   *   - le message WhatsApp vers le LIVREUR ne le cite pas non plus, il
+   *     donne le quartier ;
+   *   - mais la carte de l'espace vendeur, elle, l'AFFICHE : c'est l'outil
+   *     d'Arthur, personne d'autre ne l'ouvre, et sans reference il ne peut
+   *     plus relier un message WhatsApp a une commande des qu'il y en a
+   *     plusieurs par jour.
+   *
+   * Les deux premiers comptent plus que le troisieme : ces messages arrivent
+   * sur le telephone de quelqu'un, et un numero « MD-2611-00200 » lu par
+   * dessus l'epaule dit qu'il y a eu deux cents commandes avant elle.
+   */
+  verifier(
+    'l_espace vendeur a quitte ce depot : ses trois verifications sont a reprendre dans mousso-dambe-admin',
+    true
+  );
+} else {
   // Ces deux messages partent sur le telephone de la cliente et sur celui du
   // livreur : ils suivent donc la meme regle que les ecrans.
+  const vendeur = lire(CHEMIN_VENDEUR);
   const versCliente = vendeur.match(/au sujet de ta commande[^`]*/)?.[0] ?? '';
   verifier(
     'le message a la cliente ne cite pas le numero',
@@ -108,7 +152,7 @@ titre('Mais Arthur le garde dans son espace a lui');
 {
   verifier(
     "la carte de l'espace vendeur l'affiche encore",
-    afficheLeNumero(vendeur),
+    !vendeurIci || afficheLeNumero(lire(CHEMIN_VENDEUR)),
     "le numero a disparu de l'espace vendeur : Arthur ne peut plus relier un message a une commande"
   );
 }

@@ -154,14 +154,48 @@ if (sait && bouton && panneau && zone) {
         },
       });
     } catch (e: unknown) {
-      etat('refuse');
-      temps.textContent = '';
-      dire(
-        (e as { name?: string })?.name === 'NotAllowedError'
-          ? 'Le micro est refusé. Autorise-le dans les réglages du navigateur, ou écris ton message.'
-          : "Ce téléphone n'arrive pas à ouvrir le micro. Écris ton message."
-      );
-      return;
+      const nom = (e as { name?: string })?.name;
+
+      /*
+       * LE REPLI : UN SON MOINS BON VAUT MIEUX QUE PAS DE SON.
+       *
+       * Les valeurs ci-dessus sont écrites comme des souhaits, et la plupart
+       * des navigateurs les traitent ainsi. Mais pas tous : certains
+       * refusent la demande entière plutôt que d'ignorer ce qu'ils ne savent
+       * pas tenir, et répondent `OverconstrainedError` ou `NotFoundError`.
+       *
+       * Sans ce repli, une femme dont le téléphone est un peu ancien
+       * perdrait le micro COMPLÈTEMENT, et lirait « ce téléphone n'arrive
+       * pas à ouvrir le micro » — ce qui serait faux, et ce qui la
+       * renverrait à l'écriture. Or le vocal est justement le chemin de
+       * celle qui lit mal.
+       *
+       * On redemande donc le micro sans aucune exigence. La voix sera
+       * retraitée comme avant, c'est-à-dire moins belle, mais elle existera.
+       *
+       * UN REFUS D'AUTORISATION NE SE REJOUE PAS : si elle a dit non, ou si
+       * le navigateur a bloqué, redemander ne ferait que lui poser deux fois
+       * la même question. On ne se replie que sur un refus TECHNIQUE.
+       */
+      const technique = nom !== 'NotAllowedError' && nom !== 'SecurityError';
+      if (technique) {
+        try {
+          flux = await navigator.mediaDevices.getUserMedia({ audio: true });
+        } catch {
+          flux = null;
+        }
+      }
+
+      if (!flux) {
+        etat('refuse');
+        temps.textContent = '';
+        dire(
+          nom === 'NotAllowedError' || nom === 'SecurityError'
+            ? 'Le micro est refusé. Autorise-le dans les réglages du navigateur, ou écris ton message.'
+            : "Ce téléphone n'arrive pas à ouvrir le micro. Écris ton message."
+        );
+        return;
+      }
     }
 
     /*

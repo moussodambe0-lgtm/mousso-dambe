@@ -385,10 +385,20 @@ titre('La voix enregistree reste celle de la personne');
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/^\s*\/\/.*$/gm, '');
 
+  /*
+   * LA PREMIERE demande doit etre la demande precise.
+   *
+   * On ne peut pas interdire `{ audio: true }` dans tout le fichier : il
+   * sert de REPLI pour les telephones qui refusent les precisions (voir plus
+   * bas). Ce qui doit etre vrai, c'est que la demande PRECISE vienne en
+   * premier, et que la simple ne soit que le recours.
+   */
+  const iPrecise = codeSeul.indexOf('echoCancellation');
+  const iSimple = codeSeul.indexOf('getUserMedia({ audio: true })');
   verifier(
-    'le micro n_est plus demande avec le simple « audio: true »',
-    !/getUserMedia\(\{\s*audio:\s*true\s*\}\)/.test(codeSeul),
-    'la demande simple est revenue : le navigateur retraitera la voix'
+    'la demande PRECISE passe en premier, la simple n_est qu_un repli',
+    iPrecise > 0 && (iSimple < 0 || iPrecise < iSimple),
+    'le micro est demande simplement d_abord : le navigateur retraitera la voix'
   );
   verifier(
     'l_annulation d_echo est coupee (rien ne joue, elle ne retire que de la voix)',
@@ -431,6 +441,30 @@ titre('La voix enregistree reste celle de la personne');
     'et le poids est verifie AVANT l_envoi, pas apres l_attente',
     /blob\.size > 1_?150_?000/.test(vocal),
     'un message trop lourd ne serait refuse qu_apres avoir ete televerse'
+  );
+
+  /*
+   * LE REPLI, et pourquoi il compte autant que le reglage lui-meme.
+   *
+   * Les precisions ci-dessus sont des souhaits, et la plupart des
+   * navigateurs les traitent ainsi. Pas tous : certains refusent la demande
+   * entiere plutot que d'ignorer ce qu'ils ne savent pas tenir.
+   *
+   * Sans repli, une femme dont le telephone est un peu ancien perdrait le
+   * micro COMPLETEMENT, et lirait « ce telephone n'arrive pas a ouvrir le
+   * micro » — ce qui serait faux. Or le vocal est le chemin de celle qui lit
+   * mal : lui fermer le micro pour une question de qualite sonore serait
+   * exactement le contraire du but.
+   */
+  verifier(
+    'un telephone qui refuse ces precisions garde quand meme son micro',
+    /getUserMedia\(\{ audio: true \}\)/.test(codeSeul),
+    'pas de repli : un vieux telephone perdrait le micro entierement'
+  );
+  verifier(
+    'mais un REFUS D_AUTORISATION ne se rejoue pas',
+    /nom !== 'NotAllowedError'/.test(codeSeul),
+    'on lui reposerait deux fois la meme question apres un non'
   );
 }
 
