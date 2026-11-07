@@ -35,8 +35,12 @@
  *     le geste, « Partager, puis Sur l'écran d'accueil ». Alors on l'écrit,
  *     plutôt que de montrer un bouton qui ne ferait rien.
  *
- * Elle n'est jamais relancée : « Plus tard » est retenu dans le téléphone, et
- * un refus vaut pour toujours, pas pour une page.
+ * QUAND ELLE EST RELANCÉE (Arthur, le 7 novembre 2026 : « si la personne
+ * supprime l'application, on lui repropose encore »). « Plus tard » est retenu
+ * dans le téléphone, mais pour trente jours, pas pour toujours. Et le jour où
+ * elle désinstalle l'application, la proposition revient : le navigateur nous
+ * le dit sans le savoir, en renvoyant un événement qu'il retient tant que
+ * l'application est posée. Le détail est en tête de scripts/invite-installer.ts.
  */
 ---
 
@@ -76,6 +80,14 @@
     border-radius: var(--r-carte);
     background: var(--surface);
     box-shadow: 0 6px 24px rgb(60 20 40 / 14%);
+  }
+
+  /* Sur les écrans sans barre du bas (l'ouverture, la boutique vue sans
+     compte), il n'y a rien à ne pas recouvrir : le bandeau descend. Sans
+     cette règle il flottait à soixante-quatre pixels du vide, ce qui se
+     voyait surtout sur un petit téléphone. */
+  :global(body.sans-nav) .invite {
+    bottom: calc(var(--e3) + env(safe-area-inset-bottom, 0px));
   }
 
   /* `hidden` suffit pour le navigateur, mais une règle de mise en page le

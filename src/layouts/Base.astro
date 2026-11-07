@@ -98,10 +98,19 @@ const canonique = new URL(Astro.url.pathname, Astro.site ?? 'http://localhost:43
         octobre 2026). Invisible tant que le navigateur n'a pas dit que
         l'installation est possible, et jamais sur l'adresse de la gestion :
         un vendeur n'installe pas l'application des clientes.
-        PAS SUR L'ÉCRAN DE CONNEXION non plus : elle y est venue pour une
-        chose précise, souvent parce qu'un écran s'est fermé devant elle.
-        Deux demandes en même temps, et on n'obtient ni l'une ni l'autre. */}
-    {nav && !chemin.startsWith('/connexion') && <InviteInstaller />}
+
+        DÈS LA PREMIÈRE PAGE, DEPUIS LE 7 NOVEMBRE 2026. Arthur : « dès que la
+        personne rentre sur le site de moussodambe.com, on lui propose de
+        télécharger l'application ». La condition était `nav &&`, c'est-à-dire
+        réservée aux femmes déjà entrées : une visiteuse qui découvrait
+        l'écran d'ouverture ou la boutique sans compte ne voyait jamais la
+        proposition, alors que c'est elle qu'il fallait convaincre.
+
+        PAS SUR L'ÉCRAN DE CONNEXION, et ce n'est pas un oubli : elle y est
+        venue pour une chose précise, souvent parce qu'un écran s'est fermé
+        devant elle. Deux demandes en même temps, et on n'obtient ni l'une ni
+        l'autre. */}
+    {!chemin.startsWith('/connexion') && <InviteInstaller />}
     {mascotteFlottante && <BoutonMascotte prenom={prenom} />}
     {nav && <NavBasse actif={nav} panier={panier} messages={messages} />}
     <script>
