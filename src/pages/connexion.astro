@@ -156,18 +156,18 @@ const emailOuvert = Boolean(erreur) || surHoteAdmin;
 
     {erreur && <div class="marge-bas"><Alerte type="erreur" texte={erreur} /></div>}
 
-    {/* Elle est entrée par « Commencer » et vient rejoindre un compte qui
-        existe ailleurs : ce qu'elle a noté depuis ce téléphone ne suivra pas.
-        /inscription, lui, ATTACHE son email au compte où tout est déjà. */}
-    {moi && (
-      <div class="encadre doux">
-        <Icone nom="info" taille={19} />
-        <p>
-          Ce que tu as noté depuis ce téléphone restera sur le compte commencé ici, et
-          ne suivra pas. Pour le garder, <a href={versInscription}>crée plutôt ton compte</a>.
-        </p>
-      </div>
-    )}
+    {/* L'AVERTISSEMENT « ce que tu as noté ne suivra pas » A ÉTÉ RETIRÉ le
+        7 novembre 2026, à la demande d'Arthur.
+
+        CE QU'IL DISAIT, ET QUI RESTE VRAI : une femme entrée par
+        « Commencer » qui se connecte ICI rejoint un AUTRE compte, et ce
+        qu'elle a noté depuis ce téléphone reste sur le compte commencé. Pour
+        le garder, c'est /inscription qu'il lui faut, qui ATTACHE son email au
+        compte où tout est déjà (voir src/lib/identite.ts).
+
+        Le comportement n'a pas changé, seul le texte part. Le lien
+        « Créer un compte » en bas de page reste le chemin vers l'autre
+        porte. */}
 
     <form method="POST" class="bloc-tel">
       <input type="hidden" name="geste" value="telephone" />

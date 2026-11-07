@@ -75,26 +75,30 @@ titre("L'écran de connexion n'est plus interdit à celle qui est déjà entrée
     page.includes('signInWithPassword')
   );
   /*
-   * L'AVERTISSEMENT A DISPARU UNE HEURE, le 7 novembre 2026, en coupant la
-   * page en deux, et c'est cette vérification qui l'a rattrapé.
+   * L'AVERTISSEMENT « ce que tu as noté ne suivra pas » A ÉTÉ RETIRÉ le
+   * 7 novembre 2026, à la demande d'Arthur. Ce test exigeait sa présence : il
+   * exige maintenant ce qui compte vraiment, et qui n'a pas changé.
    *
-   * Il ne doit PAS être sur /inscription, qui attache et ne perd rien : il
-   * doit être sur /connexion, où rejoindre un autre compte abandonne pour de
-   * bon ce qu'elle a noté depuis ce téléphone.
+   * CE QUE LE TEXTE DISAIT, ET QUI RESTE VRAI : une femme entrée par
+   * « Commencer » qui se connecte sur /connexion rejoint un AUTRE compte, et
+   * ce qu'elle a noté reste sur le compte commencé. Pour le garder, c'est
+   * /inscription qu'il lui faut, qui ATTACHE son email au compte où tout est
+   * déjà.
+   *
+   * La promesse à défendre n'est donc pas « il y a une phrase » mais « les
+   * deux chemins existent et ne font pas la même chose, et on peut passer de
+   * l'un à l'autre ». Un test qui exige une phrase tombe au premier
+   * changement de mots ; celui-ci tombe seulement si le mécanisme casse.
    */
   verifier(
-    'et elle est prévenue de ce qu’elle laisse derrière elle',
-    /ne suivra pas/.test(page),
-    "/connexion ne previent plus celle qui va abandonner son compte commence"
+    'depuis /connexion, le chemin qui GARDE son compte reste atteignable',
+    /versInscription/.test(page) && /Créer un compte<\/a>/.test(page),
+    'elle n’a plus aucun moyen d’aller vers /inscription, qui est le seul à ne rien perdre'
   );
   verifier(
-    'l’avertissement ne s’affiche que si elle a un compte commencé',
-    /\{moi && \([\s\S]{0,400}ne suivra pas/.test(page),
-    'il inquieterait celle qui arrive de nulle part'
-  );
-  verifier(
-    'et il lui montre la sortie, pas seulement le danger',
-    /ne suivra pas[\s\S]{0,200}versInscription/.test(page)
+    'les deux chemins ne font PAS la même chose',
+    page.includes('signInWithPassword') && inscription.includes('auth.updateUser'),
+    'si les deux se connectaient pareil, le choix n’aurait plus de sens'
   );
 }
 

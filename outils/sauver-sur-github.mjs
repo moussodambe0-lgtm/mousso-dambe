@@ -45,6 +45,36 @@ const DEPOT = 'mousso-dambe';
 const BRANCHE = 'master';
 const VRAI = process.argv.includes('--vrai');
 
+/*
+ * LAISSER DES FICHIERS DE CÔTÉ : --sauf chemin,chemin
+ *
+ * Ajouté le 7 novembre 2026, et pour une raison précise. Ce jour-là, DEUX
+ * sessions de Claude travaillaient dans le même dossier : l'une sur les
+ * écrans de connexion, l'autre sur la sortie de l'administration vers son
+ * propre dépôt. Chacune voyait les fichiers en cours de l'autre comme des
+ * modifications à envoyer, et le premier qui poussait emportait le travail
+ * inachevé du second dans son commit.
+ *
+ * La parade bricolée a été de remettre à la main la version du dépôt des
+ * fichiers de l'autre, de pousser, puis de les remettre : trois manipulations
+ * destructrices pour un envoi, avec une fenêtre où le travail de l'autre
+ * n'existait plus sur le disque.
+ *
+ * Avec cette option, un fichier nommé ici est traité comme s'il était
+ * identique au dépôt : il n'est ni envoyé, ni signalé supprimé, et surtout il
+ * n'est PAS touché sur le disque. Rien n'est écrasé, rien n'est perdu.
+ *
+ *   node outils/sauver-sur-github.mjs --sauf src/middleware.ts,outils/x.mjs --vrai
+ */
+const SAUF = new Set(
+  (process.argv.find((a) => a.startsWith('--sauf='))?.slice('--sauf='.length)
+    ?? (process.argv.includes('--sauf') ? process.argv[process.argv.indexOf('--sauf') + 1] : '')
+    ?? '')
+    .split(',')
+    .map((s) => s.trim().replace(/\\/g, '/'))
+    .filter(Boolean)
+);
+
 // --- Le jeton, lu dans le coffre et jamais écrit ailleurs --------------------
 const COFFRES = [
   'C:/Users/larou/OneDrive/Desktop/Jarvis/secrets/.env',
@@ -139,16 +169,24 @@ for (const e of arbreDistant.tree) if (e.type === 'blob') distant.set(e.path, e.
 const fichiers = parcourir(RACINE);
 const aEnvoyer = [];
 let identiques = 0;
+let laissesDeCote = 0;
 for (const relatif of fichiers) {
+  // Mis de côté à la demande : on ne l'envoie pas, et on ne le touche pas.
+  if (SAUF.has(relatif)) { laissesDeCote += 1; continue; }
   const octets = fs.readFileSync(path.join(RACINE, relatif));
   const sha = empreinteBlob(octets);
   if (distant.get(relatif) === sha) { identiques += 1; continue; }
   aEnvoyer.push({ relatif, octets, neuf: !distant.has(relatif) });
 }
-const supprimes = [...distant.keys()].filter((p) => !fichiers.includes(p));
+// Un fichier mis de côté n'est pas un fichier supprimé : sans cette garde, le
+// laisser tranquille ici reviendrait à l'effacer du dépôt là-bas.
+const supprimes = [...distant.keys()].filter((p) => !fichiers.includes(p) && !SAUF.has(p));
 
 console.log(`Dernier commit distant : ${commitParent.slice(0, 7)}`);
 console.log(`Fichiers ici : ${fichiers.length} | identiques au distant : ${identiques}`);
+if (laissesDeCote) {
+  console.log(`Laissés de côté (--sauf) : ${laissesDeCote} — ${[...SAUF].join(', ')}`);
+}
 console.log(`À envoyer : ${aEnvoyer.length} (dont ${aEnvoyer.filter((f) => f.neuf).length} nouveaux)`);
 console.log(`Supprimés depuis : ${supprimes.length}`);
 for (const f of aEnvoyer) console.log(`   ${f.neuf ? '+' : 'M'} ${f.relatif}`);
