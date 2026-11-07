@@ -321,10 +321,20 @@ const wa = (numero: string, texte: string) => lienWhatsApp(`226${numero}`, texte
                 {/* Joindre la cliente. Chez Jia ce bouton ouvre le fil de la
                     commande dans l'application ; ici aucune fonction ne relie
                     une commande à un fil, alors il ouvre WhatsApp sur son
-                    numéro, le numéro de commande déjà écrit. */}
+                    numéro.
+
+                    LA DATE, PLUS LE NUMÉRO (Arthur, le 7 novembre 2026 : « je
+                    veux pas de numéro de commande »). Ce message part sur le
+                    téléphone de la cliente, donc il suit la même règle que le
+                    reste de ce qu'elle voit. La date la situe aussi bien, et
+                    une femme reconnaît « ta commande du 7 novembre » là où
+                    « MD-2611-00200 » ne lui dit rien.
+
+                    Et comme ailleurs : AUCUN NOM DE PRODUIT dans un message
+                    WhatsApp, voir lienWhatsApp dans src/lib/format-gestion.ts. */}
                 <a
                   class="btn btn-contour btn-petit"
-                  href={wa(c.telephone, `Bonjour ${c.nom}, c'est Mousso Dambé au sujet de ta commande ${c.numero}.`)}
+                  href={wa(c.telephone, `Bonjour ${c.nom}, c'est Mousso Dambé au sujet de ta commande du ${dateCourte(c.quand)}.`)}
                   target="_blank"
                   rel="noopener"
                 >
@@ -375,7 +385,11 @@ const wa = (numero: string, texte: string) => lienWhatsApp(`226${numero}`, texte
                   class="btn btn-whatsapp btn-petit lien-livreur"
                   href={(() => {
                     const lien = lienCourse(c.livreur_jeton);
-                    const texte = `Livraison Mousso Dambé ${c.numero} pour ${c.nom}. Ouvre ce lien pour appeler la cliente, voir l'itinéraire et confirmer la livraison : ${lien}`;
+                    // Pas de numéro de commande ici non plus (7 novembre
+                    // 2026) : le livreur ne le voit plus sur sa page, l'écrire
+                    // dans son WhatsApp le ferait réapparaître. Le quartier
+                    // le renseigne mieux, et c'est ce qu'il lit en premier.
+                    const texte = `Livraison Mousso Dambé pour ${c.nom}, ${c.quartier || 'quartier à préciser'}. Ouvre ce lien pour appeler la cliente, voir l'itinéraire et confirmer la livraison : ${lien}`;
                     return c.livreur_telephone ? wa(c.livreur_telephone, texte) : `https://wa.me/?text=${encodeURIComponent(texte)}`;
                   })()}
                   target="_blank"

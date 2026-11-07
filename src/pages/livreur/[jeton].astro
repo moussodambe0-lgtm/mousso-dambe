@@ -53,7 +53,17 @@ const lienCarte =
     ? `https://www.google.com/maps/search/?api=1&query=${course.lat},${course.lng}`
     : '';
 
-const titre = course ? `Commande ${course.numero}` : 'Course';
+/*
+ * PAS DE NUMÉRO DE COMMANDE ICI (Arthur, le 7 novembre 2026 : « je veux pas
+ * de numéro de commande »).
+ *
+ * Cette page portait le numéro en gros, en haut, et dans le titre de l'onglet.
+ * Ce qu'un livreur a besoin de distinguer quand il a trois courses ouvertes,
+ * ce n'est pas une référence qu'il ne dictera jamais : c'est OÙ il va. Le
+ * quartier remplace donc le numéro, et il est utile là où l'autre ne l'était
+ * pas.
+ */
+const titre = course ? `Course · ${course.quartier || 'Quartier non donné'}` : 'Course';
 ---
 
 <Base titre={titre} description="La course à livrer." pleinEcran>
@@ -69,7 +79,7 @@ const titre = course ? `Commande ${course.numero}` : 'Course';
       ) : (
         <>
           <header class="haut">
-            <p class="numero chiffre">{course.numero}</p>
+            <p class="ou-grand">{course.quartier || 'Quartier non donné'}</p>
             {course.livreur_nom && <p class="pour">Pour {course.livreur_nom}</p>}
           </header>
 
@@ -138,10 +148,15 @@ const titre = course ? `Commande ${course.numero}` : 'Course';
     text-align: center;
   }
 
-  .numero {
+  /* Le quartier, en gros, à la place du numéro de commande retiré le
+     7 novembre 2026. Un cran plus petit que le numéro ne l'était : un nom de
+     quartier est plus long qu'une référence, et « Ouaga 2000 secteur 15 »
+     tenait mal sur un petit téléphone à 27 pixels. */
+  .ou-grand {
     margin: 0;
-    font-size: 27px;
+    font-size: 23px;
     font-weight: 800;
+    line-height: 1.25;
     color: var(--rose);
   }
 
