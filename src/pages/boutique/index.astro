@@ -17,7 +17,6 @@ import { clientPublic, clientSession, baseConfiguree, jetonDeSession } from '../
 import { visiteuse, lirePanier, comptePanier } from '../../lib/session';
 import { enteteCatalogue } from '../../lib/cache';
 import { motCherche, filtreRecherche } from '../../lib/recherche';
-import PiedLegal from '../../components/PiedLegal.astro';
 
 const RAYONS = [
   { id: '', libelle: 'Tout' },
@@ -143,14 +142,18 @@ Astro.response.headers.set(
     <div class="espace"></div>
   </main>
 
-  {/* LE PIED DE PAGE AVEC LES DOCUMENTS LÉGAUX (7 novembre 2026).
+  {/* PAS DE PIED DE PAGE LÉGAL ICI (Arthur, le 7 novembre 2026 : « je veux
+      que tu le supprimes en fait »).
 
-      Il manquait ici, et c'est l'écran où il manquait le plus : la boutique
-      est la seule page de l'application ouverte aux moteurs de recherche, et
-      c'est la seule où quelqu'un achète. Les conditions générales de VENTE
-      doivent être atteignables depuis l'endroit où l'on vend, pas seulement
-      depuis l'accueil. */}
-  <PiedLegal avecNav />
+      Il y avait été posé une heure plus tôt, avec un bon argument : la
+      boutique est la seule page de l'application ouverte aux moteurs de
+      recherche, et la seule où l'on achète. Mais la consigne d'Arthur était
+      claire dès le début, et je l'avais élargie de moi-même : le pied de
+      page appartient au SITE (l'écran d'ouverture), et dans l'APPLICATION
+      les documents sont dans Paramètres.
+
+      Les conditions de vente restent donc atteignables en deux gestes depuis
+      n'importe quel écran, par l'onglet Compte puis Paramètres. */}
 </Base>
 
 <style>

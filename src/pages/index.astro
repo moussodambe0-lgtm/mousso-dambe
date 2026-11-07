@@ -24,7 +24,6 @@ import GoutteJour from '../components/GoutteJour.astro';
 import BebeJour from '../components/BebeJour.astro';
 import CarteProduit from '../components/CarteProduit.astro';
 import Alerte from '../components/Alerte.astro';
-import PiedLegal from '../components/PiedLegal.astro';
 import '../styles/accueil.css';
 import { existsSync as fsExiste } from 'node:fs';
 import { clientPublic, clientSession, baseConfiguree } from '../lib/supabase';
@@ -561,14 +560,23 @@ const photoDe = (i: number) => photos[i] ?? photos[photos.length - 1] ?? null;
     )
   }
 
-  {/* LE PIED DE PAGE, EN BAS DE L'ACCUEIL (Arthur, le 7 novembre 2026 : « au
-      niveau de l'accueil, tu mets les documents en bas de l'accueil, tu mets
-      un fond un peu noir ou bien un peu noir-rouge »).
+  {/* LE PIED DE PAGE LÉGAL A ÉTÉ RETIRÉ D'ICI le 7 novembre 2026, le jour
+      même où il y avait été posé.
 
-      Il est DEHORS du `main`, et après les deux branches : l'accueil montre
-      deux écrans très différents selon qu'elle est entrée ou non, et le pied
-      doit être au bas des deux. */}
-  <PiedLegal avecNav={Boolean(moi)} />
+      Arthur avait demandé deux choses, et j'avais appliqué la première
+      partout au lieu de la laisser où elle allait :
+
+        « Au niveau de l'ACCUEIL, tu publies tout en bas, tu fais un fond un
+          peu noir-rouge. Et dans l'APPLICATION, tu mets les documents au
+          niveau des paramètres. »
+
+      Le pied de page appartient donc au SITE, c'est-à-dire à l'écran
+      d'ouverture, celui qu'on voit avant d'entrer. Dans l'application, où
+      elle a la barre du bas et son compte, les documents sont dans
+      Paramètres, et un bandeau sombre en bas de chaque écran n'y a rien à
+      faire : il coupe la page et répète ce qui est déjà rangé ailleurs.
+
+      Il reste sur /ouverture, sur /legal et sur chaque document. */}
 </Base>
 
 <script>
