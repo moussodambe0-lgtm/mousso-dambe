@@ -163,12 +163,11 @@ const emailOuvert = Boolean(erreur) || Boolean(reussite);
     {erreur && <div class="marge-bas"><Alerte type="erreur" texte={erreur} /></div>}
     {reussite && <div class="marge-bas"><Alerte type="reussite" texte={reussite} /></div>}
 
-    {attache && !reussite && (
-      <div class="encadre doux">
-        <Icone nom="bouclier-coche" taille={19} />
-        <p>Ce que tu as déjà noté depuis ce téléphone reste sur ce compte. Rien ne se perd.</p>
-      </div>
-    )}
+    {/* L'encadré « ce que tu as déjà noté reste sur ce compte, rien ne se
+        perd » a été retiré le 7 novembre 2026 à la demande d'Arthur. La
+        promesse, elle, tient toujours : s'inscrire depuis un compte commencé
+        l'ATTACHE au lieu d'en ouvrir un second (voir `attache` plus haut, et
+        src/lib/identite.ts). C'est le texte qui part, pas le comportement. */}
 
     <form method="POST" class="tout">
       <input type="hidden" name="suite" value={suite} />
@@ -256,16 +255,6 @@ const emailOuvert = Boolean(erreur) || Boolean(reussite);
   .sous { margin: 8px 0 0; font-size: 16px; line-height: 1.4; color: #7a8290; }
 
   .marge-bas { margin-bottom: 14px; }
-
-  .doux {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    margin-bottom: 14px;
-    background: #fff0e7;
-    border-color: #ffd0b5;
-  }
-  .doux p { margin: 0; font-size: 14px; line-height: 1.45; color: #3c4653; }
 
   .rubrique { margin: 0 0 14px; font-size: 20px; }
 

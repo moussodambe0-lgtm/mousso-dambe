@@ -42,19 +42,45 @@
   src: url('/fonts/outfit-700.woff2') format('woff2');
 }
 
+/*
+ * LA MISE EN PAGE DE JIA, LA PALETTE DE MOUSSO DAMBÉ.
+ *
+ * Arthur, le 7 novembre 2026, après avoir vu la copie en orange : « tu vas
+ * remplacer le fond par un fond rose crème. Un léger fond rose crème. Les
+ * bordures orange, ou tout ce qui est orange là-bas, tu le remplaces par du
+ * rose. Voilà, c'est les couleurs seulement. »
+ *
+ * COMMENT LES ROSES ONT ÉTÉ CHOISIS, et ce n'est pas au jugé. Chaque couleur
+ * de Jia a été convertie en gardant SA LUMINOSITÉ ET SA SATURATION, et en ne
+ * déplaçant que la teinte : l'orange de Jia est à 24°, le rose de Mousso
+ * Dambé à 340°. Le fond crème #F7F1E1 (43°, 48 %, 93 %) devient donc
+ * #F6E5EA, exactement le même crème mais rose.
+ *
+ * C'est ce qui fait que la page garde le ton des captures : même contraste,
+ * même douceur, même hiérarchie. Prendre les roses de la charte au hasard
+ * aurait donné un écran plus dur ou plus pâle, et l'équilibre des captures
+ * se serait perdu.
+ *
+ * LES GRIS DU TEXTE NE CHANGENT PAS. Ils sont neutres dans les deux palettes,
+ * et les teinter en rose rendrait le texte secondaire difficile à lire au
+ * soleil de midi sur un écran d'entrée de gamme.
+ */
 .jia {
-  /* Relevées dans les captures du 7 novembre 2026. */
-  --j-fond: #f7f1e1;
+  /* Le fond et les surfaces : les crèmes de Jia, virés au rose. */
+  --j-fond: #f6e5ea;
   --j-surface: #ffffff;
-  --j-carte: #fefaf2;
-  --j-champ: #f2f3f5;
-  --j-trait: #e4e0cf;
+  --j-carte: #fef8fa;
+  --j-champ: #f7f1f4;
+  --j-trait: #e8dce1;
 
-  /* Lues dans src/styles/tokens.css du dépôt de Jia. */
-  --j-action: #e0561a;
-  --j-action-fonce: #a83e10;
-  --j-action-clair: #fff0e7;
-  --j-action-bordure: #ffd0b5;
+  /* Le rose de Mousso Dambé, à la place de l'orange de Jia.
+     #D0206A sur blanc donne 6,4 pour 1 : bien au-dessus du minimum de 4,5. */
+  --j-action: #d0206a;
+  --j-action-fonce: #9c1450;
+  --j-action-clair: #ffe9f1;
+  --j-action-bordure: #ffc9dd;
+
+  /* Inchangés : neutres dans les deux palettes. */
   --j-encre: #0b1220;
   --j-texte-2: #7a8290;
   --j-texte-3: #9aa1ab;
@@ -145,7 +171,7 @@
   /* 16 px au minimum : en dessous, les iPhone zooment tout seuls sur le champ. */
   font-size: 16px;
   color: var(--j-encre);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%239AA1AB' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%23B9A3AC' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: 14px center;
 }
