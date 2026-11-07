@@ -20,10 +20,11 @@ import Entete from '../../components/Entete.astro';
 import Icone from '../../components/Icone.astro';
 import { visiteuse, lirePanier, comptePanier } from '../../lib/session';
 import { baseConfiguree } from '../../lib/supabase';
+import { sansCompte } from '../../lib/porte';
 
 if (!baseConfiguree()) return Astro.redirect('/', 302);
 const moi = await visiteuse(Astro);
-if (!moi) return Astro.redirect('/connexion', 302);
+if (!moi) return sansCompte(Astro);
 
 const VERSION = 'A1';
 const panier = comptePanier(lirePanier(Astro));

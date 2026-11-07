@@ -27,12 +27,13 @@ import { clientSession, baseConfiguree } from '../../lib/supabase';
 import { visiteuse, lirePanier, comptePanier } from '../../lib/session';
 import { prix, dateLongue, messageErreur } from '../../lib/format';
 import { ETATS_CLIENTE, etatParCle } from '../../lib/etats-commande';
+import { sansCompte } from '../../lib/porte';
 
 export const prerender = false;
 
 if (!baseConfiguree()) return Astro.redirect('/', 302);
 const moi = await visiteuse(Astro);
-if (!moi) return Astro.redirect('/connexion', 302);
+if (!moi) return sansCompte(Astro);
 
 // Une adresse qui ne correspond à aucun état mène à la première page, plutôt
 // qu'à une page introuvable : elle a peut-être suivi un lien devenu faux.

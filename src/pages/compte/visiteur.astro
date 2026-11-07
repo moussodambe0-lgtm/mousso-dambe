@@ -37,13 +37,57 @@
 import Base from '../../layouts/Base.astro';
 import Icone from '../../components/Icone.astro';
 import Mascotte from '../../components/Mascotte.astro';
+import { suiteSure } from '../../lib/suite';
 
 export const prerender = false;
 
 Astro.response.headers.set('Cache-Control', 'private, no-store');
+
+/*
+ * D'OÙ ELLE VIENT, ET POURQUOI ÇA CHANGE L'ÉCRAN.
+ *
+ * Cette page est affichée par `Astro.rewrite` à la place de la page qu'elle a
+ * demandée : l'ADRESSE RESTE CELLE-LÀ. `Astro.url.pathname` vaut donc
+ * « /discussions » quand elle a touché Discussions, et c'est ce qui permet
+ * d'allumer le bon onglet et de lui dire pourquoi on l'arrête.
+ *
+ * Arthur, le 7 novembre 2026 : « quand je clique sur discussion, la petite
+ * barre en bas où il y a accueil, compte et tout, ça disparaît. Ce n'est pas
+ * normal. » Sans cette lecture du chemin, la barre montrerait « Compte »
+ * allumé alors qu'elle a touché « Discussions », ce qui est à peine mieux.
+ */
+type Onglet = 'accueil' | 'cycle' | 'discussions' | 'boutique' | 'compte';
+
+const chemin = Astro.url.pathname;
+const ONGLETS: { debut: string; onglet: Onglet; pourquoi: string }[] = [
+  {
+    debut: '/discussions',
+    onglet: 'discussions',
+    pourquoi: 'Pour écrire à Dambé ou à la boutique, il faut un compte : c’est ce qui permet de retrouver tes messages, et à la boutique de te répondre.',
+  },
+  {
+    debut: '/dambe',
+    onglet: 'discussions',
+    pourquoi: 'Pour poser tes questions à Dambé, il faut un compte : c’est ce qui garde tes réponses d’une fois sur l’autre.',
+  },
+  { debut: '/cycle', onglet: 'cycle', pourquoi: 'Pour suivre ton cycle, il faut un compte : sinon tout se perd en changeant de téléphone.' },
+  { debut: '/journal', onglet: 'cycle', pourquoi: 'Pour tenir ton journal, il faut un compte : sinon tout se perd en changeant de téléphone.' },
+  { debut: '/commandes', onglet: 'boutique', pourquoi: 'Pour retrouver tes commandes, il faut un compte.' },
+  { debut: '/favoris', onglet: 'boutique', pourquoi: 'Pour garder tes favoris, il faut un compte.' },
+  { debut: '/compte', onglet: 'compte', pourquoi: '' },
+  { debut: '/parametres', onglet: 'compte', pourquoi: 'Pour régler ton compte, connecte-toi d’abord.' },
+];
+
+const venue = ONGLETS.find((o) => chemin === o.debut || chemin.startsWith(`${o.debut}/`));
+const onglet: Onglet = venue?.onglet ?? 'compte';
+const pourquoi = venue?.pourquoi ?? '';
+
+// Une fois connectée, on la remet exactement où elle allait.
+const suite = suiteSure(chemin, '/compte');
+const vers = (page: string) => `${page}?suite=${encodeURIComponent(suite)}`;
 ---
 
-<Base titre="Mon compte" description="Connecte-toi ou crée ton compte Mousso Dambé." nav="compte">
+<Base titre="Mon compte" description="Connecte-toi ou crée ton compte Mousso Dambé." nav={onglet}>
   <section class="scene-compte" aria-labelledby="titre-bienvenue">
     <div class="fond-anime" aria-hidden="true">
       <span class="tache t1"></span><span class="tache t2"></span><span class="tache t3"></span>
@@ -51,7 +95,9 @@ Astro.response.headers.set('Cache-Control', 'private, no-store');
     </div>
 
     <h1 id="titre-bienvenue">Bienvenue sur Mousso Dambé</h1>
-    <p class="chapeau">Crée ton compte pour garder ton cycle, tes commandes et tes messages, sur tous tes téléphones.</p>
+    <p class="chapeau">
+      {pourquoi || 'Crée ton compte pour garder ton cycle, tes commandes et tes messages, sur tous tes téléphones.'}
+    </p>
 
     <div class="scene">
       <div class="acteur" aria-hidden="true">
@@ -62,8 +108,8 @@ Astro.response.headers.set('Cache-Control', 'private, no-store');
 
       <div class="panneau">
         <span class="poignee" aria-hidden="true"></span>
-        <a class="btn btn-rose" href="/connexion?suite=/compte">Se connecter</a>
-        <a class="btn btn-contour" href="/inscription?suite=/compte">Créer un compte</a>
+        <a class="btn btn-rose" href={vers('/connexion')}>Se connecter</a>
+        <a class="btn btn-contour" href={vers('/inscription')}>Créer un compte</a>
         <p class="gratuit">Gratuit, en une minute.</p>
       </div>
     </div>

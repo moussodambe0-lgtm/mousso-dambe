@@ -32,10 +32,11 @@ import {
   PARAGRAPHE_ACCUEIL,
   texteAccordAssistante,
 } from '../lib/accords';
+import { sansCompte } from '../lib/porte';
 
 if (!baseConfiguree()) return Astro.redirect('/', 302);
 const moi = await visiteuse(Astro);
-if (!moi) return Astro.redirect('/connexion', 302);
+if (!moi) return sansCompte(Astro);
 // UN VRAI COMPTE, PAS SEULEMENT UNE SESSION (Arthur, le 27 octobre 2026).
 //
 // « Pour accéder à la messagerie et au niveau de compte, la personne va devoir
@@ -44,7 +45,7 @@ if (!moi) return Astro.redirect('/connexion', 302);
 // la boutique, ses commandes. Mais ici il faut un email : sans lui, personne
 // ne peut lui répondre, et elle ne retrouverait rien en changeant de
 // téléphone. L'écran de connexion explique pourquoi grâce à `pour`.
-if (!moi.compteReel) return Astro.redirect('/connexion?pour=messagerie', 302);
+if (!moi.compteReel) return sansCompte(Astro);
 
 const client = clientSession(Astro)!;
 let erreur = '';

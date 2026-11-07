@@ -18,10 +18,11 @@ import Alerte from '../components/Alerte.astro';
 import { clientSession, baseConfiguree } from '../lib/supabase';
 import { visiteuse, lirePanier, comptePanier } from '../lib/session';
 import { messageErreur } from '../lib/format';
+import { sansCompte } from '../lib/porte';
 
 if (!baseConfiguree()) return Astro.redirect('/', 302);
 const moi = await visiteuse(Astro);
-if (!moi) return Astro.redirect('/connexion', 302);
+if (!moi) return sansCompte(Astro);
 
 const client = clientSession(Astro)!;
 let erreur = '';

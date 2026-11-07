@@ -17,10 +17,11 @@ import { clientSession, baseConfiguree } from '../lib/supabase';
 import { visiteuse, monCycle, lirePanier, comptePanier } from '../lib/session';
 import { SIGNES, FLUX, DOULEURS } from '../lib/cycle';
 import { aujourdhui, dateLongue, messageErreur, enIso } from '../lib/format';
+import { sansCompte } from '../lib/porte';
 
 if (!baseConfiguree()) return Astro.redirect('/', 302);
 const moi = await visiteuse(Astro);
-if (!moi) return Astro.redirect('/connexion', 302);
+if (!moi) return sansCompte(Astro);
 
 const client = clientSession(Astro)!;
 let erreur = '';

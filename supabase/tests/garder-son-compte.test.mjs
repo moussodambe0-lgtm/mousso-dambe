@@ -53,8 +53,13 @@ titre("L'écran de connexion n'est plus interdit à celle qui est déjà entrée
   const accueil = lire('src/pages/compte/visiteur.astro');
   const inscription = lire('src/pages/inscription.astro');
 
-  verifier("l'écran d'accueil du compte propose de se connecter", accueil.includes('href="/connexion?suite=/compte"'));
-  verifier('il propose aussi de créer un compte', accueil.includes('href="/inscription?suite=/compte"'));
+  verifier("l'écran d'accueil du compte propose de se connecter", accueil.includes("vers('/connexion')"));
+  verifier('il propose aussi de créer un compte', accueil.includes("vers('/inscription')"));
+  verifier(
+    'et il la remet où elle allait une fois connectée',
+    /const suite = suiteSure\(chemin/.test(accueil),
+    'elle atterrirait sur /compte au lieu de la page qu’elle voulait'
+  );
   verifier(
     'les anciennes adresses « ?action=inscrire » mènent toujours quelque part',
     /action'\) === 'inscrire'[\s\S]{0,200}redirect\(`\/inscription/.test(page),
@@ -154,9 +159,24 @@ titre('L’email en premier, Google en dessous');
     /<Entete titre="Créer un compte" retour="\/compte" \/>/.test(pageInscription),
     'plus aucune flèche de retour : on peut s’y bloquer'
   );
+  /*
+   * LA BARRE DU BAS NE DISPARAÎT PLUS (Arthur, le 7 novembre 2026, après
+   * avoir touché « Discussions ») : « la petite barre en bas, où il y a
+   * accueil, compte et tout, ça disparaît. Ce n'est pas normal. »
+   *
+   * L'accueil du compte s'affiche à la place de la page demandée, SANS
+   * changer l'adresse. Il allume donc l'onglet d'où elle vient, pas
+   * « Compte » : celle qui a touché Discussions doit voir Discussions
+   * allumé, sinon elle croit s'être trompée de bouton.
+   */
   verifier(
-    'l’accueil du compte garde la barre du bas, parce que c’est un onglet',
-    /nav="compte"/.test(accueilCompte)
+    'l’accueil du compte garde la barre du bas',
+    /nav=\{onglet\}/.test(accueilCompte),
+    'la barre disparaîtrait, ou allumerait le mauvais onglet'
+  );
+  verifier(
+    'et il allume l’onglet d’où elle vient, pas toujours « Compte »',
+    /Astro\.url\.pathname/.test(accueilCompte) && /debut: '\/discussions'/.test(accueilCompte)
   );
   verifier(
     'et /compte l’affiche sans changer d’adresse, pour que « précédent » marche',
@@ -290,21 +310,45 @@ titre('La messagerie et le compte demandent un vrai compte, le reste non');
     'effacer ses propres questions reste possible sans compte',
     !/if \([^)]*!\s*\w+\.compteReel[^)]*\)\s*return/.test(lire('src/pages/dambe/effacer.ts'))
   );
-  // Les deux bouts doivent se repondre : les pages fermees posent `?pour=…`,
-  // et l'ecran de connexion doit savoir traduire chacune des valeurs posees.
-  const connexion = lire('src/pages/connexion.astro');
-  const demandes = new Set();
-  for (const f of FERMEES) {
-    const m = lire(f).match(/\/connexion\?pour=([a-z]+)/);
-    if (m) demandes.add(m[1]);
-  }
-  verifier('les pages fermées disent pourquoi', demandes.size >= 2);
-  for (const quoi of demandes) {
-    // `^\s*nom:` en mode multiligne : on cherche la cle de l'objet POURQUOI,
-    // pas le mot n'importe ou dans le fichier.
+  /*
+   * LES DEUX BOUTS DOIVENT SE RÉPONDRE, et ce n'est plus le même mécanisme
+   * depuis le 7 novembre 2026.
+   *
+   * Avant : chaque page fermée redirigeait vers `/connexion?pour=messagerie`,
+   * et l'écran de connexion traduisait ce mot en une phrase. Arthur, après
+   * avoir touché « Discussions » : « ça me renvoie sur une page se connecter,
+   * et les menus en bas disparaissent. Ce n'est pas normal. On ne doit pas me
+   * forcer comme ça à me connecter : on doit mettre les deux options, avec la
+   * mascotte. »
+   *
+   * Maintenant : les pages fermées affichent l'accueil du compte SANS changer
+   * l'adresse (`sansCompte`, src/lib/porte.ts), et c'est cet accueil qui lit
+   * le chemin pour dire pourquoi. Ce qu'on vérifie n'est donc plus la
+   * correspondance des `?pour=`, mais que CHAQUE page fermée a sa phrase.
+   */
+  const accueilVisiteuse = lire('src/pages/compte/visiteur.astro');
+
+  verifier(
+    'aucune page fermée ne redirige plus vers /connexion',
+    FERMEES.every((f) => !/redirect\('\/connexion/.test(lire(f))),
+    FERMEES.filter((f) => /redirect\('\/connexion/.test(lire(f))).join(', ')
+  );
+  verifier(
+    'elles affichent toutes l’accueil du compte à la place',
+    FERMEES.filter((f) => f !== 'src/pages/compte.astro').every((f) => /sansCompte\(Astro\)/.test(lire(f))),
+    FERMEES.filter((f) => f !== 'src/pages/compte.astro' && !/sansCompte\(Astro\)/.test(lire(f))).join(', ')
+  );
+  verifier(
+    'et /compte l’affiche par un rewrite, sans changer d’adresse',
+    /Astro\.rewrite\('\/compte\/visiteur'\)/.test(lire('src/pages/compte.astro'))
+  );
+
+  // Chaque zone fermée doit avoir sa phrase : sans elle, la femme voit deux
+  // boutons sans savoir ce qu'on lui reproche.
+  for (const debut of ['/discussions', '/dambe']) {
     verifier(
-      `l'ecran de connexion sait traduire « ${quoi} »`,
-      new RegExp('^\\s*' + quoi + ':', 'm').test(connexion)
+      `l'accueil sait dire pourquoi pour « ${debut} »`,
+      new RegExp(`debut: '${debut}'[\\s\\S]{0,400}pourquoi: '[^']{20,}`).test(accueilVisiteuse)
     );
   }
 }
