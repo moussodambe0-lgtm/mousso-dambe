@@ -261,12 +261,43 @@ async function redeployer() {
   console.log(r.ok ? `relance : ${r.corps.url}` : `echec ${r.statut} : ${JSON.stringify(r.corps).slice(0, 250)}`);
 }
 
+/**
+ * OU TOURNE LE CODE DU SITE.
+ *
+ * PARIS, ET PLUS LONDRES, depuis le 7 novembre 2026. Arthur : « l'application
+ * est tres lente, quand on clique sur un bouton ca prend 5 secondes ».
+ *
+ * CE QUE LA MESURE A MONTRE. L'identifiant de requete que Vercel renvoie
+ * disait « cdg1::lhr1 » : la requete ENTRE par Paris, et la fonction tourne a
+ * LONDRES. Or la base de donnees est a Paris (projet Supabase en eu-west-3).
+ *
+ * Chaque page faisait donc : Ouagadougou -> Paris -> Londres, puis Londres ->
+ * Paris pour interroger la base, Paris -> Londres pour la reponse, et enfin
+ * Londres -> Paris -> Ouagadougou. Deux traversees de la Manche en plus, et
+ * une par appel a la base : `visiteuse()` en fait deux a lui seul, plus le
+ * comptage des visites.
+ *
+ * Paris supprime ces allers-retours et colle le code a la base. Ce n'est pas
+ * un reglage de confort : c'est la seule chose qui se corrigeait en une
+ * ligne parmi tout ce qui ralentit le site.
+ *
+ * LE JOUR OU LA BASE DEMENAGE, cette valeur doit demenager avec elle. Mettre
+ * le code loin de sa base coute plus que de le mettre loin de ses visiteuses :
+ * une page fait un seul aller-retour avec le telephone, et trois ou quatre
+ * avec la base.
+ */
+const REGION = 'cdg1';
+
 async function region() {
   const r = await api(`/v9/projects/${PROJET}`, {
     method: 'PATCH',
-    body: JSON.stringify({ serverlessFunctionRegion: 'lhr1' }),
+    body: JSON.stringify({ serverlessFunctionRegion: REGION }),
   });
-  console.log(r.ok ? 'region des fonctions : Londres (lhr1)' : `echec ${r.statut} : ${JSON.stringify(r.corps).slice(0, 200)}`);
+  console.log(
+    r.ok
+      ? `region des fonctions : ${REGION} (Paris, a cote de la base)`
+      : `echec ${r.statut} : ${JSON.stringify(r.corps).slice(0, 200)}`
+  );
 }
 
 /**
