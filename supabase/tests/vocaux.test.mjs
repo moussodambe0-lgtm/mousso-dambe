@@ -11,6 +11,9 @@
 //   4. Effacer la conversation efface les sons.
 //
 // Lancer : node supabase/tests/vocaux.test.mjs
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   nouvelleBase,
   nouveauCompte,
@@ -342,6 +345,94 @@ verifier('un vocal effacé ne s_écoute plus', r.rows[0].j.erreur === 'vocal_inc
 
 r = await commeServeur(db, `select count(*)::int as n from public.messages m join public.fils f on f.id = m.fil_id where f.profil_id = $1 and m.texte <> ''`, [cleo]);
 verifier('ses messages écrits à la boutique restent', r.rows[0].n === 1, `${r.rows[0].n}`);
+
+// ---------------------------------------------------------------------------
+// LA VOIX DOIT RESTER RECONNAISSABLE (7 novembre 2026)
+// ---------------------------------------------------------------------------
+//
+// Arthur : « quand on envoie un audio par message, c'est comme la voix d'un
+// robot. Les voix sont modifiees. On ne sait meme pas que c'est la voix de la
+// personne. »
+//
+// La cause tenait en une ligne : `getUserMedia({ audio: true })`. Cette
+// demande-la, la plus simple, est la pire pour un message vocal : sans
+// precision, le navigateur applique le traitement d'un APPEL TELEPHONIQUE, et
+// sur Android il bascule le micro sur la voie « communication vocale », qui
+// travaille en 16 kHz mono.
+//
+// Ce que ces verifications protegent n'est pas un confort. Une voix qu'on ne
+// reconnait pas ne vaut pas un message vocal : si la femme doit de toute
+// facon ecrire pour etre comprise, le micro ne sert a rien. Or c'est le seul
+// moyen de s'exprimer pour celle qui lit mal.
+titre('La voix enregistree reste celle de la personne');
+{
+  const vocal = fs.readFileSync(
+    path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'src', 'scripts', 'vocal.ts'),
+    'utf8'
+  );
+
+  /*
+   * LE CODE SANS SES COMMENTAIRES.
+   *
+   * Le fichier EXPLIQUE la ligne qu'on a retiree, en la citant. Chercher
+   * cette citation dans le fichier entier faisait tomber la verification sur
+   * le commentaire qui la justifie : le test accusait le code d'une faute
+   * qu'il venait precisement de corriger et de documenter.
+   *
+   * On ne cherche donc que dans le code execute.
+   */
+  const codeSeul = vocal
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '');
+
+  verifier(
+    'le micro n_est plus demande avec le simple « audio: true »',
+    !/getUserMedia\(\{\s*audio:\s*true\s*\}\)/.test(codeSeul),
+    'la demande simple est revenue : le navigateur retraitera la voix'
+  );
+  verifier(
+    'l_annulation d_echo est coupee (rien ne joue, elle ne retire que de la voix)',
+    /echoCancellation:\s*false/.test(vocal)
+  );
+  verifier(
+    'la suppression de bruit est coupee (c_est elle, le metallique)',
+    /noiseSuppression:\s*false/.test(vocal)
+  );
+  verifier(
+    'mais le reglage automatique du volume est GARDE',
+    /autoGainControl:\s*true/.test(vocal),
+    'sans lui, la moitie du message est inaudible selon la distance'
+  );
+  verifier('on demande 48 kHz', /sampleRate:\s*48000/.test(vocal));
+  verifier(
+    'et un seul canal (une voix n_a pas de stereo, deux canaux doubleraient le poids)',
+    /channelCount:\s*1/.test(vocal)
+  );
+
+  const debit = Number((vocal.match(/audioBitsPerSecond:\s*([\d_]+)/)?.[1] ?? '0').replace(/_/g, ''));
+  verifier('un debit est impose a l_enregistreur', debit > 0, `${debit}`);
+  verifier(
+    `il donne une voix pleine (${debit} bits par seconde)`,
+    debit >= 48_000,
+    `${debit} : trop bas, la voix redevient telephonique`
+  );
+
+  // 90 secondes au maximum, et la base refuse au-dela de 1 200 000 octets
+  // (migration 20261013140000). Les deux chiffres doivent tenir ensemble, et
+  // ce calcul tombe le jour ou l'un des deux bouge sans l'autre.
+  const maxSecondes = Number(vocal.match(/MAX_SECONDES = (\d+)/)?.[1] ?? 0);
+  const poidsMax = (debit / 8) * maxSecondes;
+  verifier(
+    `${maxSecondes} s a ce debit font ${Math.round(poidsMax / 1000)} Ko, sous la limite de 1 200 Ko`,
+    poidsMax < 1_200_000,
+    `${Math.round(poidsMax / 1000)} Ko : la base refusera les messages longs`
+  );
+  verifier(
+    'et le poids est verifie AVANT l_envoi, pas apres l_attente',
+    /blob\.size > 1_?150_?000/.test(vocal),
+    'un message trop lourd ne serait refuse qu_apres avoir ete televerse'
+  );
+}
 
 bilan('Messages vocaux');
 await db.close();

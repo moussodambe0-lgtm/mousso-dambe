@@ -101,7 +101,58 @@ if (sait && bouton && panneau && zone) {
     oublier();
     dire('');
     try {
-      flux = await navigator.mediaDevices.getUserMedia({ audio: true });
+      /*
+       * ══════════════════════════════════════════════════════════════════
+       * POURQUOI ON DEMANDE LE MICRO AVEC AUTANT DE PRÉCISIONS
+       * ══════════════════════════════════════════════════════════════════
+       *
+       * Arthur, le 7 novembre 2026 : « quand on envoie un audio par
+       * message, c'est comme la voix d'un robot. Les voix sont modifiées.
+       * On ne sait même pas que c'est la voix de la personne. »
+       *
+       * La ligne d'avant était `getUserMedia({ audio: true })`. Cette
+       * demande-là, la plus simple, est aussi la pire pour un message
+       * vocal : sans précision, le navigateur applique le traitement d'un
+       * APPEL TÉLÉPHONIQUE. Sur Android, il bascule même le micro sur la
+       * voie « communication vocale », qui travaille en 16 kHz mono.
+       *
+       * Trois traitements s'ajoutent alors, tous conçus pour une
+       * conversation en direct, aucun pour une voix qu'on réécoute :
+       *
+       *   - l'ANNULATION D'ÉCHO suppose qu'un haut-parleur joue en même
+       *     temps et soustrait ce qu'elle croit être son écho. Ici rien ne
+       *     joue : elle ne retire que des morceaux de la vraie voix.
+       *   - la SUPPRESSION DE BRUIT coupe tout ce qui ressemble à un fond
+       *     continu. Elle emporte avec lui les graves et les souffles qui
+       *     font qu'une voix est reconnaissable, et elle hache les fins de
+       *     mots. C'est elle, le métallique.
+       *   - le RÉGLAGE AUTOMATIQUE DU VOLUME, lui, est utile et on le
+       *     GARDE : une femme ne tient pas son téléphone à la même
+       *     distance d'un bout à l'autre, et sans lui la moitié du message
+       *     serait inaudible.
+       *
+       * On demande donc 48 kHz, un seul canal (une voix n'a pas de stéréo,
+       * et deux canaux doubleraient le poids pour rien), et on coupe les
+       * deux traitements qui abîment.
+       *
+       * CE QU'ON ACCEPTE EN ÉCHANGE : le bruit de la rue s'entendra. C'est
+       * le bon côté du marché. Un fond sonore naturel se comprend ; une
+       * voix hachée et métallique ne se reconnaît pas, et le but d'un
+       * message vocal est justement qu'on reconnaisse celle qui parle.
+       *
+       * Ces valeurs sont des SOUHAITS, pas des exigences : un navigateur
+       * qui ne sait pas les tenir enregistre quand même, au lieu de
+       * refuser le micro.
+       */
+      flux = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: true,
+          channelCount: 1,
+          sampleRate: 48000,
+        },
+      });
     } catch (e: unknown) {
       etat('refuse');
       temps.textContent = '';
@@ -113,7 +164,28 @@ if (sait && bouton && panneau && zone) {
       return;
     }
 
-    enregistreur = new MediaRecorder(flux, format ? { mimeType: format } : undefined);
+    /*
+     * LE DÉBIT, ET POURQUOI 64 000 ET PAS PLUS.
+     *
+     * Sans cette ligne, le navigateur choisit lui-même, et il choisit bas :
+     * il suppose une voix de téléphone, puisque c'est ce qu'on lui demandait
+     * jusqu'ici. Le résultat était maigre même une fois le micro corrigé.
+     *
+     * 64 kbit/s en Opus mono, c'est une voix pleine, qu'on reconnaît. Et le
+     * calcul tient dans la limite de la base : 90 secondes au maximum, à
+     * 64 000 bits par seconde, font 720 000 octets. La base en refuse
+     * 1 200 000 (voir la migration 20261013140000). Il reste donc 40 % de
+     * marge, assez pour qu'un navigateur qui dépasse un peu ne fasse pas
+     * perdre son message à une femme qui vient de parler une minute et
+     * demie.
+     *
+     * Monter plus haut n'apporterait rien d'audible sur une voix, et
+     * coûterait des données sur un forfait compté.
+     */
+    enregistreur = new MediaRecorder(flux, {
+      ...(format ? { mimeType: format } : {}),
+      audioBitsPerSecond: 64_000,
+    });
     morceaux = [];
     enregistreur.ondataavailable = (ev) => {
       if (ev.data.size > 0) morceaux.push(ev.data);
@@ -127,6 +199,23 @@ if (sait && bouton && panneau && zone) {
       if (blob.size < 500) {
         etat('refuse');
         dire("On n'a rien entendu. Rapproche-toi du téléphone et recommence.");
+        return;
+      }
+      /*
+       * LA LIMITE DE LA BASE, VÉRIFIÉE ICI AUSSI.
+       *
+       * La base refuse au-delà de 1 200 000 octets (migration
+       * 20261013140000). À 64 kbit/s, 90 secondes en font 720 000 : on ne
+       * devrait jamais y arriver. Mais `audioBitsPerSecond` est un souhait,
+       * pas une loi, et un navigateur qui l'ignore enverrait un message que
+       * la base rejetterait APRÈS l'envoi, c'est-à-dire après l'attente.
+       *
+       * Le dire ici, tout de suite, lui évite d'envoyer pour rien et lui
+       * donne la seule consigne utile : parler moins longtemps.
+       */
+      if (blob.size > 1_150_000) {
+        etat('refuse');
+        dire('Ce message est trop lourd pour être envoyé. Refais-le un peu plus court.');
         return;
       }
       etat('pret');

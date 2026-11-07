@@ -12,12 +12,12 @@
  */
 import { defineMiddleware } from 'astro:middleware';
 import { cheminPublic } from './lib/cache';
-import { hoteDemande, estHoteAdmin, verdict } from './lib/hotes';
+import { verdict } from './lib/hotes';
 import { defautDeConfiguration } from './lib/configuration';
 import { estPageComptable, jourCourant, compterPassage, COOKIE_JOUR } from './lib/visites';
 import { clientPublic, clientSession, baseConfiguree } from './lib/supabase';
 import { PUBLIC_SUPABASE_URL } from 'astro:env/client';
-import { MD_CLE_SERVEUR, ADMIN_HOST } from 'astro:env/server';
+import { MD_CLE_SERVEUR } from 'astro:env/server';
 
 // Vérifié une seule fois au démarrage du serveur : si la mise en ligne est mal
 // configurée, aucune page ne doit s'ouvrir. Mieux vaut un site qui dit « pas
@@ -40,14 +40,20 @@ export const onRequest = defineMiddleware(async (contexte, suite) => {
 
   const chemin = contexte.url.pathname;
 
-  // Deux adresses, deux mondes (décision d'Arthur du 21 octobre 2026).
-  // L'administration ne répond que sur son sous-domaine, et la plateforme des
-  // clientes ne répond pas dessus. Le verdict est calculé AVANT d'exécuter la
-  // page : une page cachée ne doit pas même interroger la base.
-  const surHoteAdmin = estHoteAdmin(
-    hoteDemande(contexte.request.headers, contexte.url.hostname),
-    ADMIN_HOST
-  );
+  // ICI, CE DÉPÔT N'EST QUE LA PLATEFORME DES CLIENTES (7 novembre 2026).
+  //
+  // L'administration a quitté ce dépôt pour le sien, `mousso-dambe-admin`,
+  // comme Jia et jia-admin. Décision d'Arthur : « de la même manière que Jia
+  // est séparé de jia-admin, je veux la même chose pour mousso dambe ».
+  //
+  // La question « est-on sur l'hôte admin » n'a donc plus de sens à poser : la
+  // réponse est non par construction, et les pages d'administration n'existent
+  // plus dans ce dépôt. `verdict` est gardé tel quel, avec ses essais
+  // (supabase/tests/hotes.test.mjs), et continue de répondre « introuvable »
+  // à /admin et /vendeur : une deuxième serrure derrière une porte murée ne
+  // coûte rien, et protège le jour où quelqu'un recréerait une de ces pages
+  // ici par mégarde.
+  const surHoteAdmin = false;
   const quoiFaire = verdict(chemin, surHoteAdmin);
 
   let reponse: Response;

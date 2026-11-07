@@ -25,7 +25,6 @@
  *
  * Aucune valeur du coffre n'est affichee : ni le jeton, ni l'adresse.
  */
-import fs from 'node:fs';
 import { lignesDuCoffre, emailAdmin, masquer, COFFRE } from './coffre.mjs';
 
 const APPLIQUER = process.argv.includes('--appliquer');
