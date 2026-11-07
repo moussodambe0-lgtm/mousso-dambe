@@ -17,6 +17,7 @@ import { clientSession, clientPublic, baseConfiguree } from '../lib/supabase';
 import { visiteuse, lirePanier, ecrirePanier, comptePanier } from '../lib/session';
 import { prix, messageErreur } from '../lib/format';
 import { prixLivraison } from '../lib/boutique';
+import { envoyer, commandeRecue } from '../lib/courriels';
 
 if (!baseConfiguree()) return Astro.redirect('/', 302);
 const moi = await visiteuse(Astro);
@@ -68,6 +69,48 @@ if (Astro.request.method === 'POST') {
   if (error || !data?.ok) {
     erreur = messageErreur(data?.erreur ?? error?.message);
   } else {
+    /*
+     * LE MESSAGE DE CONFIRMATION (Arthur, le 7 novembre 2026 : « si quelqu'un
+     * fait un achat sur Mousso Dambé, il faut que je lui envoie des emails »).
+     *
+     * QUATRE PRÉCAUTIONS, chacune pour une panne précise.
+     *
+     * 1. `data.rejouee` : la base rend la MÊME commande quand le même geste
+     *    est répété (double appui, rechargement de la page ; voir la migration
+     *    20261026160000_une_seule_commande_par_geste.sql). Sans ce test, elle
+     *    recevrait deux fois le même message pour un seul colis, et croirait
+     *    avoir commandé deux fois.
+     *
+     * 2. `moi.email` peut être vide, et c'est le cas ORDINAIRE : on entre par
+     *    « Commencer », sans compte et sans adresse. `envoyer` renonce alors
+     *    sans bruit. Ce n'est pas une erreur à signaler à l'écran : elle n'a
+     *    jamais demandé d'email.
+     *
+     * 3. On attend la réponse (`await`) au lieu de lancer l'envoi dans le
+     *    vide : sur Vercel, une promesse non attendue est tuée dès que la
+     *    réponse part, et le message ne serait envoyé qu'une fois sur deux,
+     *    au hasard. L'envoi est borné à six secondes dans courriels.ts.
+     *
+     * 4. On ignore le résultat. Un email qui ne part pas ne doit RIEN changer
+     *    pour elle : sa commande est passée, l'écran suivant le lui dit, et le
+     *    vendeur la voit dans son espace. Lui montrer une erreur à ce moment
+     *    lui ferait croire que son achat a échoué.
+     */
+    if (!data.rejouee && moi.email) {
+      const suivi = new URL(
+        `/commandes/suivre/${encodeURIComponent(data.numero)}`,
+        Astro.site ?? Astro.url.origin
+      ).href;
+      const message = commandeRecue({
+        prenom: moi.prenom,
+        articles: lignes.reduce((n, l) => n + (Number(l.quantite) || 0), 0),
+        total: data.total,
+        quand: new Date(),
+        lien: suivi,
+      });
+      await envoyer({ ...message, a: moi.email });
+    }
+
     ecrirePanier(Astro, []);
     return Astro.redirect(`/commande-confirmee?numero=${encodeURIComponent(data.numero)}`, 303);
   }

@@ -51,6 +51,18 @@ export default defineConfig({
       OLLAMA_URL: envField.string({ context: 'server', access: 'public', optional: true, default: '' }),
       OLLAMA_API_KEY: envField.string({ context: 'server', access: 'secret', optional: true }),
       ASSISTANTE_MODELE: envField.string({ context: 'server', access: 'public', optional: true, default: '' }),
+      // Les emails de commande partent par Resend (Arthur, le 7 novembre
+      // 2026 : « si quelqu'un fait un achat sur Mousso Dambé, il faut que je
+      // lui envoie des emails »). Resend sert déjà les messages de connexion,
+      // mais ceux-là passent par le relais SMTP configuré dans Supabase, pas
+      // par le site : c'est pour ça qu'il faut la clé ici aussi.
+      //
+      // Facultative, comme OLLAMA_URL et pour la même raison : sans elle,
+      // aucun email de commande ne part, et RIEN D'AUTRE NE CHANGE. Une
+      // commande passe, la cliente voit sa confirmation à l'écran, le vendeur
+      // la voit dans son espace. L'email est un confort en plus, jamais une
+      // condition de la vente. Voir src/lib/courriels.ts.
+      RESEND_API_KEY: envField.string({ context: 'server', access: 'secret', optional: true }),
     },
   },
 

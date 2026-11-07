@@ -55,7 +55,18 @@ async function api(chemin, options = {}) {
 const ATTENDUES = [
   {
     cle: 'PUBLIC_SUPABASE_URL',
-    valeur: () => 'https://vnbaojckbhcjczdnjdjh.supabase.co',
+    /*
+     * LUE DANS LE COFFRE, PLUS ECRITE EN DUR (7 novembre 2026).
+     *
+     * Cette ligne portait l'adresse de l'ancien projet Supabase, celui qui a
+     * disparu le 6 novembre et qui est aujourd'hui en pause. Relancer
+     * `variables` aurait donc rebranche le site sur une base morte, sans le
+     * moindre avertissement : l'outil aurait dit « pose » et le site serait
+     * tombe. Une valeur ecrite en dur a toujours une date de peremption qu'on
+     * oublie d'ecrire a cote.
+     */
+    motif: /supabase.*url.*mousso|url.*supabase.*mousso/i,
+    quoi: "l'adresse de la base",
     secrete: false,
   },
   {
@@ -66,8 +77,17 @@ const ATTENDUES = [
   },
   {
     cle: 'MD_CLE_SERVEUR',
-    motif: /md.*cle.*serveur.*mousso|cle.*serveur.*mousso/i,
+    motif: /^(?!.*test)(?=.*mousso)(?=.*cle)(?=.*serveur)/i,
     quoi: 'la cle serveur',
+    secrete: true,
+  },
+  {
+    // Les emails de commande (7 novembre 2026). Sans elle, aucune commande
+    // n'echoue : les messages ne partent simplement pas. Voir
+    // src/lib/courriels.ts.
+    cle: 'RESEND_API_KEY',
+    motif: /^resend api key mousso dambe$/i,
+    quoi: "la cle d'API Resend",
     secrete: true,
   },
 ];
