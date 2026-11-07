@@ -141,20 +141,38 @@ titre('L attente est bornee, et courte');
   );
 }
 
-titre('Les deux pages s en servent, plus aucune constante ecrite a la main');
+titre('Le bouton Google est affiche, sans condition');
 {
+  /*
+   * ARTHUR A TRANCHE, LE 7 NOVEMBRE 2026, APRES L'AVOIR RECLAME DIX FOIS :
+   * « le bouton s'inscrire avec Google, se connecter avec Google, pourquoi ca
+   * n'apparait pas ? Ca fait la dixieme fois que je te repete ca. »
+   *
+   * Il avait d'abord ete cache par une constante, puis conditionne a l'etat
+   * du fournisseur cote base. Les deux fois, Arthur ne le voyait pas et ne
+   * comprenait pas pourquoi. Il s'affiche donc, toujours.
+   *
+   * Tant que le client OAuth n'est pas cree dans la console Google Cloud, il
+   * ramenera sur l'ecran de connexion avec un message d'echec. C'est sa
+   * decision, prise en connaissance de cause et redite plusieurs fois.
+   *
+   * src/lib/google.ts reste en place : il servira le jour ou l'on voudra
+   * masquer le bouton pour de bon, et ses garde-fous (delai borne, repli sur
+   * « non », memoire courte) sont verifies plus haut.
+   */
   for (const f of ['src/pages/connexion.astro', 'src/pages/inscription.astro']) {
     const src = lire(f);
+    const nom = f.replace('src/pages/', '');
+    verifier(`${nom} affiche le bouton Google`, /<BoutonGoogleJia/.test(src), 'le bouton a disparu');
     verifier(
-      `${f.replace('src/pages/', '')} demande a la base`,
-      /const GOOGLE_DISPONIBLE = await googleActif\(\)/.test(src),
-      'une constante ecrite a la main est revenue'
-    );
-    verifier(
-      `${f.replace('src/pages/', '')} : plus de « = false » fige`,
-      !/GOOGLE_DISPONIBLE = false/.test(src)
+      `${nom} : aucune condition ne le cache`,
+      !/GOOGLE_DISPONIBLE/.test(src),
+      'une condition est revenue devant le bouton'
     );
   }
+  const bouton = lire('src/components/BoutonGoogleJia.astro');
+  verifier('il part en POST, pas en lien', /<form method="POST" action="\/auth\/google"/.test(bouton));
+  verifier('et il porte le G a quatre couleurs', /#4285F4/.test(bouton) && /#EA4335/.test(bouton));
 }
 
 titre('Le drapeau est dessine, pas ecrit');
@@ -176,9 +194,11 @@ titre('Le drapeau est dessine, pas ecrit');
       !src.includes('\u{1F1E7}\u{1F1EB}'),
       'l emoji est revenu : il s affiche « BF » sur beaucoup d appareils'
     );
-    if (/DrapeauBF/.test(src)) {
-      verifier(`${f.replace('src/pages/', '')} affiche le dessin`, /<DrapeauBF taille=\{22\} \/>/.test(src));
-    }
+    verifier(
+      `${f.replace('src/pages/', '')} affiche le dessin`,
+      /<DrapeauBF taille=\{\d+\} \/>/.test(src),
+      'le drapeau dessiné a disparu du champ téléphone'
+    );
   }
 }
 

@@ -101,7 +101,7 @@ titre("L'écran de connexion n'est plus interdit à celle qui est déjà entrée
 titre('L’email en premier, Google en dessous');
 {
   const page = lire('src/pages/connexion.astro');
-  const bouton = lire('src/components/BoutonGoogle.astro');
+  const bouton = lire('src/components/BoutonGoogleJia.astro');
 
   // LES MOTS D'ARTHUR, LE 27 OCTOBRE 2026, APRÈS AVOIR VU L'ÉCRAN.
   verifier(
@@ -156,7 +156,7 @@ titre('L’email en premier, Google en dessous');
   for (const [nom, src] of [['connexion', page], ['inscription', pageInscription]]) {
     verifier(
       `la page de ${nom} a une sortie visible`,
-      /<a class="retour-rond" href="\/compte"/.test(src),
+      /<a class="j-retour" href="\/compte"/.test(src),
       'plus aucune flèche de retour : on peut s’y bloquer'
     );
   }
@@ -202,8 +202,11 @@ titre('L’email en premier, Google en dessous');
     'une redirection renverrait la femme ici en boucle'
   );
 
-  verifier('le bouton Google est demandé en grand', /<BoutonGoogle\s+grand/.test(page));
-  verifier('la version en grand existe vraiment', bouton.includes('btn-google-grand'));
+  // Le bouton Google est désormais celui copié de Jia : une carte blanche
+  // pleine largeur, avec le G à quatre couleurs. Il s'affiche sans condition
+  // (voir supabase/tests/google-actif.test.mjs).
+  verifier('le bouton Google est affiché', /<BoutonGoogleJia/.test(page));
+  verifier('et il est en carte blanche pleine largeur', bouton.includes('j-btn-blanc'));
   /*
    * LE VOLET EST SUPPRIMÉ (7 novembre 2026). Arthur, après avoir essayé la
    * page : « il doit avoir une partie où on renseigne à la main son email, et
@@ -245,7 +248,7 @@ titre('L’email en premier, Google en dessous');
   );
   verifier(
     'inscription : le volet email est fermé par défaut',
-    /const emailOuvert = Boolean\(erreur\);/.test(pageInscription),
+    /const emailOuvert = Boolean\(erreur\) \|\| Boolean\(reussite\);/.test(pageInscription),
     'le volet s’ouvre tout seul alors qu’Arthur veut qu’on appuie'
   );
   verifier(
@@ -259,7 +262,7 @@ titre('L’email en premier, Google en dessous');
   for (const [nom, src] of [['connexion', page], ['inscription', pageInscription]]) {
     verifier(
       `${nom} : le volet est bien piloté par cette décision`,
-      /<details class="volet" open=\{emailOuvert\}>/.test(src)
+      /<details class="j-volet" open=\{emailOuvert\}>/.test(src)
     );
     verifier(
       `${nom} : il s’ouvre sans JavaScript (c’est un <details>)`,
@@ -267,8 +270,9 @@ titre('L’email en premier, Google en dessous');
     );
   }
   verifier(
-    'un « ou » sépare les chemins dès qu’il y en a plusieurs',
-    /\{TELEPHONE_DISPONIBLE && <div class="separateur">/.test(page),
+    'un « ou » sépare les chemins, comme sur les captures de Jia',
+    /<div class="j-ou"><span>Ou<\/span><\/div>/.test(page)
+      && /<div class="j-ou"><span>Ou<\/span><\/div>/.test(pageInscription),
     'sans lui, deux blocs l’un sous l’autre se lisent comme deux étapes'
   );
   verifier(

@@ -1,0 +1,324 @@
+/*
+ * LES ÉCRANS DE CONNEXION ET D'INSCRIPTION, COPIÉS DE JIA.
+ *
+ * Arthur, le 7 novembre 2026, après plusieurs allers-retours :
+ *
+ *   « Copie exactement la même chose. Jusqu'aux couleurs. Tout. Je veux que
+ *     tout soit identique. Parfaitement identique. N'essaie pas de modifier.
+ *     N'essaie pas de réfléchir. Même chose à l'identique. »
+ *
+ * Ce fichier existe pour que cette copie soit RANGÉE À PART et ne déteigne
+ * sur rien d'autre : il ne s'applique qu'à ce qui est à l'intérieur de
+ * `.jia`, c'est-à-dire les deux pages d'authentification. Le reste de Mousso
+ * Dambé garde ses couleurs et ses polices.
+ *
+ * D'OÙ VIENNENT CES VALEURS. Pas de mon œil sur une capture : les polices et
+ * les couleurs de marque sont lues dans le dépôt de Jia (src/styles/tokens.css
+ * et src/styles/fonts.css), et les valeurs que le dépôt ne donne pas (le fond
+ * crème, le blanc cassé des cartes) sont relevées pixel par pixel dans les
+ * captures qu'Arthur a envoyées. La version en ligne de Jia a dépassé son
+ * dépôt sur ce point : le dépôt dit `--fond: #F4F5F3`, un gris, et les
+ * captures montrent un crème.
+ *
+ * LES POLICES DE JIA, rapatriées depuis son dépôt dans public/fonts :
+ *   Outfit pour les titres, Karla pour le corps, Anton pour l'enseigne.
+ * Elles sont servies depuis ce site, jamais depuis Google Fonts : sur une 3G
+ * burkinabè, cela coûtait 2 à 4 secondes avant le premier texte lisible.
+ */
+
+@font-face {
+  font-family: 'Karla';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('/fonts/karla-400.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Outfit';
+  font-style: normal;
+  font-weight: 600 800;
+  font-display: swap;
+  src: url('/fonts/outfit-700.woff2') format('woff2');
+}
+
+.jia {
+  /* Relevées dans les captures du 7 novembre 2026. */
+  --j-fond: #f7f1e1;
+  --j-surface: #ffffff;
+  --j-carte: #fefaf2;
+  --j-champ: #f2f3f5;
+  --j-trait: #e4e0cf;
+
+  /* Lues dans src/styles/tokens.css du dépôt de Jia. */
+  --j-action: #e0561a;
+  --j-action-fonce: #a83e10;
+  --j-action-clair: #fff0e7;
+  --j-action-bordure: #ffd0b5;
+  --j-encre: #0b1220;
+  --j-texte-2: #7a8290;
+  --j-texte-3: #9aa1ab;
+
+  /* Rayons de Jia, à l'identique. */
+  --j-r-petit: 8px;
+  --j-r-moyen: 10px;
+  --j-r-grand: 13px;
+  --j-r-pilule: 30px;
+
+  min-height: 100svh;
+  background: var(--j-fond);
+  color: var(--j-encre);
+  font-family: 'Karla', system-ui, -apple-system, sans-serif;
+}
+
+.jia h1,
+.jia h2 {
+  font-family: 'Outfit', system-ui, sans-serif;
+  margin: 0;
+  letter-spacing: -0.02em;
+  font-weight: 700;
+}
+
+.jia a { color: var(--j-action); text-decoration: none; }
+
+/* ---------- Le bouton plein ---------- */
+
+.jia .j-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 54px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: var(--j-r-grand);
+  font-family: 'Outfit', system-ui, sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+}
+
+.jia .j-btn-action {
+  background: var(--j-action);
+  color: #ffffff;
+}
+
+.jia .j-btn-blanc {
+  background: var(--j-surface);
+  color: var(--j-encre);
+  border: 1px solid var(--j-trait);
+}
+
+/* ---------- Le champ téléphone ---------- */
+
+.jia .j-tel {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.jia .j-indicatif {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  min-height: 56px;
+  border-radius: var(--j-r-moyen);
+  background: var(--j-surface);
+  border: 1px solid var(--j-trait);
+  font-family: 'Outfit', system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 16px;
+  white-space: nowrap;
+}
+
+.jia .j-champ-tel {
+  min-height: 56px;
+  padding: 0 14px 0 40px;
+  border: 0;
+  border-radius: var(--j-r-moyen);
+  background: var(--j-champ);
+  font: inherit;
+  /* 16 px au minimum : en dessous, les iPhone zooment tout seuls sur le champ. */
+  font-size: 16px;
+  color: var(--j-encre);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%239AA1AB' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: 14px center;
+}
+
+.jia .j-champ-tel::placeholder { color: var(--j-texte-3); }
+.jia .j-champ-tel:focus { outline: 2px solid var(--j-action); outline-offset: -2px; }
+
+/* ---------- Le cadre à bord orange ---------- */
+
+.jia .j-cadre {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1.5px solid var(--j-action);
+  border-radius: var(--j-r-grand);
+  background: var(--j-carte);
+}
+
+.jia .j-cadre-tete { display: flex; align-items: flex-start; gap: 14px; }
+
+.jia .j-rond {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--j-action-clair);
+  color: var(--j-action);
+}
+
+.jia .j-cadre-titre {
+  margin: 0;
+  font-family: 'Outfit', system-ui, sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+
+.jia .j-cadre-note { margin: 2px 0 0; font-size: 14px; color: var(--j-texte-2); }
+
+/* ---------- Le « Ou » ---------- */
+
+.jia .j-ou {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 18px 0;
+}
+
+.jia .j-ou::before,
+.jia .j-ou::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--j-trait);
+}
+
+.jia .j-ou span { font-size: 14px; color: var(--j-texte-2); }
+
+/* ---------- Le volet ---------- */
+
+.jia .j-volet {
+  border-radius: var(--j-r-grand);
+  background: var(--j-carte);
+  border: 1px solid var(--j-trait);
+  padding: 0 16px;
+}
+
+.jia .j-volet summary {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 76px;
+  cursor: pointer;
+  list-style: none;
+  color: var(--j-encre);
+}
+
+.jia .j-volet summary::-webkit-details-marker { display: none; }
+.jia .j-volet summary::marker { content: ''; }
+
+.jia .j-volet summary:focus-visible {
+  outline: 2px solid var(--j-action);
+  outline-offset: 2px;
+  border-radius: var(--j-r-moyen);
+}
+
+.jia .j-volet-mots { flex: 1; }
+
+.jia .j-volet-titre {
+  display: block;
+  font-family: 'Outfit', system-ui, sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.jia .j-volet-sous { display: block; font-size: 14px; color: var(--j-texte-2); }
+
+.jia .j-chevron { color: var(--j-texte-2); transition: transform 150ms ease; }
+.jia .j-volet[open] .j-chevron { transform: rotate(180deg); }
+
+@media (prefers-reduced-motion: reduce) {
+  .jia .j-chevron { transition: none; }
+}
+
+.jia .j-volet-dedans { padding: 0 0 16px; }
+
+/* ---------- Les champs ordinaires ---------- */
+
+.jia .j-libelle {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 15px;
+  color: var(--j-texte-2);
+}
+
+.jia .j-champ {
+  width: 100%;
+  min-height: 56px;
+  padding: 0 14px;
+  border: 1px solid var(--j-trait);
+  border-radius: var(--j-r-moyen);
+  background: var(--j-surface);
+  font: inherit;
+  font-size: 16px;
+  color: var(--j-encre);
+}
+
+.jia .j-champ:focus { outline: 2px solid var(--j-action); outline-offset: -2px; }
+
+/* ---------- Le reste ---------- */
+
+.jia .j-retour {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: var(--j-surface);
+  color: var(--j-encre);
+  box-shadow: 0 1px 3px rgb(11 18 32 / 10%);
+}
+
+.jia .j-legal {
+  margin: 18px 0 0;
+  text-align: center;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--j-texte-3);
+}
+
+.jia .j-legal a { color: var(--j-texte-3); text-decoration: underline; }
+
+.jia .j-bas {
+  margin: 18px 0 0;
+  text-align: center;
+  font-size: 15px;
+  color: var(--j-texte-2);
+}
+
+.jia .j-bas a { font-weight: 700; }
+
+.jia .j-oubli {
+  display: block;
+  margin: 18px 0 0;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--j-action);
+}
