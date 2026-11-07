@@ -95,6 +95,41 @@ if (surHoteAdmin) etape = 'connecter';
 /** S'inscrire depuis un compte commencé, c'est l'attacher, pas en ouvrir un autre. */
 const attache = etape === 'inscrire' && Boolean(moi) && !surHoteAdmin;
 
+/**
+ * LE BOUTON GOOGLE EST-IL MONTRÉ ?
+ *
+ * Mettre `true` ici le fait réapparaître. C'est le seul geste à faire, il n'y
+ * a rien d'autre à toucher dans cette page.
+ *
+ * POURQUOI IL EST ÉTEINT, LE 7 NOVEMBRE 2026
+ *
+ * La base de Mousso Dambé a été remontée de zéro le 6 novembre, l'ancienne
+ * ayant disparu. Le code est revenu intact de GitHub, mais les RÉGLAGES ne
+ * vivent pas dans le code : ils vivaient dans l'ancien projet Supabase. Le
+ * fournisseur Google est donc éteint côté base, et aucune connexion Google ne
+ * peut aboutir.
+ *
+ * Arthur, après avoir essayé : « quand j'appuie se connecter avec Google, on
+ * me dit la connexion avec Google n'a pas marché ». Le message était exact,
+ * mais il renvoyait à un mur : elle pouvait réessayer mille fois.
+ *
+ * Un bouton qui ne peut pas aboutir est pire que pas de bouton. Il occupe la
+ * place du chemin qui marche, et il apprend à celle qui arrive que le site
+ * est cassé, à l'instant précis où elle décide de confier son cycle.
+ *
+ * CE QU'IL FAUDRA POUR LE RALLUMER : un client OAuth créé dans la console
+ * Google Cloud (identifiant et secret), puis le fournisseur activé côté
+ * Supabase, avec le rattachement manuel pour que les femmes entrées par
+ * « Commencer » ne perdent pas ce qu'elles ont noté. Rien de tout cela n'est
+ * dans le dépôt, et la console Google exige une carte bancaire pour vérifier
+ * l'identité, ce qui a bloqué Arthur deux fois début novembre. On y revient
+ * quand sa carte passe.
+ *
+ * CE QUI NE CHANGE PAS : la route /auth/google reste en place, les tests
+ * aussi. Seul l'affichage est coupé.
+ */
+const GOOGLE_DISPONIBLE = false;
+
 let erreur = '';
 let reussite = '';
 
@@ -310,20 +345,28 @@ const onglet = moi ? (ONGLET_DORIGINE[dOu] ?? 'compte') : null;
 
           {/* Le trait et le mot « ou » : sans eux, deux boutons l'un sous
               l'autre se lisent comme une suite d'étapes, et on croit devoir
-              faire les deux. */}
-          <div class="ou" role="separator" aria-label="ou">
-            <span>ou</span>
-          </div>
+              faire les deux. Il disparaît avec le bouton Google, sinon il
+              annoncerait un second chemin qui n'arrive pas. */}
+          {GOOGLE_DISPONIBLE && (
+            <>
+              <div class="ou" role="separator" aria-label="ou">
+                <span>ou</span>
+              </div>
 
-          <BoutonGoogle
-            grand
-            basculer={!attache && Boolean(moi)}
-            texte={etape === 'inscrire' ? "S'inscrire avec Google" : 'Se connecter avec Google'}
-          />
+              <BoutonGoogle
+                grand
+                basculer={!attache && Boolean(moi)}
+                texte={etape === 'inscrire' ? "S'inscrire avec Google" : 'Se connecter avec Google'}
+              />
+            </>
+          )}
 
           {/* Elle a un compte commencé et choisit d'en rejoindre un autre :
-              elle doit savoir ce qu'elle laisse, AVANT de toucher le bouton. */}
-          {moi && !attache && (
+              elle doit savoir ce qu'elle laisse, AVANT de toucher le bouton.
+              Sans le bouton Google, il n'y a plus de second compte à
+              rejoindre depuis cet écran : l'avertissement n'aurait plus
+              d'objet, et un avertissement sans objet inquiète pour rien. */}
+          {GOOGLE_DISPONIBLE && moi && !attache && (
             <p class="prudence">
               <Icone nom="info" taille={15} />
               Ce que tu as noté depuis ce téléphone restera sur le compte commencé
