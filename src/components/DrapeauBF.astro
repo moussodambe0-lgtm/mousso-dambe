@@ -1,0 +1,70 @@
+---
+/**
+ * LE DRAPEAU DU BURKINA, DESSINÉ ET NON ÉCRIT.
+ *
+ * Arthur, le 7 novembre 2026 : « si tu regardes bien dans les images que je
+ * t'ai envoyées, on a mis le drapeau du Burkina. Mais je ne vois pas le
+ * drapeau du Burkina dans ce que toi tu as envoyé. »
+ *
+ * Il avait raison, et la cause mérite d'être écrite parce qu'elle revient
+ * souvent : le champ portait l'émoji 🇧🇫. Un émoji de drapeau n'est pas un
+ * dessin, c'est un COUPLE DE LETTRES (ici « B » et « F » en caractères
+ * régionaux) que le système remplace par une image s'il en possède une.
+ * Windows n'en possède aucune et affiche « BF » ; plusieurs Android d'entrée
+ * de gamme, et certains navigateurs, font de même. Sur son téléphone, il n'y
+ * avait donc pas de drapeau du tout.
+ *
+ * Ces quelques lignes de SVG s'affichent partout, pèsent moins qu'une image,
+ * et ne dépendent d'aucune police.
+ *
+ * LE DESSIN : deux bandes horizontales, rouge en haut, vert en bas, et une
+ * étoile jaune à cinq branches au centre. Les proportions officielles sont
+ * 2:3, et l'étoile occupe à peu près le tiers de la hauteur.
+ */
+interface Props {
+  /** La LARGEUR en pixels. La hauteur suit, en 2:3. */
+  taille?: number;
+  classe?: string;
+}
+
+const { taille = 22, classe = '' } = Astro.props;
+const hauteur = Math.round((taille * 2) / 3);
+
+// Les couleurs du drapeau, pas celles de l'application : un drapeau recoloré
+// n'est plus un drapeau.
+const ROUGE = '#EF2B2D';
+const VERT = '#009E49';
+const JAUNE = '#FCD116';
+---
+
+<svg
+  class:list={['drapeau-bf', classe]}
+  width={taille}
+  height={hauteur}
+  viewBox="0 0 30 20"
+  role="img"
+  aria-label="Burkina Faso"
+  focusable="false"
+>
+  <rect width="30" height="10" fill={ROUGE} />
+  <rect y="10" width="30" height="10" fill={VERT} />
+  {/* L'étoile à cinq branches, centrée. Les dix points sont calculés une fois
+      pour toutes : les écrire en dur évite de refaire le calcul à chaque
+      affichage, et le dessin ne changera jamais. */}
+  <polygon
+    fill={JAUNE}
+    points="15,6.2 16.18,9.83 20,9.83 16.91,12.07 18.09,15.7 15,13.46 11.91,15.7 13.09,12.07 10,9.83 13.82,9.83"
+  />
+</svg>
+
+<style>
+  .drapeau-bf {
+    display: block;
+    flex: none;
+    /* Un filet très léger : sur un fond blanc, le vert et le rouge touchent
+       le bord sans rien pour les arrêter, et le drapeau semble baver. */
+    border-radius: 2px;
+    outline: 1px solid rgb(0 0 0 / 8%);
+    outline-offset: -1px;
+  }
+</style>

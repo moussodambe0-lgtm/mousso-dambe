@@ -58,6 +58,8 @@ import { clientPublic, poserSession, baseConfiguree } from '../lib/supabase';
 import { visiteuse } from '../lib/session';
 import { hoteDemande, estHoteAdmin } from '../lib/hotes';
 import { suiteSure } from '../lib/suite';
+import { googleActif } from '../lib/google';
+import DrapeauBF from '../components/DrapeauBF.astro';
 import { ADMIN_HOST } from 'astro:env/server';
 
 export const prerender = false;
@@ -84,8 +86,12 @@ if (Astro.url.searchParams.get('action') === 'inscrire' && !surHoteAdmin) {
 /** Entrer par son numéro : écrit, pas encore branché. Voir l'en-tête. */
 const TELEPHONE_DISPONIBLE = false;
 
-/** Le bouton Google : éteint tant que le fournisseur n'est pas rallumé côté base. */
-const GOOGLE_DISPONIBLE = false;
+/*
+ * LE BOUTON GOOGLE S'AFFICHE TOUT SEUL quand le fournisseur est allumé côté
+ * base, et disparaît tout seul s'il est coupé. Plus de constante à changer,
+ * plus rien à se rappeler : voir src/lib/google.ts.
+ */
+const GOOGLE_DISPONIBLE = await googleActif();
 
 let erreur = '';
 
@@ -152,9 +158,23 @@ if (Astro.request.method === 'POST') {
 }
 
 const versInscription = `/inscription?suite=${encodeURIComponent(suite)}`;
-// Le volet email s'ouvre d'emblée tant que le téléphone n'est pas branché :
-// sinon la page n'offrirait aucun chemin praticable au premier coup d'œil.
-const emailOuvert = !TELEPHONE_DISPONIBLE || Boolean(erreur) || surHoteAdmin;
+
+/*
+ * LE VOLET EMAIL RESTE FERMÉ, ET C'EST ARTHUR QUI A TRANCHÉ.
+ *
+ * Le 7 novembre 2026 : « il faut pas que ça soit déballé, il faut que la
+ * personne appuie pour que ça se déballe ». Il parlait de l'inscription et a
+ * ajouté : « je pense que se connecter aussi, ça doit être un truc comme ça ».
+ *
+ * DEUX EXCEPTIONS, et chacune évite une impasse :
+ *
+ *   - une erreur venue du formulaire email ouvre le volet. Sinon elle lirait
+ *     « email ou mot de passe incorrect » sans voir le champ à corriger ;
+ *   - sur l'adresse de la gestion, l'email est le SEUL chemin : il n'y a ni
+ *     téléphone, ni Google, ni inscription. Un volet fermé y serait une porte
+ *     sans poignée.
+ */
+const emailOuvert = Boolean(erreur) || surHoteAdmin;
 ---
 
 <Base titre="Connexion" description="Connecte-toi à ton compte Mousso Dambé." pleinEcran>
@@ -199,7 +219,7 @@ const emailOuvert = !TELEPHONE_DISPONIBLE || Boolean(erreur) || surHoteAdmin;
       <form method="POST" class="bloc-tel">
         <input type="hidden" name="geste" value="telephone" />
         <div class="rangee-tel">
-          <span class="indicatif"><span class="drapeau" aria-hidden="true">🇧🇫</span> +226</span>
+          <span class="indicatif"><DrapeauBF taille={22} /> +226</span>
           <label class="sr-seul" for="tel">Ton numéro de téléphone</label>
           <input class="champ-tel" id="tel" name="telephone" type="tel" inputmode="numeric" placeholder="70 12 34 56" maxlength="11" required />
         </div>

@@ -55,6 +55,8 @@ import { clientPublic, poserSession, baseConfiguree } from '../lib/supabase';
 import { visiteuse } from '../lib/session';
 import { clientAuthentifie, causeDeLEchec } from '../lib/identite';
 import { suiteSure } from '../lib/suite';
+import { googleActif } from '../lib/google';
+import DrapeauBF from '../components/DrapeauBF.astro';
 
 export const prerender = false;
 
@@ -71,7 +73,9 @@ const attache = Boolean(moi);
 
 /** S'inscrire par son numéro : écrit, pas encore branché. Voir l'en-tête. */
 const TELEPHONE_DISPONIBLE = false;
-const GOOGLE_DISPONIBLE = false;
+/* Le bouton Google s'affiche tout seul dès que le fournisseur est allumé côté
+   base, et disparaît tout seul s'il est coupé. Voir src/lib/google.ts. */
+const GOOGLE_DISPONIBLE = await googleActif();
 
 let erreur = '';
 let reussite = '';
@@ -159,8 +163,26 @@ if (Astro.request.method === 'POST') {
 }
 
 const versConnexion = `/connexion?suite=${encodeURIComponent(suite)}`;
-// Le volet email s'ouvre d'emblée tant que le téléphone n'est pas branché.
-const emailOuvert = !TELEPHONE_DISPONIBLE || Boolean(erreur);
+
+/*
+ * LE VOLET EMAIL RESTE FERMÉ, ET C'EST ARTHUR QUI A TRANCHÉ.
+ *
+ * Le 7 novembre 2026 : « l'email est déballé par défaut. Normalement, quand
+ * la personne vient se créer la page, c'est lui qui doit appuyer sur le
+ * bouton email pour que ça se déballe. »
+ *
+ * Il avait été ouvert d'emblée parce que le téléphone n'envoie pas encore de
+ * code : la page n'offrait donc aucun chemin praticable au premier coup
+ * d'œil. Arthur a vu les deux et veut le volet fermé, comme sur les captures
+ * de Jia. C'est son écran, et la raison est bonne : sur les captures, c'est
+ * le téléphone qui prend la place, et le jour où il marchera, un volet
+ * ouvert serait un doublon qui pousse la page vers le bas.
+ *
+ * SEULE EXCEPTION : quand une erreur vient du formulaire email, le volet
+ * s'ouvre. Sinon elle lirait « mot de passe trop court » sans voir le champ
+ * à corriger, et n'aurait aucune idée d'où appuyer.
+ */
+const emailOuvert = Boolean(erreur);
 ---
 
 <Base titre="Créer un compte" description="Crée ton compte Mousso Dambé pour retrouver ton cycle partout." pleinEcran>
@@ -172,18 +194,10 @@ const emailOuvert = !TELEPHONE_DISPONIBLE || Boolean(erreur);
     <div class="tete">
       <Symbole taille={120} forme="nom" />
       <h1>Créer un compte</h1>
-      <p class="sous">Une minute, et tes commandes te suivent sur tous tes téléphones.</p>
     </div>
 
     {erreur && <div class="marge-bas"><Alerte type="erreur" texte={erreur} /></div>}
     {reussite && <div class="marge-bas"><Alerte type="reussite" texte={reussite} /></div>}
-
-    {attache && !reussite && (
-      <div class="encadre doux">
-        <Icone nom="bouclier-coche" taille={19} />
-        <p>Ce que tu as déjà noté depuis ce téléphone reste sur ce compte. Rien ne se perd.</p>
-      </div>
-    )}
 
     <form method="POST" class="tout">
       <input type="hidden" name="suite" value={suite} />
@@ -208,11 +222,10 @@ const emailOuvert = !TELEPHONE_DISPONIBLE || Boolean(erreur);
             <span class="cadre-rond" aria-hidden="true"><Icone nom="telephone" taille={18} /></span>
             <div>
               <p class="cadre-titre">Continuer avec un numéro de téléphone</p>
-              <p class="cadre-note">C’est le numéro que le livreur appellera</p>
             </div>
           </div>
           <div class="rangee-tel">
-            <span class="indicatif"><span class="drapeau" aria-hidden="true">🇧🇫</span> +226</span>
+            <span class="indicatif"><DrapeauBF taille={22} /> +226</span>
             <label class="sr-seul" for="telephone">Ton numéro de téléphone</label>
             <input class="champ-tel" id="telephone" name="telephone" type="tel" inputmode="numeric" placeholder="70 12 34 56" maxlength="11" value={saisie.telephone} required />
           </div>
@@ -225,10 +238,9 @@ const emailOuvert = !TELEPHONE_DISPONIBLE || Boolean(erreur);
         <div class="champ-bloc">
           <label class="libelle" for="telephone">Ton téléphone</label>
           <div class="rangee-tel">
-            <span class="indicatif"><span class="drapeau" aria-hidden="true">🇧🇫</span> +226</span>
+            <span class="indicatif"><DrapeauBF taille={22} /> +226</span>
             <input class="champ-tel" id="telephone" name="telephone" type="tel" inputmode="numeric" placeholder="70 12 34 56" maxlength="11" value={saisie.telephone} required />
           </div>
-          <span class="aide">C’est le numéro que le livreur appellera.</span>
         </div>
       )}
 

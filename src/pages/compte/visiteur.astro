@@ -84,7 +84,25 @@ type Zone = {
  * discussions, la barre d'en bas où il y a les menus, ça tu copies pas, parce
  * que Mousso Dambé a déjà une barre en bas. »
  */
-const chemin = Astro.url.pathname;
+/*
+ * LE CHEMIN D'ORIGINE, PAS CELUI D'ICI.
+ *
+ * Arthur, le 7 novembre 2026 : « quand je clique sur discussion, ça me
+ * renvoie directement au niveau de compte. Chaque fois. Ce n'est pas
+ * normal. »
+ *
+ * C'était exact, et la cause est un piège d'`Astro.rewrite` : après un
+ * réécriture, `Astro.url.pathname` vaut le chemin de la page AFFICHÉE
+ * (« /compte/visiteur »), pas celui que la femme a demandé
+ * (« /discussions »). Cette page croyait donc toujours venir de Compte :
+ * elle allumait l'onglet Compte et montrait la mascotte au lieu de l'écran
+ * des discussions.
+ *
+ * `Astro.originPathname` garde le chemin d'avant la réécriture. C'est
+ * exactement ce qu'il faut, et c'est documenté pour ce cas précis. Le repli
+ * sur `Astro.url.pathname` sert quand la page est ouverte directement.
+ */
+const chemin = Astro.originPathname ?? Astro.url.pathname;
 const ZONES: Zone[] = [
   {
     debut: '/discussions',

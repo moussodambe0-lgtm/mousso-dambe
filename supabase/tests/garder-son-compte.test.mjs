@@ -175,9 +175,26 @@ titre('L’email en premier, Google en dessous');
     /nav=\{onglet\}/.test(accueilCompte),
     'la barre disparaîtrait, ou allumerait le mauvais onglet'
   );
+  /*
+   * LE PIÈGE D'`Astro.rewrite`, ET POURQUOI CETTE VÉRIFICATION EXISTE.
+   *
+   * Arthur, le 7 novembre 2026 : « quand je clique sur discussion, ça me
+   * renvoie directement au niveau de compte. Chaque fois. »
+   *
+   * Après une réécriture, `Astro.url.pathname` vaut le chemin de la page
+   * AFFICHÉE (« /compte/visiteur »), pas celui qu'elle a demandé. La page
+   * croyait donc toujours venir de Compte : onglet Compte allumé, mascotte
+   * au lieu de l'écran des discussions. `Astro.originPathname` garde le
+   * chemin d'avant la réécriture.
+   */
   verifier(
     'et il allume l’onglet d’où elle vient, pas toujours « Compte »',
-    /Astro\.url\.pathname/.test(accueilCompte) && /debut: '\/discussions'/.test(accueilCompte)
+    /Astro\.originPathname/.test(accueilCompte) && /debut: '\/discussions'/.test(accueilCompte),
+    'sans originPathname, toutes les zones fermées affichent l’écran de Compte'
+  );
+  verifier(
+    'le chemin d’origine passe AVANT celui de la page affichée',
+    /const chemin = Astro\.originPathname \?\? Astro\.url\.pathname;/.test(accueilCompte)
   );
   verifier(
     'et /compte l’affiche sans changer d’adresse, pour que « précédent » marche',
@@ -204,30 +221,48 @@ titre('L’email en premier, Google en dessous');
    * qui passe devant.
    */
   /*
-   * LE VOLET EMAIL EST OUVERT TANT QUE RIEN D'AUTRE NE MARCHE.
+   * LE VOLET EMAIL EST FERMÉ, SAUF QUAND LE LAISSER FERMÉ PIÉGERAIT.
    *
-   * Les captures de Jia envoyées par Arthur le 7 novembre 2026 rangent
-   * l'email dans un volet, parce que chez Jia le chemin principal est le
-   * numéro de téléphone. Chez Mousso Dambé, le téléphone n'envoie pas encore
-   * de code : si le volet était fermé, la page n'offrirait AUCUN chemin
-   * praticable au premier coup d'œil.
+   * Arthur, le 7 novembre 2026, après avoir vu la page : « l'email est
+   * déballé par défaut. Normalement c'est la personne qui doit appuyer sur le
+   * bouton email pour que ça se déballe. Il faut pas que ça soit déballé. »
    *
-   * C'est `emailOuvert` qui tient cette promesse, et il doit rester lié à
-   * `TELEPHONE_DISPONIBLE` : le jour où le téléphone marche, le volet peut se
-   * refermer, et pas avant.
+   * Il avait été ouvert d'emblée parce que le téléphone n'envoie pas encore
+   * de code. Arthur a vu les deux et a tranché pour le volet fermé, comme sur
+   * les captures de Jia.
+   *
+   * DEUX EXCEPTIONS, et chacune évite une impasse :
+   *   - une erreur du formulaire email l'ouvre, sinon elle lit « mot de passe
+   *     incorrect » sans voir le champ à corriger ;
+   *   - sur l'adresse de la gestion, l'email est le SEUL chemin (ni
+   *     téléphone, ni Google, ni inscription) : un volet fermé y serait une
+   *     porte sans poignée.
    */
+  verifier(
+    'connexion : le volet email est fermé par défaut',
+    /const emailOuvert = Boolean\(erreur\) \|\| surHoteAdmin;/.test(page),
+    'le volet s’ouvre tout seul alors qu’Arthur veut qu’on appuie'
+  );
+  verifier(
+    'inscription : le volet email est fermé par défaut',
+    /const emailOuvert = Boolean\(erreur\);/.test(pageInscription),
+    'le volet s’ouvre tout seul alors qu’Arthur veut qu’on appuie'
+  );
+  verifier(
+    'mais une erreur du formulaire l’ouvre, sinon le champ à corriger reste caché',
+    /Boolean\(erreur\)/.test(page) && /Boolean\(erreur\)/.test(pageInscription)
+  );
+  verifier(
+    'et sur l’adresse de la gestion il reste ouvert : c’est le seul chemin',
+    /surHoteAdmin/.test(page.slice(page.indexOf('const emailOuvert'), page.indexOf('const emailOuvert') + 60))
+  );
   for (const [nom, src] of [['connexion', page], ['inscription', pageInscription]]) {
     verifier(
-      `${nom} : le volet email s’ouvre tant que le téléphone n’est pas branché`,
-      /const emailOuvert = !TELEPHONE_DISPONIBLE/.test(src),
-      'la page pourrait n’offrir aucun chemin praticable'
-    );
-    verifier(
-      `${nom} : et le volet est bien ouvert par cette décision`,
+      `${nom} : le volet est bien piloté par cette décision`,
       /<details class="volet" open=\{emailOuvert\}>/.test(src)
     );
     verifier(
-      `${nom} : le volet s’ouvre sans JavaScript (c’est un <details>)`,
+      `${nom} : il s’ouvre sans JavaScript (c’est un <details>)`,
       !/addEventListener\(.(click|toggle)./.test(src)
     );
   }
