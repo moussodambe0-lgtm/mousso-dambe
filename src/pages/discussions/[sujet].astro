@@ -35,6 +35,7 @@
 import Base from '../../layouts/Base.astro';
 import Icone from '../../components/Icone.astro';
 import Symbole from '../../components/Symbole.astro';
+import MascotteEntiere from '../../components/MascotteEntiere.astro';
 import VocalSaisie from '../../components/VocalSaisie.astro';
 import Alerte from '../../components/Alerte.astro';
 import { clientSession, baseConfiguree } from '../../lib/supabase';
@@ -190,8 +191,19 @@ const QUI = {
     sous: 'Un conseil, pas un diagnostic',
     icone: 'coeur',
     videTitre: 'Pose ta question',
-    videTexte:
-      "Des douleurs, un retard, des pertes, une question que tu n'oses poser à personne. Écris-la ici : elle ne sort pas de cette conversation, et elle ne part jamais vers IA Dambé.",
+    /*
+     * LA PHRASE EST RETIRÉE (Arthur, le 7 novembre 2026 : « SUPPRIME »).
+     *
+     * Elle disait : « Des douleurs, un retard, des pertes, une question que
+     * tu n'oses poser à personne. Écris-la ici : elle ne sort pas de cette
+     * conversation, et elle ne part jamais vers IA Dambé. »
+     *
+     * Elle part comme les quatre autres textes du même genre retirés le même
+     * jour. Le FAIT, lui, reste vrai et tenu par le code : ce qu'elle écrit
+     * au médecin ne traverse aucun service extérieur, contrairement à ce
+     * qu'elle écrit à Dambé. C'est le texte qui part, pas la garantie.
+     */
+    videTexte: '',
     champ: 'Ta question...',
   },
 } as const;
@@ -251,7 +263,10 @@ const dit = QUI[sujet];
           <div class="vide">
             <span class="vide-rond"><Icone nom={estMedecin ? 'coeur' : 'bulles'} taille={26} /></span>
             <h2>{dit.videTitre}</h2>
-            <p>{dit.videTexte}</p>
+            {/* La phrase n'est affichée que si elle existe : celle du médecin
+                a été retirée le 7 novembre 2026, et un paragraphe vide
+                laisserait un blanc sous le titre. */}
+            {dit.videTexte && <p>{dit.videTexte}</p>}
           </div>
         )
       }
@@ -343,33 +358,24 @@ const dit = QUI[sujet];
         /* Pas de champ, pas de micro, pas de bouton d'envoi : rien à remplir
            tant que personne ne répond de l'autre côté. Ce qui prend leur place
            dit qui répondra, et que ce sera un humain. */
+        /* LA MASCOTTE ET DEUX MOTS, RIEN D'AUTRE (Arthur, le 7 novembre
+           2026) : « qui entre au niveau de la page médecin, il doit juste
+           avoir la mascotte qui est là, qui bouge, et on met bientôt
+           disponible. Voilà, c'est tout. »
+
+           Sont partis : les trois photos de visages, le paragraphe « un vrai
+           médecin répondra ici », celui qui renvoyait vers Dambé, et le
+           bouton « Parler à Dambé ».
+
+           CE QUI NE CHANGE PAS : il n'y a toujours ni champ, ni micro, ni
+           bouton d'envoi. Rien à remplir tant que personne ne répond de
+           l'autre côté, et la base refuse de toute façon (`ecrire_au_medecin`
+           est fermée, migration 20261026130000). Fermer aux deux endroits
+           est volontaire : un oubli d'un côté ne laisse pas un message partir
+           dans le vide. */
         <div class="attente">
-          <div class="attente-visages">
-            {PHOTOS_MEDECIN.map((photo, i) => (
-              <img
-                class="attente-visage"
-                src={photo.src}
-                srcset={photo.jeu}
-                sizes="72px"
-                alt={`Illustration, photo ${i + 1} sur ${PHOTOS_MEDECIN.length}`}
-                width="72"
-                height="72"
-                loading="lazy"
-                decoding="async"
-              />
-            ))}
-          </div>
+          <MascotteEntiere hauteur="petite" />
           <p class="attente-etiquette">{MEDECIN_BIENTOT}</p>
-          <p class="attente-texte">
-            Un vrai médecin répondra ici, une personne, pas une machine. Ce
-            n'est pas encore ouvert : tu ne peux donc pas encore écrire, pour ne
-            pas poser une question qui resterait sans réponse.
-          </p>
-          <p class="attente-texte attente-doux">
-            En attendant, Dambé peut répondre à tes questions sur ton cycle.
-            Elle, c'est une machine, et elle ne remplace pas un médecin.
-          </p>
-          <a class="btn btn-contour" href="/dambe">Parler à Dambé</a>
         </div>
       ) : (
       <form class="ecrire" method="post">

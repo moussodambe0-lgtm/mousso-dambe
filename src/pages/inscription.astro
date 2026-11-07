@@ -251,6 +251,11 @@ const emailOuvert = Boolean(erreur) || Boolean(reussite);
   }
 
   .tete { text-align: center; padding: 0 0 26px; }
+
+  /* LE LOGO AU MILIEU (Arthur, le 7 novembre 2026). `text-align: center` ne
+     centre pas un bloc de largeur fixe, et Symbole en est un : ce sont les
+     marges automatiques qui le font. Voir la note dans connexion.astro. */
+  .tete :global(.symbole) { margin-inline: auto; }
   .tete h1 { margin: 18px 0 0; font-size: 32px; line-height: 1.15; }
   .sous { margin: 8px 0 0; font-size: 16px; line-height: 1.4; color: #7a8290; }
 

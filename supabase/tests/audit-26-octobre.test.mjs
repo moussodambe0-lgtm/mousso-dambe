@@ -532,19 +532,41 @@ titre('8. Les pages ne proposent plus ce que la base refuse');
     !/estMedecin\s*&&\s*!MEDECIN_DISPONIBLE[\s\S]{0,40}redirect/.test(fil), 'elle renvoie encore');
   verifier('elle calcule plutot un etat « ferme »', /const ferme = estMedecin && !MEDECIN_DISPONIBLE/.test(fil),
     lignesAvec(fil, 'const ferme'));
+  // Intervalle elargi le 7 novembre 2026 : un long commentaire explique
+  // desormais, entre `ferme ?` et le panneau, pourquoi il ne reste que la
+  // mascotte. C'est le panneau qu'on cherche, pas sa distance au test.
   verifier('le formulaire d ecriture est remplace quand c est ferme',
-    /ferme \?[\s\S]{0,400}class="attente"/.test(fil), lignesAvec(fil, 'class="attente"'));
+    /ferme \?[\s\S]{0,1400}class="attente"/.test(fil), lignesAvec(fil, 'class="attente"'));
   verifier('ni champ ni micro ni bouton dans l attente',
-    /ferme \? \([\s\S]{0,1600}?\) : \(/.test(fil) &&
-      !/class="attente"[\s\S]{0,1600}?(textarea|VocalSaisie|class="envoyer")/.test(fil),
+    /ferme \? \([\s\S]{0,2600}?\) : \(/.test(fil) &&
+      !/class="attente"[\s\S]{0,600}?(textarea|VocalSaisie|class="envoyer")/.test(fil),
     'un moyen d ecrire subsiste dans le panneau d attente');
   verifier('et un POST n est plus traite quand c est ferme',
     /method === 'POST' && !ferme/.test(fil), lignesAvec(fil, "method === 'POST'"));
   // Un visage humain, pas un coeur ni la mascotte : c'est un humain qui repond.
   verifier('l en-tete du fil montre une photo de medecin',
     /estMedecin \?[\s\S]{0,200}PHOTOS_MEDECIN\[0\]/.test(fil), lignesAvec(fil, 'PHOTOS_MEDECIN[0]'));
-  verifier('et les trois illustrations sont dans l attente',
-    /PHOTOS_MEDECIN\.map/.test(fil), lignesAvec(fil, 'PHOTOS_MEDECIN.map'));
+  /*
+   * LES TROIS ILLUSTRATIONS ONT QUITTE L'ECRAN D'ATTENTE le 7 novembre 2026.
+   *
+   * Arthur : « qui entre au niveau de la page medecin, il doit juste avoir la
+   * mascotte qui est la, qui bouge, et on met bientot disponible. Voila,
+   * c'est tout. »
+   *
+   * La promesse que ce test defendait n'etait pas « il y a trois photos » :
+   * c'etait que l'ecran d'attente MONTRE QUELQUE CHOSE a la place du champ
+   * d'ecriture, pour qu'il ne soit pas une page vide ou l'on cherche en vain
+   * ou taper. La mascotte le fait, et elle bouge. On verifie donc cela.
+   *
+   * La photo de l'en-tete, elle, reste verifiee juste au-dessus : c'est elle
+   * qui dit qu'un HUMAIN repondra, et non la mascotte.
+   */
+  verifier("l ecran d attente montre la mascotte, et pas une page vide",
+    /class="attente">[\s\S]{0,200}<MascotteEntiere/.test(fil),
+    lignesAvec(fil, 'class="attente"'));
+  verifier('et il annonce « bientot disponible »',
+    /class="attente">[\s\S]{0,400}MEDECIN_BIENTOT/.test(fil),
+    lignesAvec(fil, 'MEDECIN_BIENTOT'));
   // Les fichiers existent vraiment, sinon l'ecran montre des carres casses.
   const photosMedecin = lire('src', 'lib', 'photos-medecin.ts');
   const poses = [...photosMedecin.matchAll(/'(medecin-[a-z0-9-]+)'/g)].map((x) => x[1]);

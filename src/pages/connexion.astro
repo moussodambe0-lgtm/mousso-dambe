@@ -257,6 +257,16 @@ const emailOuvert = Boolean(erreur) || surHoteAdmin;
   }
 
   .tete { text-align: center; padding: 0 0 26px; }
+
+  /* LE LOGO AU MILIEU (Arthur, le 7 novembre 2026 : « le logo est sur le côté
+     gauche, tu le places au centre »).
+
+     `text-align: center` ne suffisait pas, et c'est le piège : le composant
+     Symbole est un `display: block` de largeur fixe. Un alignement de texte
+     centre le contenu INLINE d'un bloc, pas le bloc lui-même, qui reste collé
+     à gauche de son conteneur. Ce sont les marges automatiques qui centrent
+     un bloc dont la largeur est connue. */
+  .tete :global(.symbole) { margin-inline: auto; }
   .tete h1 { margin: 18px 0 0; font-size: 32px; line-height: 1.15; }
   .sous { margin: 8px 0 0; font-size: 16px; color: #7a8290; }
 
