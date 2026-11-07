@@ -55,7 +55,30 @@ const canonique = new URL(Astro.url.pathname, Astro.site ?? 'http://localhost:43
 <html lang="fr">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    {/* PAS DE ZOOM AU PINCEMENT (Arthur, le 7 novembre 2026 : « je peux
+        zoomer avec les doigts dans l'application, ce n'est pas normal »).
+
+        Il a raison sur le ressenti : une application posée sur l'écran
+        d'accueil qui se laisse pincer et décaler ne se comporte pas comme une
+        application, elle se comporte comme une page web. Et un zoom déclenché
+        sans le vouloir, d'un pouce de travers en faisant défiler, laisse
+        l'écran de guingois sans qu'on sache comment le remettre.
+
+        CE QUE ÇA NE FAIT PAS, ET IL FAUT LE SAVOIR : les iPhone IGNORENT
+        `user-scalable=no` depuis iOS 10, délibérément, pour protéger les
+        personnes qui ont besoin d'agrandir. Le pincement y restera possible.
+        Ce n'est pas un défaut de cette ligne, c'est une décision d'Apple que
+        personne ne contourne.
+
+        CE QUI RESTE POSSIBLE PARTOUT, et c'est ce qui rend la mesure
+        acceptable : le réglage de taille de texte du téléphone agrandit
+        toujours l'application, parce que rien ici n'est dimensionné en
+        pixels figés pour le texte. Une femme qui voit mal n'est donc pas
+        enfermée dehors. */}
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    />
     <title>{titreComplet}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonique} />

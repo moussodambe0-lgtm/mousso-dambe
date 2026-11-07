@@ -8,6 +8,22 @@
 
 html {
   -webkit-text-size-adjust: 100%;
+
+  /*
+   * PAS DE ZOOM AU DOUBLE TAPOTEMENT (Arthur, le 7 novembre 2026 : « je peux
+   * zoomer avec les doigts dans l'application, ce n'est pas normal »).
+   *
+   * `user-scalable=no` dans la balise viewport coupe le PINCEMENT. Il ne
+   * coupe pas le double tapotement, qui est l'autre zoom, et le plus facile à
+   * déclencher sans le vouloir : deux appuis rapides sur un bouton, parce
+   * qu'on n'a pas vu que le premier avait pris, et l'écran part en gros plan.
+   *
+   * `manipulation` autorise le défilement et le pincement du système, et
+   * n'enlève QUE le double tapotement. Au passage, il supprime les 300
+   * millisecondes que le navigateur attendait avant de valider un appui,
+   * justement pour voir si un second venait : chaque bouton répond plus vite.
+   */
+  touch-action: manipulation;
 }
 
 body {
