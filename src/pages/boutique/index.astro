@@ -17,6 +17,7 @@ import { clientPublic, clientSession, baseConfiguree, jetonDeSession } from '../
 import { visiteuse, lirePanier, comptePanier } from '../../lib/session';
 import { enteteCatalogue } from '../../lib/cache';
 import { motCherche, filtreRecherche } from '../../lib/recherche';
+import PiedLegal from '../../components/PiedLegal.astro';
 
 const RAYONS = [
   { id: '', libelle: 'Tout' },
@@ -141,6 +142,15 @@ Astro.response.headers.set(
 
     <div class="espace"></div>
   </main>
+
+  {/* LE PIED DE PAGE AVEC LES DOCUMENTS LÉGAUX (7 novembre 2026).
+
+      Il manquait ici, et c'est l'écran où il manquait le plus : la boutique
+      est la seule page de l'application ouverte aux moteurs de recherche, et
+      c'est la seule où quelqu'un achète. Les conditions générales de VENTE
+      doivent être atteignables depuis l'endroit où l'on vend, pas seulement
+      depuis l'accueil. */}
+  <PiedLegal avecNav />
 </Base>
 
 <style>
