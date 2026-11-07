@@ -220,7 +220,25 @@ const emailOuvert = Boolean(erreur) || surHoteAdmin;
       politique de confidentialité.
     </p>
 
-    <a class="j-oubli" href="/connexion?oubli=1">Mot de passe oublié ?</a>
+    {/* « MOT DE PASSE OUBLIÉ ? » A ÉTÉ RETIRÉ, le 7 novembre 2026, le jour
+        même où il avait été copié de la capture de Jia.
+
+        Juriste l'a repéré en relisant l'écran : le lien existait, l'adresse
+        `/connexion?oubli=1` était écrite, et IL N'Y AVAIT AUCUN CODE
+        DERRIÈRE. La page se rechargeait à l'identique. Une femme qui a oublié
+        son mot de passe appuyait, ne voyait rien se passer, et concluait
+        qu'elle avait perdu son compte.
+
+        Un lien mort sur un écran de connexion est pire que pas de lien : il
+        fait croire qu'un chemin existe et renvoie au point de départ, sans
+        message.
+
+        CE QU'IL FAUT POUR LE REMETTRE, et c'est faisable depuis ce matin :
+        `resetPasswordForEmail` côté Supabase, le message de récupération en
+        français est déjà écrit et posé (outils/brancher-les-emails.mjs), et
+        Resend sait l'envoyer. Il manque la page où elle choisit son nouveau
+        mot de passe, qui doit échanger le code reçu par email. À faire
+        entièrement, ou pas du tout. */}
 
     {!surHoteAdmin && (
       <p class="j-bas">
