@@ -58,15 +58,16 @@ titre("L'écran de connexion n'est plus interdit à celle qui est déjà entrée
   );
 }
 
-titre('Google en grand, le mot de passe rangé derrière');
+titre('L’email en premier, Google en dessous');
 {
   const page = lire('src/pages/connexion.astro');
   const bouton = lire('src/components/BoutonGoogle.astro');
 
   // LES MOTS D'ARTHUR, LE 27 OCTOBRE 2026, APRÈS AVOIR VU L'ÉCRAN.
   verifier(
-    'le bouton dit « Se connecter avec Google »',
-    page.includes('texte="Se connecter avec Google"')
+    'le bouton parle de Google, et pas d’autre chose',
+    /texte=\{etape === 'inscrire' \? "S'inscrire avec Google" : 'Se connecter avec Google'\}/.test(page),
+    'le libellé du bouton Google a changé de forme'
   );
   verifier('et plus « Garder avec Google »', !page.includes('Garder avec Google'));
   verifier(
@@ -98,21 +99,41 @@ titre('Google en grand, le mot de passe rangé derrière');
 
   verifier('le bouton Google est demandé en grand', /<BoutonGoogle\s+grand/.test(page));
   verifier('la version en grand existe vraiment', bouton.includes('btn-google-grand'));
+  /*
+   * LE VOLET EST SUPPRIMÉ (7 novembre 2026). Arthur, après avoir essayé la
+   * page : « il doit avoir une partie où on renseigne à la main son email, et
+   * en bas mot de passe. Et maintenant en bas encore, on va voir se connecter
+   * ou s'inscrire avec Google. »
+   *
+   * Ce test exigeait l'inverse, et il avait raison de le faire le 27 octobre :
+   * ce jour-là, l'email n'était qu'une promesse, puisque aucun message de
+   * confirmation ne partait. Le replier derrière « Utiliser un email et un mot
+   * de passe » n'était donc pas une erreur de mise en page, c'était la
+   * conséquence d'un chemin qui n'existait pas.
+   *
+   * Depuis le 7 novembre, l'email part vraiment (Resend). Les deux chemins
+   * sont réels, et c'est celui qui marche pour une femme sans compte Google
+   * qui passe devant.
+   */
   verifier(
-    'le mot de passe est replié dans un details, pas en second bouton',
-    // La balise porte depuis le 6 novembre 2026 un attribut `open` qui déplie
-    // le formulaire sur l'hôte d'administration, où l'on ne peut pas entrer
-    // par Google. Ce test cherchait la chaîne exacte, sans attribut, et
-    // tombait sur un ajout qui ne change rien à ce qu'il vérifie. On regarde
-    // donc la balise et sa classe, pas sa ponctuation.
-    /<details class="replie"[\s>]/.test(page)
+    'le formulaire email est visible d’emblée, plus aucun volet à ouvrir',
+    !/<details class="replie"/.test(page) && /<form method="POST" class="formulaire">/.test(page)
   );
   verifier(
-    'le repli marche sans JavaScript : aucun script ne le pilote',
+    'l’email est AVANT le bouton Google dans la page',
+    page.indexOf('class="formulaire"') < page.indexOf('<BoutonGoogle'),
+    'le bouton Google est remonté au-dessus du formulaire'
+  );
+  verifier(
+    'un « ou » sépare les deux chemins, pour qu’on ne croie pas devoir faire les deux',
+    /class="ou" role="separator"/.test(page)
+  );
+  verifier(
+    'la page marche sans JavaScript : aucun script ne la pilote',
     !/addEventListener\(.(click|toggle)./.test(page)
   );
   verifier(
-    'un seul formulaire de mot de passe, et il est dans le repli',
+    'un seul formulaire de mot de passe',
     (page.match(/<form method="POST"/g) ?? []).length === 1
   );
 }
@@ -279,13 +300,29 @@ titre('L’invitation à installer ne ment jamais');
     'il ne s’ouvre qu’après l’accord du navigateur',
     script.includes("addEventListener('beforeinstallprompt'")
   );
-  verifier('il se tait si l’application est déjà installée', script.includes('dejaInstallee'));
-  verifier('un « Plus tard » vaut pour toujours', script.includes('retenirLeRefus'));
-  // Chaque acces a localStorage doit etre entoure : en navigation privee, ou
+  verifier(
+    'il se tait si l’application est déjà installée',
+    script.includes('dansLApplication') && /if \(!dansLApplication\(\)\)/.test(script)
+  );
+  /*
+   * CE QUI ÉTAIT VÉRIFIÉ ICI, ET QUI NE DOIT PLUS L'ÊTRE.
+   *
+   * Deux lignes exigeaient `dejaInstallee` et `retenirLeRefus`, les fonctions
+   * de la version du 27 octobre, et l'une d'elles portait ce titre :
+   * « un "Plus tard" vaut pour toujours ». C'était précisément le défaut.
+   * Arthur, le 7 novembre 2026 : « quand je rentre sur la plateforme, on doit
+   * TOUJOURS me proposer de télécharger l'application ».
+   *
+   * Un test qui nomme des fonctions internes se casse au premier remaniement,
+   * et pire : il défend la mauvaise règle avec le même aplomb que la bonne.
+   * Le comportement attendu est désormais vérifié pour lui-même dans
+   * supabase/tests/invite-installer.test.mjs.
+   */
+  // Chaque acces au stockage doit etre entoure : en navigation privee, ou
   // quand les donnees de site sont bloquees, une simple lecture leve une
   // exception et le script meurt avant d'avoir rien affiche.
-  const acces = (script.match(/localStorage\./g) ?? []).length;
-  const filets = (script.match(/\} catch \{/g) ?? []).length;
+  const acces = (script.match(/(?:local|session)Storage\./g) ?? []).length;
+  const filets = (script.match(/catch \{/g) ?? []).length;
   verifier(
     `chaque accès au stockage a son filet (${acces} accès, ${filets} filets)`,
     acces > 0 && filets >= acces

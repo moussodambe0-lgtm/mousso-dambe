@@ -254,7 +254,72 @@ const onglet = moi ? (ONGLET_DORIGINE[dOu] ?? 'compte') : null;
         </div>
       ) : (
         <>
-          <BoutonGoogle grand basculer={!attache && Boolean(moi)} texte="Se connecter avec Google" />
+          {/* L'EMAIL D'ABORD, GOOGLE EN DESSOUS (Arthur, le 7 novembre 2026).
+              Ses mots : « il doit avoir une partie où on renseigne à la main
+              son email, et en bas mot de passe. Et maintenant en bas encore,
+              on va voir se connecter ou s'inscrire avec Google. »
+
+              CELA RENVERSE LA DISPOSITION DU 27 OCTOBRE, et le renversement
+              est justifié. Ce jour-là il avait demandé « Google en grand, et
+              une petite option pour écrire son email », parce que Google
+              ouvrait la session tout de suite quand l'email obligeait à
+              sortir chercher un message. Mais l'envoi des messages ne
+              marchait pas : le chemin par email n'existait que sur le papier,
+              et le replier derrière un `details` le rendait introuvable.
+
+              Depuis aujourd'hui l'email part vraiment (Resend, voir
+              outils/brancher-les-emails.mjs). Les deux chemins sont donc
+              réels, et c'est celui qui marche partout, y compris pour une
+              femme sans compte Google, qui se montre en premier.
+
+              Le `details` est supprimé, pas simplement ouvert par défaut :
+              un volet qu'on n'a plus de raison de fermer n'est plus un
+              volet, c'est une formulaire avec une flèche inutile. */}
+          <form method="POST" class="formulaire">
+            <input type="hidden" name="geste" value={attache ? 'attacher' : 'connecter'} />
+
+            <div class="champ-bloc">
+              <label class="libelle" for="email">Ton email</label>
+              <input class="champ" id="email" name="email" type="email" autocomplete="email" required value={emailSaisi} />
+            </div>
+
+            <div class="champ-bloc">
+              <label class="libelle" for="motdepasse">
+                {etape === 'inscrire' ? 'Choisis un mot de passe' : 'Ton mot de passe'}
+              </label>
+              <input
+                class="champ"
+                id="motdepasse"
+                name="motdepasse"
+                type="password"
+                autocomplete={etape === 'inscrire' ? 'new-password' : 'current-password'}
+                minlength={etape === 'inscrire' ? 8 : undefined}
+                required
+              />
+            </div>
+
+            {etape === 'inscrire' && (
+              <p class="aide">
+                Tu devras ouvrir le message que nous t'enverrons pour terminer. Avec
+                Google, il n'y a rien à ouvrir.
+              </p>
+            )}
+
+            <button class="btn btn-rose btn-plein" type="submit">{titre}</button>
+          </form>
+
+          {/* Le trait et le mot « ou » : sans eux, deux boutons l'un sous
+              l'autre se lisent comme une suite d'étapes, et on croit devoir
+              faire les deux. */}
+          <div class="ou" role="separator" aria-label="ou">
+            <span>ou</span>
+          </div>
+
+          <BoutonGoogle
+            grand
+            basculer={!attache && Boolean(moi)}
+            texte={etape === 'inscrire' ? "S'inscrire avec Google" : 'Se connecter avec Google'}
+          />
 
           {/* Elle a un compte commencé et choisit d'en rejoindre un autre :
               elle doit savoir ce qu'elle laisse, AVANT de toucher le bouton. */}
@@ -277,50 +342,6 @@ const onglet = moi ? (ONGLET_DORIGINE[dOu] ?? 'compte') : null;
               Entrer sans mot de passe (local)
             </a>
           )}
-
-          {/* DÉPLIÉ SUR L'ADRESSE DE LA GESTION. Google est mis en valeur pour
-              les clientes, et c'est juste pour elles. Mais un administrateur
-              sur localhost n'a que l'email, et le chercher derrière un repli
-              était un piège. */}
-          <details class="replie" open={surHoteAdmin}>
-            <summary>
-              <span>Utiliser un email et un mot de passe</span>
-              <Icone nom="bas" taille={16} />
-            </summary>
-
-            <form method="POST" class="dedans">
-              <input type="hidden" name="geste" value={attache ? 'attacher' : 'connecter'} />
-
-              <div class="champ-bloc">
-                <label class="libelle" for="email">Ton email</label>
-                <input class="champ" id="email" name="email" type="email" autocomplete="email" required value={emailSaisi} />
-              </div>
-
-              <div class="champ-bloc">
-                <label class="libelle" for="motdepasse">
-                  {etape === 'inscrire' ? 'Choisis un mot de passe' : 'Ton mot de passe'}
-                </label>
-                <input
-                  class="champ"
-                  id="motdepasse"
-                  name="motdepasse"
-                  type="password"
-                  autocomplete={etape === 'inscrire' ? 'new-password' : 'current-password'}
-                  minlength={etape === 'inscrire' ? 8 : undefined}
-                  required
-                />
-              </div>
-
-              {etape === 'inscrire' && (
-                <p class="aide">
-                  Tu devras ouvrir le message que nous t'enverrons pour terminer. Avec
-                  Google, il n'y a rien à ouvrir.
-                </p>
-              )}
-
-              <button class="btn btn-rose btn-plein" type="submit">{titre}</button>
-            </form>
-          </details>
         </>
       )}
     </div>
@@ -425,64 +446,32 @@ const onglet = moi ? (ONGLET_DORIGINE[dOu] ?? 'compte') : null;
     margin: var(--e3) 0 0;
   }
 
-  /* LA PETITE OPTION. Un repli, pas un second bouton : deux boutons de même
-     poids auraient annulé la mise en valeur demandée. */
-  .replie {
-    margin-top: var(--e5);
-    border-top: 1px solid var(--bordure);
-    padding-top: var(--e3);
+  /* LE FORMULAIRE EN PREMIER (7 novembre 2026). Il remplace le volet
+     `details` qui cachait l'email derrière « Utiliser un email et un mot de
+     passe ». Rien à ouvrir, rien à deviner. */
+  .formulaire {
+    margin-top: var(--e2);
   }
 
-  .replie summary {
+  /* LE « OU » ENTRE LES DEUX CHEMINS. Un trait de chaque côté du mot : sans
+     lui, deux boutons l'un sous l'autre se lisent comme deux étapes à faire
+     l'une après l'autre, et on croit devoir remplir le formulaire PUIS
+     appuyer sur Google. */
+  .ou {
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: 6px;
-    /* 44 px de haut : une cible que le pouce atteint, même repliée. */
-    min-height: 44px;
-    color: var(--texte-2);
-    font-size: 14.5px;
-    font-weight: 600;
-    cursor: pointer;
-    list-style: none;
+    gap: var(--e3);
+    margin: var(--e4) 0;
+    color: var(--texte-3);
+    font-size: 13.5px;
   }
 
-  /* Le triangle par défaut, retiré des deux façons que les navigateurs
-     comprennent chacun. */
-  .replie summary::-webkit-details-marker {
-    display: none;
-  }
-
-  .replie summary::marker {
+  .ou::before,
+  .ou::after {
     content: '';
-  }
-
-  .replie summary:focus-visible {
-    outline: 2px solid var(--rose);
-    outline-offset: 2px;
-    border-radius: var(--r-champ);
-  }
-
-  .replie[open] summary {
-    margin-bottom: var(--e3);
-  }
-
-  .replie summary :global(svg) {
-    transition: transform var(--vite) ease;
-  }
-
-  .replie[open] summary :global(svg) {
-    transform: rotate(180deg);
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .replie summary :global(svg) {
-      transition: none;
-    }
-  }
-
-  .dedans {
-    padding-top: var(--e2);
+    flex: 1;
+    height: 1px;
+    background: var(--bordure);
   }
 
   .aide {
