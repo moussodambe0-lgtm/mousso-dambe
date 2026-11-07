@@ -1,0 +1,122 @@
+---
+/**
+ * LE PIED DE PAGE, AVEC LES DOCUMENTS LÉGAUX.
+ *
+ * Arthur, le 7 novembre 2026 : « au niveau de l'accueil, tu mets les
+ * documents en bas de l'accueil. Tu mets un fond peut-être un peu noir ou
+ * bien un peu noir-rouge, façon. Et tu mets les documents là-bas. »
+ *
+ * POURQUOI UN FOND SOMBRE, ET POURQUOI C'EST LA BONNE IDÉE. Toute
+ * l'application est claire, rose et blanche. Un pied de page de la même
+ * couleur se confondrait avec le contenu, et personne ne verrait qu'on a
+ * changé de registre. Le bloc sombre dit « ici, ce n'est plus l'application,
+ * c'est ce qui l'encadre » sans avoir à l'écrire. C'est aussi ce que fait
+ * tout site marchand, et une habitude qu'on ne gagne rien à casser : on
+ * cherche les mentions légales EN BAS, et on les cherche sur du sombre.
+ *
+ * LE NOIR-ROUGE PLUTÔT QUE LE NOIR : #2B0F1A est un noir qui garde une
+ * goutte du rose de la marque. Un noir pur aurait coupé le bas de la page
+ * comme un bandeau étranger ; celui-ci appartient encore à Mousso Dambé.
+ *
+ * CE QU'IL NE CONTIENT PAS, et ce n'est pas un oubli : aucun nom de produit,
+ * aucune mention de ce que l'application suit. Un pied de page se voit quand
+ * on fait défiler devant quelqu'un.
+ */
+import Icone from './Icone.astro';
+
+interface Props {
+  /** Les pages à barre basse réservent la place de la barre. */
+  avecNav?: boolean;
+}
+
+const { avecNav = false } = Astro.props;
+const annee = new Date().getFullYear();
+---
+
+<footer class:list={['pied', { 'pied-nav': avecNav }]}>
+  <div class="dedans">
+    <p class="marque">Mousso Dambé</p>
+    <p class="phrase">
+      Suis tes règles, trouve tes protections, pose tes questions. Pour les femmes du
+      Burkina.
+    </p>
+
+    <nav class="liens" aria-label="Documents légaux">
+      <a href="/legal/conditions-generales">Conditions d’utilisation</a>
+      <a href="/legal/cookies">Cookies et traceurs</a>
+      <a href="/legal">Tous les documents légaux</a>
+    </nav>
+
+    <p class="bas">
+      <Icone nom="bouclier-coche" taille={15} />
+      Colis neutre, paiement à la livraison. © {annee} Mousso Dambé.
+    </p>
+  </div>
+</footer>
+
+<style>
+  .pied {
+    /* Un noir qui garde une goutte de rose : il appartient encore à la
+       marque, là où un noir pur ferait bandeau étranger. */
+    background: #2b0f1a;
+    color: #e8d5dd;
+  }
+
+  /* Sur les pages à barre basse, le pied s'arrête au-dessus d'elle. */
+  .pied-nav { margin-bottom: var(--nav-hauteur, 0px); }
+
+  .dedans {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: var(--e6) var(--e4) calc(var(--e5) + env(safe-area-inset-bottom, 0px));
+  }
+
+  .marque {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+    color: #ffffff;
+  }
+
+  .phrase {
+    margin: 8px 0 var(--e5);
+    font-size: 14px;
+    line-height: 1.6;
+    color: #c4a9b5;
+    max-width: 38ch;
+  }
+
+  .liens {
+    display: grid;
+    gap: 2px;
+    padding-top: var(--e3);
+    border-top: 1px solid rgb(255 255 255 / 12%);
+  }
+
+  .liens a {
+    /* 44 px de haut : la cible que le pouce atteint sans viser, et sans
+       toucher le lien d'à côté. */
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #f3e4ea;
+  }
+
+  .liens a:hover,
+  .liens a:focus-visible { color: #ffffff; }
+
+  .bas {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin: var(--e4) 0 0;
+    padding-top: var(--e3);
+    border-top: 1px solid rgb(255 255 255 / 12%);
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: #a98b99;
+  }
+</style>

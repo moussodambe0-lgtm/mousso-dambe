@@ -32,6 +32,25 @@ const LIGNES = [
   { icone: 'cloche', mot: 'Mise à jour', href: '/parametres/mise-a-jour' },
   { icone: 'bulle', mot: 'Service client', href: null },
 ];
+
+/*
+ * LES DOCUMENTS LÉGAUX, DANS UNE SECTION À PART (Arthur, le 7 novembre
+ * 2026 : « dans l'application, tu mets les documents dans paramètres. Quand
+ * quelqu'un clique sur paramètres, il pourra voir les documents »).
+ *
+ * Pas mêlés à « Mon compte » : ce ne sont pas des réglages, on ne les ouvre
+ * pas pour changer quelque chose mais pour vérifier ce à quoi on s'est
+ * engagé. Les mélanger ferait chercher un bouton là où il n'y a qu'un texte.
+ *
+ * Ils sont aussi en bas de l'accueil, dans le pied de page, pour celles qui
+ * n'ont pas de compte : la loi n°045-2009/AN veut qu'on puisse les lire sans
+ * se connecter.
+ */
+const DOCUMENTS = [
+  { icone: 'liste', mot: 'Conditions d’utilisation', href: '/legal/conditions-generales' },
+  { icone: 'bouclier', mot: 'Cookies et traceurs', href: '/legal/cookies' },
+  { icone: 'info', mot: 'Tous les documents légaux', href: '/legal' },
+];
 ---
 
 <Base titre="Paramètres" nav="compte" panier={panier}>
@@ -59,6 +78,19 @@ const LIGNES = [
       }
     </nav>
 
+    <h2 class="section-titre">Documents légaux</h2>
+    <nav class="liste apparait">
+      {
+        DOCUMENTS.map((l) => (
+          <a class="ligne" href={l.href}>
+            <span class="ligne-rond"><Icone nom={l.icone} taille={19} /></span>
+            <span class="ligne-mot">{l.mot}</span>
+            <Icone nom="avant" taille={18} classe="ligne-fleche" />
+          </a>
+        ))
+      }
+    </nav>
+
     {/* « Me déconnecter » vient de « Mon compte » (Arthur, 13 octobre 2026) :
         c'est ici qu'on range ce qu'on fait une fois de temps en temps. */}
     <form method="POST" action="/deconnexion" class="deconnexion">
@@ -74,6 +106,7 @@ const LIGNES = [
 
 <style>
   .section-titre {
+    margin-top: var(--e5);
     margin-bottom: var(--e2);
     font-size: 14.5px;
     font-weight: 700;

@@ -1,0 +1,196 @@
+---
+/**
+ * LA PAGE QUI RASSEMBLE LES DOCUMENTS LÉGAUX.
+ *
+ * Arthur, le 7 novembre 2026 : « les documents légaux, il faut publier ça. Au
+ * niveau de l'accueil, tu publies tout en bas, les gens vont cliquer et ils
+ * vont voir directement. »
+ *
+ * Le pied de page de l'accueil mène ici, et d'ici on va à chaque document.
+ * Un seul endroit à tenir à jour plutôt qu'une liste recopiée dans trois
+ * pieds de page, qui finiraient par diverger.
+ *
+ * CETTE PAGE EST OUVERTE À TOUT LE MONDE. L'article 45 de la loi
+ * n°045-2009/AN exige que ces informations soient lisibles SANS COMPTE, et
+ * l'article 152 punit leur absence de 100 000 à 2 000 000 FCFA.
+ *
+ * CE QUI N'EST PAS ENCORE PUBLIÉ EST DIT, PAS CACHÉ. Quatre documents
+ * attendent des informations que seul Arthur possède (numéro RCCM, siège,
+ * zone livrée, durée de garantie…). Les annoncer comme « bientôt » plutôt
+ * que de les taire est plus honnête, et c'est aussi ce qui rappelle qu'ils
+ * manquent.
+ */
+import Base from '../../layouts/Base.astro';
+import Icone from '../../components/Icone.astro';
+
+export const prerender = false;
+
+// Rien de personnel ici : un cache partagé peut garder cette page.
+Astro.response.headers.set('Cache-Control', 'public, max-age=3600, s-maxage=86400');
+
+interface Document {
+  titre: string;
+  dit: string;
+  icone: string;
+  adresse?: string;
+  /** Ce qu'il manque, quand le document n'est pas encore publiable. */
+  attend?: string;
+}
+
+const DOCUMENTS: Document[] = [
+  {
+    titre: "Conditions générales d'utilisation",
+    dit: 'Ce que tu peux faire dans l’application, et ce que nous nous engageons à faire.',
+    icone: 'liste',
+    adresse: '/legal/conditions-generales',
+  },
+  {
+    titre: 'Cookies et traceurs',
+    dit: 'Ce que l’application dépose sur ton téléphone, et pourquoi.',
+    icone: 'bouclier',
+    adresse: '/legal/cookies',
+  },
+  {
+    titre: 'Politique de confidentialité',
+    dit: 'Ce que nous savons de toi, combien de temps, et comment tout effacer.',
+    icone: 'cadenas',
+    attend: 'adresse de contact, pays du serveur de l’assistante, durée de conservation',
+  },
+  {
+    titre: 'Mentions légales',
+    dit: 'Qui édite Mousso Dambé, et comment nous joindre.',
+    icone: 'info',
+    attend: 'numéro RCCM, forme juridique, siège, téléphone',
+  },
+  {
+    titre: 'Conditions générales de vente',
+    dit: 'Les règles de la boutique : prix, livraison, paiement.',
+    icone: 'boutique',
+    attend: 'zone livrée, délai de livraison, durée de garantie',
+  },
+  {
+    titre: 'Retours et remboursement',
+    dit: 'Ce que tu peux renvoyer, et comment tu es remboursée.',
+    icone: 'colis',
+    attend: 'durée de garantie, mode de remboursement',
+  },
+];
+
+const publies = DOCUMENTS.filter((d) => d.adresse);
+const aVenir = DOCUMENTS.filter((d) => !d.adresse);
+---
+
+<Base titre="Documents légaux" description="Les conditions, la confidentialité et les mentions légales de Mousso Dambé.">
+  <main class="legal-index">
+    <a class="retour" href="/">
+      <Icone nom="retour" taille={18} />
+      Retour
+    </a>
+
+    <h1>Documents légaux</h1>
+    <p class="chapeau">
+      Tout ce qui t’engage et tout ce qui nous engage, écrit noir sur blanc. Lisible sans
+      compte, et à n’importe quel moment.
+    </p>
+
+    <ul class="liste">
+      {publies.map((d) => (
+        <li>
+          <a class="doc" href={d.adresse}>
+            <span class="rond"><Icone nom={d.icone} taille={20} /></span>
+            <span class="mots">
+              <span class="doc-titre">{d.titre}</span>
+              <span class="doc-dit">{d.dit}</span>
+            </span>
+            <Icone nom="avant" taille={18} />
+          </a>
+        </li>
+      ))}
+    </ul>
+
+    {aVenir.length > 0 && (
+      <>
+        <h2 class="bientot-titre">Bientôt</h2>
+        <p class="bientot-dit">
+          Ces documents sont écrits. Ils attendent quelques informations sur l’entreprise
+          avant d’être publiés.
+        </p>
+        <ul class="liste">
+          {aVenir.map((d) => (
+            <li>
+              <div class="doc doc-attente">
+                <span class="rond rond-gris"><Icone nom={d.icone} taille={20} /></span>
+                <span class="mots">
+                  <span class="doc-titre">{d.titre}</span>
+                  <span class="doc-dit">{d.dit}</span>
+                </span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </>
+    )}
+  </main>
+</Base>
+
+<style>
+  .legal-index {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: var(--e4) var(--e4) var(--e7);
+  }
+
+  .retour {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 44px;
+    font-size: 14.5px;
+    font-weight: 700;
+    color: var(--texte-2);
+  }
+
+  .legal-index h1 { margin: var(--e2) 0 0; font-size: 26px; line-height: 1.2; }
+
+  .chapeau {
+    margin: 10px 0 var(--e5);
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--texte-2);
+  }
+
+  .liste { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+
+  .doc {
+    display: flex;
+    align-items: center;
+    gap: var(--e3);
+    padding: var(--e3);
+    border: 1px solid var(--bordure);
+    border-radius: var(--r-carte);
+    background: var(--surface);
+    color: var(--encre);
+  }
+
+  .doc-attente { opacity: 0.6; }
+
+  .rond {
+    display: grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    flex: none;
+    border-radius: 12px;
+    background: var(--rose-clair);
+    color: var(--rose);
+  }
+
+  .rond-gris { background: var(--surface-douce); color: var(--texte-3); }
+
+  .mots { flex: 1; }
+  .doc-titre { display: block; font-size: 15.5px; font-weight: 700; line-height: 1.3; }
+  .doc-dit { display: block; margin-top: 3px; font-size: 13.5px; line-height: 1.45; color: var(--texte-2); }
+
+  .bientot-titre { margin: var(--e6) 0 6px; font-size: 18px; }
+  .bientot-dit { margin: 0 0 var(--e3); font-size: 14px; line-height: 1.55; color: var(--texte-3); }
+</style>

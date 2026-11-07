@@ -30,6 +30,7 @@
 import Base from '../layouts/Base.astro';
 import Icone from '../components/Icone.astro';
 import Mascotte from '../components/Mascotte.astro';
+import PiedLegal from '../components/PiedLegal.astro';
 import Symbole from '../components/Symbole.astro';
 import '../styles/ouverture-fonds.css';
 import fond1 from '../assets/ouverture/fond-1.svg?raw';
@@ -184,6 +185,14 @@ const CONFETTIS = [0, 1, 2, 3, 4, 5, 6, 7];
           se retrouvent dehors sans pouvoir rentrer. */}
     </div>
   </main>
+
+  {/* LE PIED DE PAGE, avec les documents légaux (Arthur, le 7 novembre 2026).
+
+      Sur CET écran plus que sur tout autre : c'est la première page qu'une
+      femme voit, avant d'avoir le moindre compte, et l'article 45 de la loi
+      n°045-2009/AN veut précisément que ces documents soient atteignables
+      sans compte. */}
+  <PiedLegal />
 </Base>
 
 <script>

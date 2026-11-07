@@ -1,0 +1,175 @@
+---
+/**
+ * LE GABARIT DES DOCUMENTS LÉGAUX.
+ *
+ * Arthur, le 7 novembre 2026 : « les documents légaux, il faut publier ça.
+ * Au niveau de l'accueil, tu publies tout en bas, les gens vont cliquer et
+ * ils vont voir directement. Et au niveau de l'application, tu mets ça au
+ * niveau des paramètres. »
+ *
+ * POURQUOI CES PAGES SONT OUVERTES À TOUT LE MONDE, et c'est la seule chose
+ * qui ne se négocie pas ici : l'article 45 de la loi n°045-2009/AN exige que
+ * ces informations soient accessibles SANS COMPTE, et l'article 152 punit
+ * leur absence de 100 000 à 2 000 000 FCFA. Une page légale derrière une
+ * connexion n'existe pas aux yeux de la loi. Aucune de ces pages n'appelle
+ * `visiteuse()`, aucune ne regarde si quelqu'un est connecté.
+ *
+ * ELLES SONT INDEXABLES, contrairement au reste de l'application. Le gabarit
+ * Base met « noindex » partout sauf sur la boutique, parce qu'une page de
+ * cycle n'a aucune raison d'être trouvée sur un moteur de recherche. Ces
+ * pages-là, si : quelqu'un qui cherche qui édite Mousso Dambé doit pouvoir
+ * le trouver, et c'est précisément le but de la loi.
+ *
+ * LE TEXTE EST ÉCRIT EN MARKDOWN, dans src/pages/legal/. Astro en fait des
+ * pages tout seul grâce au `layout:` de leur en-tête. Les documents sont
+ * ceux de Juriste, du 26 octobre 2026, recopiés sans une virgule de
+ * changement : ce sont des textes qui engagent, pas des contenus qu'on
+ * reformule.
+ */
+import Base from './Base.astro';
+import Icone from '../components/Icone.astro';
+
+interface Props {
+  /** Donné par l'en-tête du fichier Markdown. */
+  frontmatter: {
+    titre: string;
+    description?: string;
+    /** « Version 1.0 du 26 octobre 2026 », affiché sous le titre. */
+    version?: string;
+  };
+}
+
+const { frontmatter } = Astro.props;
+
+// Ces pages ne parlent de personne : un cache partagé peut les garder une
+// journée, et le navigateur une heure. C'est ce qui les rend instantanées à
+// la deuxième ouverture, sur une connexion où chaque aller-retour se paie.
+Astro.response.headers.set('Cache-Control', 'public, max-age=3600, s-maxage=86400');
+---
+
+<Base titre={frontmatter.titre} description={frontmatter.description ?? frontmatter.titre}>
+  <main class="legal">
+    <a class="retour" href="/legal">
+      <Icone nom="retour" taille={18} />
+      Tous les documents
+    </a>
+
+    <h1>{frontmatter.titre}</h1>
+    {frontmatter.version && <p class="version">{frontmatter.version}</p>}
+
+    <article class="texte">
+      <slot />
+    </article>
+
+    <p class="pied">
+      Une question sur ce document ? Écris-nous, et nous te répondrons en français, en
+      mooré ou en dioula.
+    </p>
+  </main>
+</Base>
+
+<style>
+  .legal {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: var(--e4) var(--e4) var(--e7);
+  }
+
+  .retour {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 44px;
+    font-size: 14.5px;
+    font-weight: 700;
+    color: var(--texte-2);
+  }
+
+  .legal h1 {
+    margin: var(--e2) 0 0;
+    font-size: 26px;
+    line-height: 1.2;
+  }
+
+  .version {
+    margin: 8px 0 var(--e5);
+    font-size: 13.5px;
+    color: var(--texte-3);
+  }
+
+  /* Le corps du document. Les règles visent les balises produites par le
+     Markdown : on ne peut pas leur poser de classe. */
+  .texte {
+    font-size: 16px;
+    line-height: 1.7;
+    color: var(--texte-2);
+  }
+
+  .texte :global(h2) {
+    margin: var(--e6) 0 var(--e2);
+    font-size: 19px;
+    line-height: 1.3;
+    color: var(--encre);
+  }
+
+  .texte :global(h3) {
+    margin: var(--e5) 0 var(--e2);
+    font-size: 16.5px;
+    color: var(--encre);
+  }
+
+  .texte :global(p) { margin: 0 0 var(--e3); }
+  .texte :global(ul),
+  .texte :global(ol) { margin: 0 0 var(--e3); padding-left: 22px; }
+  .texte :global(li) { margin-bottom: 8px; }
+  .texte :global(strong) { color: var(--encre); }
+  .texte :global(a) { color: var(--rose); text-decoration: underline; }
+
+  .texte :global(hr) {
+    margin: var(--e5) 0;
+    border: 0;
+    border-top: 1px solid var(--bordure);
+  }
+
+  /* Les tableaux des mentions légales. Sur un téléphone, ils débordent : on
+     les laisse défiler latéralement plutôt que de les écraser, pour que les
+     numéros de registre restent lisibles d'un bloc. */
+  .texte :global(table) {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    margin: 0 0 var(--e3);
+    border-collapse: collapse;
+    font-size: 15px;
+  }
+
+  .texte :global(th),
+  .texte :global(td) {
+    padding: 10px 12px;
+    border: 1px solid var(--bordure);
+    text-align: left;
+    vertical-align: top;
+  }
+
+  .texte :global(th) { background: var(--surface-douce); color: var(--encre); }
+
+  /* Les citations servent aux avertissements de Juriste. */
+  .texte :global(blockquote) {
+    margin: 0 0 var(--e3);
+    padding: var(--e3);
+    border-left: 3px solid var(--rose-clair);
+    background: var(--surface-douce);
+    border-radius: 0 var(--r-champ) var(--r-champ) 0;
+  }
+
+  .texte :global(blockquote p:last-child) { margin-bottom: 0; }
+
+  .pied {
+    margin: var(--e6) 0 0;
+    padding-top: var(--e4);
+    border-top: 1px solid var(--bordure);
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--texte-3);
+  }
+</style>

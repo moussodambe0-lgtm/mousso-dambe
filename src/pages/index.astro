@@ -24,6 +24,7 @@ import GoutteJour from '../components/GoutteJour.astro';
 import BebeJour from '../components/BebeJour.astro';
 import CarteProduit from '../components/CarteProduit.astro';
 import Alerte from '../components/Alerte.astro';
+import PiedLegal from '../components/PiedLegal.astro';
 import '../styles/accueil.css';
 import { existsSync as fsExiste } from 'node:fs';
 import { clientPublic, clientSession, baseConfiguree } from '../lib/supabase';
@@ -559,6 +560,15 @@ const photoDe = (i: number) => photos[i] ?? photos[photos.length - 1] ?? null;
       </main>
     )
   }
+
+  {/* LE PIED DE PAGE, EN BAS DE L'ACCUEIL (Arthur, le 7 novembre 2026 : « au
+      niveau de l'accueil, tu mets les documents en bas de l'accueil, tu mets
+      un fond un peu noir ou bien un peu noir-rouge »).
+
+      Il est DEHORS du `main`, et après les deux branches : l'accueil montre
+      deux écrans très différents selon qu'elle est entrée ou non, et le pied
+      doit être au bas des deux. */}
+  <PiedLegal avecNav={Boolean(moi)} />
 </Base>
 
 <script>

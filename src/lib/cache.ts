@@ -30,6 +30,21 @@ export const CHEMINS_PUBLICS = [
   // Les photos jointes aux avis : publiques comme l'avis qu'elles
   // accompagnent, et immuables, donc faites pour etre gardees.
   '/photo-avis',
+  /*
+   * LES DOCUMENTS LÉGAUX (Arthur, le 7 novembre 2026 : « il faut publier ça,
+   * au niveau de l'accueil tout en bas, les gens vont cliquer et ils vont
+   * voir directement »).
+   *
+   * Ils sont PUBLICS au sens le plus fort du mot : la loi n°045-2009/AN exige
+   * qu'ils soient lisibles SANS COMPTE, et son article 152 punit leur absence
+   * de 100 000 à 2 000 000 FCFA. Une page légale derrière une connexion
+   * n'existe pas aux yeux de la loi.
+   *
+   * Ils ne parlent de personne et ne changent presque jamais : rien n'empêche
+   * de les garder en réserve, et une femme doit pouvoir relire ce qu'elle a
+   * accepté même sans réseau.
+   */
+  '/legal',
 ];
 
 /** Un chemin qui ne parle de personne, et qu'un cache partagé peut garder. */
