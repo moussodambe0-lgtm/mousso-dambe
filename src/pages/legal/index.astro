@@ -87,7 +87,7 @@ const publies = DOCUMENTS.filter((d) => d.adresse);
     Sans cela, une bande claire réapparaît sous le pied de page sombre. */}
 <Base titre="Documents légaux" description="Les conditions, la confidentialité et les mentions légales de Mousso Dambé." pleinEcran>
   <main class="legal-index">
-    <a class="retour" href="/">
+    <a class="retour" href="/" data-retour>
       <Icone nom="retour" taille={18} />
       Retour
     </a>
@@ -128,6 +128,10 @@ const publies = DOCUMENTS.filter((d) => d.adresse);
 
   <PiedLegal />
 </Base>
+
+<script>
+  import '../../scripts/retour';
+</script>
 
 <style>
   .legal-index {

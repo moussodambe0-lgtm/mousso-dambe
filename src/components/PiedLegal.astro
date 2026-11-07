@@ -41,14 +41,24 @@ const annee = new Date().getFullYear();
       Burkina.
     </p>
 
-    {/* Les trois que l'on cherche le plus souvent, puis la page qui les
-        rassemble tous. On ne recopie pas les six : un pied de page qui liste
-        tout ne se lit plus, et /legal est là pour ça. */}
+    {/* TOUS LES DOCUMENTS, ICI MÊME (Arthur, le 7 novembre 2026) :
+
+          « Tous les documents légaux doivent apparaître sur le fond noir
+            rose. Tu n'as pas besoin de mettre une partie pour mettre tous les
+            documents légaux. Et la ligne où on met "tous les documents
+            légaux", faut enlever ça. Tu fais tout afficher normalement. »
+
+        Il y avait trois documents puis un lien « Tous les documents légaux »
+        qui menait à une page de plus. C'était un détour pour rien : le pied
+        de page est déjà l'endroit où on les cherche, et il y en a cinq, pas
+        cinquante. Les écrire tous coûte quatre lignes et supprime un écran
+        intermédiaire. */}
     <nav class="liens" aria-label="Documents légaux">
       <a href="/legal/politique-de-confidentialite">Politique de confidentialité</a>
       <a href="/legal/conditions-generales">Conditions d’utilisation</a>
       <a href="/legal/conditions-de-vente">Conditions de vente</a>
-      <a href="/legal">Tous les documents légaux</a>
+      <a href="/legal/retours">Retours et remboursement</a>
+      <a href="/legal/cookies">Cookies et traceurs</a>
     </nav>
 
     <p class="bas">

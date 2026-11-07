@@ -65,9 +65,18 @@ Astro.response.headers.set('Cache-Control', 'public, max-age=3600, s-maxage=8640
     page sombre. */}
 <Base titre={frontmatter.titre} description={frontmatter.description ?? frontmatter.titre} pleinEcran>
   <main class="legal">
-    <a class="retour" href="/legal">
+    {/* « RETOUR » REVIENT D'OÙ ELLE VIENT (Arthur, le 7 novembre 2026 :
+        « quand j'appuie retour, ça me mène dans tous les documents, ce n'est
+        pas normal, ça doit partir dans retour »).
+
+        Le `href` est une vraie adresse : la page marche sans JavaScript, et
+        une femme arrivée par un lien WhatsApp atterrit sur l'accueil plutôt
+        que nulle part. `data-retour` dit au script de remonter l'histoire
+        quand il y en a une, et seulement si elle vient de ce site. Voir
+        src/scripts/retour.ts. */}
+    <a class="retour" href="/" data-retour>
       <Icone nom="retour" taille={18} />
-      Tous les documents
+      Retour
     </a>
 
     <h1>{frontmatter.titre}</h1>
@@ -79,6 +88,10 @@ Astro.response.headers.set('Cache-Control', 'public, max-age=3600, s-maxage=8640
 
   <PiedLegal />
 </Base>
+
+<script>
+  import '../scripts/retour';
+</script>
 
 <style>
   .legal {

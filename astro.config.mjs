@@ -107,7 +107,29 @@ export default defineConfig({
         // Personne n'affiche Mousso Dambé dans un cadre : parade au
         // détournement de clic.
         "frame-ancestors 'none'",
-        "form-action 'self'",
+        /*
+         * OÙ UN FORMULAIRE A LE DROIT D'ENVOYER.
+         *
+         * `'self'` seul a rendu le bouton Google TOTALEMENT MUET. Arthur, le
+         * 7 novembre 2026, après avoir appuyé : « rien du tout ».
+         *
+         * Le bouton envoie sur /auth/google, qui est bien ce site. Mais cette
+         * route répond par une redirection vers Supabase, qui redirige vers
+         * Google, et Chrome applique `form-action` À CHAQUE SAUT de la
+         * chaîne, pas seulement au premier. Il bloquait donc l'envoi, SANS
+         * RIEN AFFICHER : pas de message, pas de page d'erreur, rien. La seule
+         * trace est une ligne dans la console du navigateur, que personne ne
+         * regarde sur un téléphone.
+         *
+         * C'est le genre de panne qui coûte une soirée : le serveur répond
+         * correctement, le formulaire est correct, et pourtant il ne se passe
+         * rien.
+         *
+         * On n'ouvre QUE les deux destinations réelles du trajet. Pas de
+         * `*` : ce qui reste fermé empêche un formulaire injecté dans une page
+         * d'expédier ailleurs ce qu'une femme vient de taper.
+         */
+        "form-action 'self' https://*.supabase.co https://accounts.google.com",
       ],
     },
   },
