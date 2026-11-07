@@ -35,8 +35,9 @@
  *   node outils/dns-vercel.mjs <domaine> <fichier.json> --vrai   ajoute
  *
  * Le fichier JSON est une liste :
- *   [{ "type": "TXT", "nom": "_dmarc", "valeur": "v=DMARC1; ..." }]
- * « nom » vide ou "@" designe la racine du domaine.
+ *   [{ "type": "TXT", "nom": "_dmarc", "valeur": "v=DMARC1; ..." },
+ *    { "type": "MX", "nom": "send", "valeur": "...", "priorite": 10 }]
+ * « nom » vide ou "@" designe la racine du domaine. Un MX exige « priorite ».
  */
 import fs from 'node:fs';
 
@@ -127,6 +128,21 @@ for (const d of demandes) {
     console.log('REFUSE : un enregistrement sans valeur.');
     process.exit(1);
   }
+  /*
+   * UN MX SANS PRIORITE N'EST PAS UN MX (ajoute le 7 novembre 2026, pour
+   * Resend). Vercel refuse un MX sans `mxPriority`, et la premiere version de
+   * cet outil laissait tomber ce champ en silence : l'enregistrement partait
+   * incomplet. Un courrier qui ne trouve pas son serveur ne revient pas avec
+   * un message d'erreur lisible, il disparait. On exige donc la priorite ici,
+   * avant de toucher a quoi que ce soit.
+   */
+  if (type === 'MX') {
+    const p = d.priorite;
+    if (!Number.isInteger(p) || p < 0 || p > 65535) {
+      console.log(`REFUSE : le MX « ${nom || '@'} » n'a pas de priorite entiere entre 0 et 65535.`);
+      process.exit(1);
+    }
+  }
 }
 
 // --- Ce qui existe deja ----------------------------------------------------------
@@ -154,13 +170,18 @@ for (const d of demandes) {
     console.log('     Cet outil ne remplace rien. A regler a la main dans Vercel.');
     process.exit(1);
   }
-  aPoser.push({ type, nom, valeur });
+  aPoser.push({ type, nom, valeur, priorite: d.priorite });
 }
 
 if (!aPoser.length) { console.log('\nRien a ajouter : tout est deja en place.'); process.exit(0); }
 
 console.log(`\n${aPoser.length} a ajouter :`);
-for (const e of aPoser) console.log(`  ${e.type.padEnd(5)} ${(e.nom || '@').padEnd(22)} ${e.valeur.slice(0, 70)}`);
+for (const e of aPoser) {
+  console.log(
+    `  ${e.type.padEnd(5)} ${(e.nom || '@').padEnd(22)} ${e.valeur.slice(0, 70)}` +
+      (e.type === 'MX' ? `  (priorite ${e.priorite})` : '')
+  );
+}
 
 if (!VRAI) { console.log('\n(essai a blanc : rien envoye. Relancer avec --vrai)'); process.exit(0); }
 
@@ -168,7 +189,13 @@ console.log('');
 for (const e of aPoser) {
   const r = await vercel(`/v2/domains/${DOMAINE}/records`, {
     method: 'POST',
-    body: JSON.stringify({ type: e.type, name: e.nom, value: e.valeur, ttl: 3600 }),
+    body: JSON.stringify({
+      type: e.type,
+      name: e.nom,
+      value: e.valeur,
+      ttl: 3600,
+      ...(e.type === 'MX' ? { mxPriority: e.priorite } : {}),
+    }),
   });
   console.log(`  ${e.type.padEnd(5)} ${(e.nom || '@').padEnd(22)} ${r.ok ? 'POSE' : `ECHEC ${r.statut} ${r.texte.slice(0, 160)}`}`);
 }
