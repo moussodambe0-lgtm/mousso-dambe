@@ -62,13 +62,34 @@ const annee = new Date().getFullYear();
     color: #e8d5dd;
   }
 
-  /* Sur les pages à barre basse, le pied s'arrête au-dessus d'elle. */
-  .pied-nav { margin-bottom: var(--nav-hauteur, 0px); }
+  /*
+   * LE SOMBRE DESCEND JUSQU'EN BAS, Arthur l'a vu tout de suite le
+   * 7 novembre 2026 : « je vois le fond noir rouge qui est très joli, et en
+   * bas je vois un fond blanc encore. Ça sert à quoi ? Enlève ce fond-là. Le
+   * dernier fond qu'on doit voir, c'est le fond rose noir. »
+   *
+   * D'OÙ VENAIT CE BLANC. `body` réserve la hauteur de la barre basse par un
+   * `padding-bottom` (voir src/styles/base.css). Le pied de page, dernier
+   * enfant du corps, s'arrêtait donc AVANT cette réserve, et le fond clair
+   * du corps réapparaissait en dessous : une bande blanche sous le sombre.
+   *
+   * La marge négative fait sortir le bloc dans la réserve pour que sa couleur
+   * la recouvre, et le même nombre de pixels est rendu en rembourrage
+   * intérieur pour que le texte, lui, reste au-dessus de la barre basse.
+   * Rien ne passe sous la barre, et il n'y a plus de blanc.
+   */
+  .pied-nav {
+    margin-bottom: calc(-1 * (var(--nav-hauteur) + env(safe-area-inset-bottom, 0px)));
+  }
 
   .dedans {
     max-width: 640px;
     margin: 0 auto;
     padding: var(--e6) var(--e4) calc(var(--e5) + env(safe-area-inset-bottom, 0px));
+  }
+
+  .pied-nav .dedans {
+    padding-bottom: calc(var(--e5) + var(--nav-hauteur) + env(safe-area-inset-bottom, 0px));
   }
 
   .marque {

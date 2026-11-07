@@ -2,21 +2,7 @@
 layout: ../../layouts/Legal.astro
 titre: "Conditions générales d'utilisation"
 description: "Les règles d'usage de Mousso Dambé."
-version: "Version 1.1 du 5 novembre 2026 (précédemment version 1.0 du 26 octobre 2026)"
 ---
-**Mousso Dambé**
-
-> **Note pour Arthur, à retirer avant la mise en ligne.** En version 1.1, l'**article 6**
-> est complété de deux points : les questions à l'assistante sont relues par l'équipe, et
-> le journal ne l'est pas. Je l'écris ici en plus de la politique de confidentialité parce
-> que les CGU sont le seul des deux documents qu'on **accepte** : ce qui y figure est
-> opposable.
-
----
-
-Ce texte dit ce que Mousso Dambé vous offre, ce que nous attendons de vous, et ce dont
-nous répondons ou non. Il est court et écrit simplement, pour être lu sur un téléphone.
-
 Les conditions de la **vente** des produits de la boutique sont dans un autre document,
 les **conditions générales de vente**. Ce que nous faisons de vos données est dans la
 **politique de confidentialité**.
@@ -184,15 +170,3 @@ l'application.
 Le droit burkinabè s'applique. Si quelque chose ne va pas, **écrivez-nous d'abord** : la
 plupart des problèmes se règlent en un message. À défaut d'accord, les tribunaux de
 Ouagadougou sont compétents.
-
----
-
-## Les textes cités dans ce document
-
-- Loi n°045-2009/AN du 10 novembre 2009 portant réglementation des services et des
-  transactions électroniques, article 55.
-- Loi n°016-2017/AN du 27 avril 2017 portant organisation de la concurrence, article 54.
-- Loi n°048-2019/AN du 12 novembre 2019 portant protection de la propriété littéraire et
-  artistique.
-- Loi n°012-2025/ALT du 1er septembre 2025 portant code des personnes et de la famille,
-  article 272-1.

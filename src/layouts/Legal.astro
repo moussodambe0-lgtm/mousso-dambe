@@ -28,14 +28,26 @@
  */
 import Base from './Base.astro';
 import Icone from '../components/Icone.astro';
+import PiedLegal from '../components/PiedLegal.astro';
 
+/*
+ * NI VERSION, NI COMMENTAIRE, NI PHRASE DE FIN (Arthur, le 7 novembre 2026) :
+ *
+ *   « Quand on dit conditions d'utilisation, on doit voir les conditions
+ *     d'utilisation. Quand on dit politique de confidentialité, on va voir
+ *     seulement ça. Tes versions, on s'en passe. Tes commentaires, on s'en
+ *     passe. On doit voir seulement ça. »
+ *
+ * Le gabarit affichait « Version 1.1 du 5 novembre 2026 » sous le titre, et
+ * une phrase de ma main en bas de page. Les deux sont partis. Une page légale
+ * ne contient que le document : le reste est du bruit qui s'interpose entre
+ * la femme et ce qu'elle a accepté.
+ */
 interface Props {
   /** Donné par l'en-tête du fichier Markdown. */
   frontmatter: {
     titre: string;
     description?: string;
-    /** « Version 1.0 du 26 octobre 2026 », affiché sous le titre. */
-    version?: string;
   };
 }
 
@@ -47,7 +59,11 @@ const { frontmatter } = Astro.props;
 Astro.response.headers.set('Cache-Control', 'public, max-age=3600, s-maxage=86400');
 ---
 
-<Base titre={frontmatter.titre} description={frontmatter.description ?? frontmatter.titre}>
+{/* `pleinEcran` : ces pages n'ont pas de barre basse, elles n'ont donc pas à
+    lui réserver de la place. Sans cela, le corps garde un rembourrage pour
+    une barre qui n'existe pas, et une bande claire réapparaît sous le pied de
+    page sombre. */}
+<Base titre={frontmatter.titre} description={frontmatter.description ?? frontmatter.titre} pleinEcran>
   <main class="legal">
     <a class="retour" href="/legal">
       <Icone nom="retour" taille={18} />
@@ -55,17 +71,13 @@ Astro.response.headers.set('Cache-Control', 'public, max-age=3600, s-maxage=8640
     </a>
 
     <h1>{frontmatter.titre}</h1>
-    {frontmatter.version && <p class="version">{frontmatter.version}</p>}
 
     <article class="texte">
       <slot />
     </article>
-
-    <p class="pied">
-      Une question sur ce document ? Écris-nous, et nous te répondrons en français, en
-      mooré ou en dioula.
-    </p>
   </main>
+
+  <PiedLegal />
 </Base>
 
 <style>
@@ -91,11 +103,7 @@ Astro.response.headers.set('Cache-Control', 'public, max-age=3600, s-maxage=8640
     line-height: 1.2;
   }
 
-  .version {
-    margin: 8px 0 var(--e5);
-    font-size: 13.5px;
-    color: var(--texte-3);
-  }
+  .legal h1 + .texte { margin-top: var(--e5); }
 
   /* Le corps du document. Les règles visent les balises produites par le
      Markdown : on ne peut pas leur poser de classe. */
@@ -164,12 +172,4 @@ Astro.response.headers.set('Cache-Control', 'public, max-age=3600, s-maxage=8640
 
   .texte :global(blockquote p:last-child) { margin-bottom: 0; }
 
-  .pied {
-    margin: var(--e6) 0 0;
-    padding-top: var(--e4);
-    border-top: 1px solid var(--bordure);
-    font-size: 14px;
-    line-height: 1.6;
-    color: var(--texte-3);
-  }
 </style>

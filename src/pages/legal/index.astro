@@ -22,6 +22,7 @@
  */
 import Base from '../../layouts/Base.astro';
 import Icone from '../../components/Icone.astro';
+import PiedLegal from '../../components/PiedLegal.astro';
 
 export const prerender = false;
 
@@ -76,11 +77,15 @@ const DOCUMENTS: Document[] = [
   },
 ];
 
+// Seuls les documents publiés s'affichent. Les autres restent dans la liste
+// ci-dessus comme mémoire de ce qui est prévu, et apparaîtront d'eux-mêmes le
+// jour où ils auront une adresse.
 const publies = DOCUMENTS.filter((d) => d.adresse);
-const aVenir = DOCUMENTS.filter((d) => !d.adresse);
 ---
 
-<Base titre="Documents légaux" description="Les conditions, la confidentialité et les mentions légales de Mousso Dambé.">
+{/* `pleinEcran` : pas de barre basse ici, donc pas de place à lui réserver.
+    Sans cela, une bande claire réapparaît sous le pied de page sombre. */}
+<Base titre="Documents légaux" description="Les conditions, la confidentialité et les mentions légales de Mousso Dambé." pleinEcran>
   <main class="legal-index">
     <a class="retour" href="/">
       <Icone nom="retour" taille={18} />
@@ -108,29 +113,20 @@ const aVenir = DOCUMENTS.filter((d) => !d.adresse);
       ))}
     </ul>
 
-    {aVenir.length > 0 && (
-      <>
-        <h2 class="bientot-titre">Bientôt</h2>
-        <p class="bientot-dit">
-          Ces documents sont écrits. Ils attendent quelques informations sur l’entreprise
-          avant d’être publiés.
-        </p>
-        <ul class="liste">
-          {aVenir.map((d) => (
-            <li>
-              <div class="doc doc-attente">
-                <span class="rond rond-gris"><Icone nom={d.icone} taille={20} /></span>
-                <span class="mots">
-                  <span class="doc-titre">{d.titre}</span>
-                  <span class="doc-dit">{d.dit}</span>
-                </span>
-              </div>
-            </li>
-          ))}
-        </ul>
-      </>
-    )}
+    {/* LA SECTION « BIENTÔT » A ÉTÉ RETIRÉE (Arthur, le 7 novembre 2026 :
+        « s'il y a une partie où tu as écrit tous les documents légaux, faut
+        supprimer ça aussi »).
+
+        Elle annonçait les quatre documents non encore publiés, avec la liste
+        de ce qui leur manquait. C'était encore un commentaire sur notre
+        travail, affiché à des clientes à qui il ne dit rien : ce qui manque
+        à Mousso Dambé pour publier un document n'est pas leur affaire.
+
+        La liste `DOCUMENTS` garde les six : c'est elle qui sert de mémoire,
+        et chacun apparaîtra ici le jour où il aura son adresse. */}
   </main>
+
+  <PiedLegal />
 </Base>
 
 <style>

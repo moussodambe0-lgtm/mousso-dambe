@@ -2,12 +2,7 @@
 layout: ../../layouts/Legal.astro
 titre: "Cookies et traceurs"
 description: "Ce que Mousso Dambé dépose sur ton téléphone, et pourquoi."
-version: "Version 1.1 du 5 novembre 2026 (précédemment version 1.0 du 26 octobre 2026)"
 ---
-**Mousso Dambé**
-
----
-
 Un « cookie » est un petit fichier que l'application dépose dans votre téléphone pour se
 souvenir de quelque chose d'une page à l'autre.
 
@@ -103,50 +98,3 @@ Si un jour nous ajoutons un outil de mesure d'audience extérieur ou un cookie
 publicitaire, ou si le fichier `md_jour` devait contenir autre chose qu'une date, **un
 bandeau de consentement apparaîtra et cette page sera modifiée avant**, pas après. C'est un
 engagement, pas une formule.
-
----
-
-> **Note pour Arthur, à retirer avant la mise en ligne.** Ce document a bien lieu d'être
-> au Burkina Faso, mais pas pour la raison qu'on croit : il n'existe pas, à ma
-> connaissance, de texte burkinabè équivalent à la directive européenne sur les cookies.
-> Ce qui s'applique est la règle générale de l'**article 11 de la loi n°037-2026/ALP**, qui
-> exige un consentement préalable pour tout traitement de données personnelles et dont la
-> liste d'exceptions est **limitative** : elle ne comporte **aucun « intérêt légitime »**,
-> et rattache les fins statistiques à l'intérêt **public**.
->
-> **⚠️ CORRECTION DU 5 NOVEMBRE 2026.** La version 1.0 écrivait « nous ne comptons pas les
-> visites » et « nous préférons ne pas compter ». **C'est devenu faux le jour où tu as
-> demandé de compter la fréquentation**, et une politique de cookies fausse est un
-> manquement à l'article 13, pas une maladresse de rédaction. La section 2 est corrigée et
-> la section 2 bis est neuve.
->
-> **Pourquoi il n'y a toujours pas de bandeau, et le raisonnement tient sur un seul fait.**
-> Le cookie `md_jour` ne contient **qu'une date**, identique pour toutes les visiteuses du
-> même jour. Il ne distingue personne, ni directement ni indirectement, donc ce n'est pas
-> une donnée à caractère personnel au sens de l'article 2, et l'article 11 ne s'applique
-> pas. **C'est une situation meilleure que celle de Jia**, qui range un identifiant tiré au
-> hasard dans l'appareil : là, la question reste ouverte, c'est le point 39 de ma liste
-> avocat. Ici, il n'y a aucun identifiant à discuter.
->
-> **La ligne à ne pas franchir, à surveiller à chaque migration :** le jour où `md_jour`
-> contient un numéro, ou le jour où `visites_jour` gagne une colonne « page » ou « adresse
-> IP », tout ce qui précède devient faux et le bandeau redevient obligatoire.
->
-> **La seule donnée personnelle du comptage est `profils.derniere_visite`**, parce qu'elle
-> est attachée à un compte. Ce n'est pas un cookie, aucun bandeau n'y changerait rien :
-> elle est déclarée en sections 2.6, 3 et 7 de la politique de confidentialité et rattachée
-> au consentement.
->
-> Vérifié dans le code le 5 novembre 2026 : `md_session` (`src/lib/supabase.ts`, 30 jours),
-> `md_panier` (`src/lib/session.ts`, 14 jours) et `md_jour` (`src/middleware.ts`, 48 heures,
-> `httpOnly`, valeur = la date du jour) ; aucun `localStorage`, aucun `sessionStorage` ;
-> le service worker (`public/sw.js`) refuse de garder les chemins de la liste `PRIVE`.
-
----
-
-## Journal des versions
-
-| Version | Date | Ce qui change |
-|---|---|---|
-| **1.1** | **5 novembre 2026** | Cookie `md_jour` ajouté. **Section 2 corrigée, elle était devenue fausse.** Section 2 bis neuve : comment on compte sans suivre personne. Section 6 élargie |
-| 1.0 | 26 octobre 2026 | Première rédaction, deux cookies, aucun comptage |
