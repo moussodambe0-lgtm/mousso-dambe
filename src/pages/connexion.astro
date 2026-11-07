@@ -1,75 +1,71 @@
 ---
 /**
- * Son compte : s'inscrire, ou se connecter.
+ * Se connecter.
  *
- * DEUX ÉCRANS, ET ARTHUR A DEMANDÉ LES DEUX (27 octobre 2026)
+ * Arthur, le 7 novembre 2026 : « comment la page pour s'inscrire ou bien se
+ * connecter de Jia est, je veux la même chose chez Mousso Dambé. Sauf les
+ * couleurs que tu vas utiliser. Faut pas essayer d'adapter. »
  *
- * « Quand la personne vient sur la page, la personne doit voir s'inscrire ou
- * se connecter. Les deux options. Deux boutons. Quand la personne clique sur
- * s'inscrire, c'est là qu'elle va voir la page avec Google. Quand la personne
- * clique sur se connecter aussi, la personne voit la même page avec Google. »
+ * CETTE PAGE EST LA COPIE DE `src/pages/connexion.astro` DE JIA (dépôt
+ * yaar) : même en-tête de retour, même logo centré, même carte de formulaire,
+ * même séparateur, même ligne « Pas encore de compte ? ». Les couleurs sont
+ * celles de Mousso Dambé.
  *
- * D'où un premier écran qui ne fait que demander laquelle des deux, puis le
- * même second écran pour les deux. Techniquement c'est le même chemin, mais
- * les deux situations ne se ressemblent pas dans la tête de celle qui arrive :
- * celle qui n'a jamais eu de compte cherche « s'inscrire », et ne clique pas
- * sur « se connecter » de peur de se tromper.
+ * ──────────────────────────────────────────────────────────────────────────
+ * CE QUE CETTE PAGE NE FAIT PLUS, ET QUI EST PARTI AILLEURS
+ * ──────────────────────────────────────────────────────────────────────────
  *
- * GOOGLE EN GRAND, LE MOT DE PASSE REPLIÉ
+ * Elle portait TROIS écrans en un, avec un paramètre `?action=` : un écran de
+ * choix, puis l'inscription, puis la connexion. Arthur veut la séparation de
+ * Jia, un bouton et une vraie page derrière chacun :
  *
- * « Il y aura le bouton se connecter avec Google en grand, et une petite
- * option pour écrire son email et son mot de passe, mais je veux qu'on mette
- * en valeur se connecter avec Google. »
+ *   - l'écran de choix est devenu `src/pages/compte/visiteur.astro`, affiché
+ *     à la place de /compte quand elle n'est pas connectée ;
+ *   - l'inscription est redevenue `src/pages/inscription.astro`.
  *
- * Le second chemin est dans un `details` fermé : du HTML, pas une ligne de
- * script, et il s'ouvre en place. Google ouvre la session tout de suite quand
- * l'email oblige à sortir chercher un message de confirmation.
+ * Les anciennes adresses `?action=inscrire` et `?action=connecter` continuent
+ * de fonctionner : la première redirige vers /inscription, la seconde tombe
+ * simplement ici. Des liens de ce genre sont déjà partis sur WhatsApp, et un
+ * lien partagé qui ne mène nulle part ne revient jamais.
  *
- * S'INSCRIRE N'OUVRE PAS UN AUTRE COMPTE, IL GARDE CELUI-LÀ
+ * ──────────────────────────────────────────────────────────────────────────
+ * CE QUI NE CHANGE PAS, ET QUI NE DOIT PAS CHANGER
+ * ──────────────────────────────────────────────────────────────────────────
  *
- * « Commencer » pose une identité anonyme : son cycle, son journal et ses
- * commandes y sont déjà rattachés. S'inscrire ATTACHE donc Google (ou un mot
- * de passe) à ce compte, au lieu d'en ouvrir un second. Sans ça, une femme qui
- * a noté trois mois de règles arriverait sur un compte vide au moment précis
- * où elle essaie de les mettre à l'abri. Voir src/lib/identite.ts.
- *
- * Se connecter, lui, rejoint un compte qui existe déjà ailleurs, et l'écran
- * dit alors ce qu'elle laisse derrière elle.
- *
- * LA BARRE DU BAS RESTE (Arthur, le même jour) : « quand j'arrive là-bas, la
- * barre en bas disparaît, c'est comme si c'était une nouvelle page, et il n'y
- * a pas un truc pour revenir en arrière. Faut pas que les gens aillent là-bas
- * se bloquer. » C'était un cul-de-sac : le seul moyen de sortir était le
- * bouton « précédent » du navigateur, qui n'existe plus une fois
- * l'application posée sur l'écran d'accueil.
- *
- * LE MESSAGE D'ERREUR EST LE MÊME QUE L'ADRESSE EXISTE OU NON : dire « cette
- * adresse n'a pas de compte » révélerait à un mari curieux si sa femme utilise
- * l'application. Ce n'est pas une précaution théorique ici.
+ * LE MESSAGE D'ERREUR EST LE MÊME QUE L'ADRESSE EXISTE OU NON. Dire « cette
+ * adresse n'a pas de compte » révélerait à un mari curieux si sa femme
+ * utilise l'application. Ce n'est pas une précaution théorique ici.
  *
  * Cette phrase était fausse pour un cas, jusqu'à l'audit du 26 octobre 2026 :
  * une adresse non confirmée recevait « ton adresse n'est pas encore
  * confirmée », donc l'aveu qu'un compte existe. Il n'y a plus qu'un seul
  * texte, et un garde-fou dans supabase/tests/connexion.test.mjs tombe si un
  * second réapparaît.
+ *
+ * SUR L'ADRESSE DE LA GESTION, il n'y a rien à créer : un administrateur se
+ * connecte, il ne s'inscrit pas. Les liens vers /inscription sont donc
+ * cachés là-bas (Arthur, le 24 octobre 2026 : « cette page n'est pas
+ * disponible »).
+ *
+ * JIA VOUVOIE, Mousso Dambé tutoie partout ailleurs. Vouvoyer sur cette seule
+ * page sonnerait faux pour celle qui vient de traverser l'application.
  */
 import Base from '../layouts/Base.astro';
+import Entete from '../components/Entete.astro';
 import Symbole from '../components/Symbole.astro';
 import BoutonGoogle from '../components/BoutonGoogle.astro';
 import Alerte from '../components/Alerte.astro';
 import Icone from '../components/Icone.astro';
 import { clientPublic, poserSession, baseConfiguree } from '../lib/supabase';
 import { visiteuse } from '../lib/session';
-import { clientAuthentifie, causeDeLEchec } from '../lib/identite';
 import { hoteDemande, estHoteAdmin } from '../lib/hotes';
+import { suiteSure } from '../lib/suite';
 import { ADMIN_HOST } from 'astro:env/server';
 
 export const prerender = false;
 
-// Sur l'adresse de la gestion, on ne crée pas de compte : il n'y a qu'un
-// administrateur, nommé dans les réglages de la base. Le bouton « Je n'ai pas
-// encore de compte » menait à /ouverture, qui n'existe pas sur ce sous-domaine,
-// d'où « cette page n'est pas disponible » (Arthur, le 24 octobre 2026).
+Astro.response.headers.set('Cache-Control', 'private, no-store');
+
 const surHoteAdmin = estHoteAdmin(
   hoteDemande(Astro.request.headers, Astro.url.hostname),
   ADMIN_HOST
@@ -77,61 +73,40 @@ const surHoteAdmin = estHoteAdmin(
 
 const moi = baseConfiguree() ? await visiteuse(Astro) : null;
 
-// Celle qui a DÉJÀ un vrai compte n'a rien à faire ici. Celle qui est entrée
-// sans compte, elle, vient précisément ici pour en obtenir un.
+// Celle qui a DÉJÀ un vrai compte n'a rien à faire ici.
 if (moi?.compteReel) return Astro.redirect('/', 302);
 
-/**
- * Où on en est : le choix, puis l'écran de Google.
- *
- * Sur l'adresse de la gestion, il n'y a rien à choisir : un administrateur se
- * connecte, il ne s'inscrit pas. On saute donc directement au second écran.
- */
-type Etape = 'choix' | 'inscrire' | 'connecter';
-const demandee = String(Astro.url.searchParams.get('action') ?? '');
-let etape: Etape = demandee === 'inscrire' || demandee === 'connecter' ? demandee : 'choix';
-if (surHoteAdmin) etape = 'connecter';
+const suite = suiteSure(Astro.url.searchParams.get('suite'), '/compte');
 
-/** S'inscrire depuis un compte commencé, c'est l'attacher, pas en ouvrir un autre. */
-const attache = etape === 'inscrire' && Boolean(moi) && !surHoteAdmin;
+// L'ANCIENNE ADRESSE, GARDÉE VIVANTE. `?action=inscrire` menait au formulaire
+// de création ; il vit maintenant sur sa propre page.
+if (Astro.url.searchParams.get('action') === 'inscrire' && !surHoteAdmin) {
+  return Astro.redirect(`/inscription?suite=${encodeURIComponent(suite)}`, 301);
+}
 
 /**
  * LE BOUTON GOOGLE EST-IL MONTRÉ ?
  *
- * Mettre `true` ici le fait réapparaître. C'est le seul geste à faire, il n'y
- * a rien d'autre à toucher dans cette page.
+ * Mettre `true` ici le fait réapparaître, sur cette page et sur
+ * /inscription. C'est le seul geste à faire.
  *
- * POURQUOI IL EST ÉTEINT, LE 7 NOVEMBRE 2026
+ * POURQUOI IL EST ÉTEINT, LE 7 NOVEMBRE 2026. La base de Mousso Dambé a été
+ * remontée de zéro le 6 novembre, l'ancienne ayant disparu. Le code est
+ * revenu intact de GitHub, mais les RÉGLAGES ne vivent pas dans le code : ils
+ * étaient dans l'ancien projet Supabase. Le fournisseur Google est donc
+ * éteint côté base, et aucune connexion Google ne peut aboutir.
  *
- * La base de Mousso Dambé a été remontée de zéro le 6 novembre, l'ancienne
- * ayant disparu. Le code est revenu intact de GitHub, mais les RÉGLAGES ne
- * vivent pas dans le code : ils vivaient dans l'ancien projet Supabase. Le
- * fournisseur Google est donc éteint côté base, et aucune connexion Google ne
- * peut aboutir.
- *
- * Arthur, après avoir essayé : « quand j'appuie se connecter avec Google, on
- * me dit la connexion avec Google n'a pas marché ». Le message était exact,
- * mais il renvoyait à un mur : elle pouvait réessayer mille fois.
- *
- * Un bouton qui ne peut pas aboutir est pire que pas de bouton. Il occupe la
+ * Un bouton qui ne peut pas aboutir est pire que pas de bouton : il occupe la
  * place du chemin qui marche, et il apprend à celle qui arrive que le site
  * est cassé, à l'instant précis où elle décide de confier son cycle.
  *
- * CE QU'IL FAUDRA POUR LE RALLUMER : un client OAuth créé dans la console
- * Google Cloud (identifiant et secret), puis le fournisseur activé côté
- * Supabase, avec le rattachement manuel pour que les femmes entrées par
- * « Commencer » ne perdent pas ce qu'elles ont noté. Rien de tout cela n'est
- * dans le dépôt, et la console Google exige une carte bancaire pour vérifier
- * l'identité, ce qui a bloqué Arthur deux fois début novembre. On y revient
- * quand sa carte passe.
- *
- * CE QUI NE CHANGE PAS : la route /auth/google reste en place, les tests
- * aussi. Seul l'affichage est coupé.
+ * POUR LE RALLUMER : un client OAuth dans la console Google Cloud, puis le
+ * fournisseur activé côté Supabase, avec le rattachement manuel pour que les
+ * femmes entrées par « Commencer » ne perdent pas ce qu'elles ont noté.
  */
 const GOOGLE_DISPONIBLE = false;
 
 let erreur = '';
-let reussite = '';
 
 // Les retours de Google passent par l'adresse : on les traduit ici, sans
 // jamais dire si un compte existe ou non.
@@ -169,36 +144,9 @@ if (Astro.request.method === 'POST') {
   const f = await Astro.request.formData();
   emailSaisi = String(f.get('email') ?? '').trim().toLowerCase();
   const motDePasse = String(f.get('motdepasse') ?? '');
-  const geste = String(f.get('geste') ?? '');
 
   if (!emailSaisi || !motDePasse) {
     erreur = 'Remplis les deux champs.';
-  } else if (geste === 'attacher' && moi) {
-    // ATTACHER un email et un mot de passe au compte qu'elle a déjà, au lieu
-    // d'ouvrir une session sur un autre : son identifiant ne bouge pas, donc
-    // son cycle, son journal et ses commandes restent les siens.
-    const sac: Record<string, string> = {};
-    const client = await clientAuthentifie(Astro, sac);
-    if (!client) {
-      erreur = "Ta session a expiré. Reviens à l'accueil et recommence.";
-    } else {
-      const { error } = await client.auth.updateUser({ email: emailSaisi, password: motDePasse });
-      const cause = error ? causeDeLEchec(error.message) : null;
-      if (cause === 'deja-pris') {
-        erreur = 'Cette adresse a déjà un compte. Choisis « Se connecter » pour le rejoindre.';
-      } else if (cause === 'mot-de-passe-faible') {
-        erreur = 'Choisis un mot de passe un peu plus long, au moins huit caractères.';
-      } else if (error) {
-        erreur = "Nous n'avons pas pu enregistrer ton email. Réessaie dans un moment.";
-      } else {
-        // Le compte reste anonyme jusqu'à ce qu'elle ouvre l'email : c'est
-        // Supabase qui en décide, et c'est juste. On le lui dit franchement
-        // plutôt que de la laisser croire que c'est fini.
-        reussite =
-          "Nous venons d'envoyer un message à " + emailSaisi
-          + '. Ouvre-le pour terminer.';
-      }
-    }
   } else {
     const { data, error } = await clientPublic(Astro).auth.signInWithPassword({
       email: emailSaisi,
@@ -220,307 +168,163 @@ if (Astro.request.method === 'POST') {
         access_token: data.session.access_token,
         refresh_token: data.session.refresh_token,
       });
-      return Astro.redirect('/', 303);
+      return Astro.redirect(suiteSure(String(f.get('suite') ?? ''), '/'), 303);
     }
   }
 }
 
-const TITRES: Record<Etape, string> = {
-  choix: 'Ton compte',
-  inscrire: "S'inscrire",
-  connecter: 'Se connecter',
-};
-const titre = TITRES[etape];
-
-// Ce qu'on garde dans l'adresse en passant d'un écran à l'autre, pour que
-// l'explication « pour écrire à Dambé… » ne se perde pas en route.
-const suite = dOu ? `&pour=${encodeURIComponent(dOu)}` : '';
-const retourAuChoix = dOu ? `/connexion?pour=${encodeURIComponent(dOu)}` : '/connexion';
-
-// LA BARRE DU BAS RESTE pour celle qui est déjà dans l'application. Celle qui
-// arrive de dehors n'a pas de barre à garder, et l'écran plein est le bon.
-const ONGLET_DORIGINE: Record<string, 'discussions' | 'compte'> = {
-  messagerie: 'discussions',
-  compte: 'compte',
-};
-const onglet = moi ? (ONGLET_DORIGINE[dOu] ?? 'compte') : null;
+const versInscription = `/inscription?suite=${encodeURIComponent(suite)}`;
 ---
 
-<Base titre={titre} nav={onglet} pleinEcran={!onglet}>
-  <main class:list={['page', onglet && 'avec-nav']}>
-    {/* Le retour, en plus de la barre : la barre ramène vers un onglet, ce
-        lien ramène d'où elle vient. Ni l'un ni l'autre n'existe quand
-        l'application est posée sur l'écran d'accueil, puisqu'il n'y a plus de
-        bouton « précédent » de navigateur. */}
-    {(onglet || etape !== 'choix') && (
-      <a
-        class="revenir"
-        href={etape === 'choix' ? '/' : retourAuChoix}
-        aria-label={etape === 'choix' ? "Revenir à l'accueil" : 'Revenir au choix'}
-      >
-        <Icone nom="retour" taille={22} />
+<Base titre="Connexion" description="Connecte-toi à ton compte Mousso Dambé." pleinEcran>
+  <Entete titre="Se connecter" retour="/compte" />
+
+  <div class="section">
+    <div class="tete">
+      <Symbole taille={56} />
+    </div>
+
+    {pourquoi && (
+      <div class="encadre pourquoi">
+        <Icone nom="info" taille={19} />
+        <p>{pourquoi}</p>
+      </div>
+    )}
+
+    {/* `Alerte` n'a pas de garde interne : sans cette condition, un encadré
+        vide s'afficherait à chaque chargement. */}
+    {erreur && <div class="marge-bas"><Alerte type="erreur" texte={erreur} /></div>}
+
+    {/* CE QU'ELLE LAISSE DERRIÈRE ELLE, DIT AVANT QU'ELLE TOUCHE AU
+        FORMULAIRE.
+
+        Elle est entrée par « Commencer » et vient se connecter à un compte
+        qui existe ailleurs : son cycle, son journal et ses commandes notés
+        depuis ce téléphone resteront sur le compte commencé ici, et ne
+        suivront pas. Si ce n'est pas ce qu'elle veut, c'est /inscription
+        qu'il lui faut, qui ATTACHE son email au compte où tout est déjà.
+
+        Cet avertissement a disparu une heure en coupant la page en deux, le
+        7 novembre 2026. Une vérification de garder-son-compte.test.mjs l'a
+        rattrapé : c'est exactement pour ça qu'elle existe. */}
+    {moi && (
+      <div class="encadre prudence">
+        <Icone nom="info" taille={19} />
+        <p>
+          Ce que tu as noté depuis ce téléphone restera sur le compte commencé ici, et
+          ne suivra pas. Pour le garder, <a href={versInscription}>crée plutôt ton compte</a>.
+        </p>
+      </div>
+    )}
+
+    <form method="POST" class="formulaire">
+      <input type="hidden" name="suite" value={suite} />
+
+      <div class="champ-bloc">
+        <label class="libelle" for="email">Ton email</label>
+        <input class="champ" id="email" name="email" type="email" required autocomplete="email" inputmode="email" value={emailSaisi} />
+      </div>
+
+      <div class="champ-bloc">
+        <label class="libelle" for="motdepasse">Ton mot de passe</label>
+        <input class="champ" id="motdepasse" name="motdepasse" type="password" required autocomplete="current-password" />
+      </div>
+
+      <button type="submit" class="btn btn-rose btn-plein">Se connecter</button>
+    </form>
+
+    {/* GOOGLE APRÈS LE FORMULAIRE, ET C'EST LE SEUL ENDROIT OÙ JE M'ÉCARTE DE
+        JIA. Jia met Google en premier, puis « ou avec votre email », puis le
+        formulaire.
+
+        Deux consignes d'Arthur se croisent ici, le même jour.
+        Le matin : « il doit avoir une partie où on renseigne à la main son
+        email, et en bas mot de passe. Et maintenant en bas encore, on va voir
+        se connecter ou s'inscrire avec Google. »
+        L'après-midi : « je veux la même chose chez Mousso Dambé, sauf les
+        couleurs, faut pas essayer d'adapter. »
+
+        La seconde porte sur l'allure de la page entière, la première sur
+        cette question précise, et elle a été donnée après avoir vu l'écran.
+        On garde donc l'ordre qu'il a demandé expressément, et le reste de la
+        page suit Jia à la lettre. À inverser en deux lignes s'il préfère. */}
+    {GOOGLE_DISPONIBLE && (
+      <>
+        <div class="separateur"><span>ou</span></div>
+        <BoutonGoogle grand basculer={!!moi} texte="Se connecter avec Google" />
+      </>
+    )}
+
+    {/* EN LOCAL, LA PORTE SANS MOT DE PASSE. Arthur, le 5 novembre 2026 :
+        « j'arrive pas à me connecter à admin Mousso Dambé ». Le banc local
+        recrée sa base à chaque redémarrage, donc sa session meurt et il
+        retombe ici. Ce lien n'apparaît qu'en développement :
+        src/pages/dev/admin.ts renvoie 404 en production. */}
+    {import.meta.env.DEV && surHoteAdmin && (
+      <a class="btn btn-contour btn-plein porte-locale" href="/dev/admin">
+        Entrer sans mot de passe (local)
       </a>
     )}
 
-    <div class="haut">
-      <Symbole taille={150} forme="nom" anime titre="Mousso Dambé" />
-      <h1>{titre}</h1>
-    </div>
-
-    <div class="corps apparait">
-      {erreur && <div class="marge-bas"><Alerte type="erreur" texte={erreur} /></div>}
-      {reussite && <div class="marge-bas"><Alerte type="reussite" texte={reussite} /></div>}
-
-      {pourquoi && !erreur && !reussite && (
-        <p class="pourquoi">
-          <Icone nom="info" taille={15} />
-          {pourquoi}
+    {!surHoteAdmin && (
+      <div class="encadre acheteuse">
+        <Icone nom="info" taille={19} />
+        <p>
+          Pas encore de compte ? <a href={versInscription}>En créer un</a> prend une minute, et
+          garde ton cycle et tes commandes sur tous tes téléphones.
         </p>
-      )}
-
-      {etape === 'choix' ? (
-        <div class="choix">
-          <a class="btn btn-rose btn-plein" href={`/connexion?action=inscrire${suite}`}>
-            S'inscrire
-          </a>
-          <a class="btn btn-contour btn-plein" href={`/connexion?action=connecter${suite}`}>
-            Se connecter
-          </a>
-        </div>
-      ) : (
-        <>
-          {/* L'EMAIL D'ABORD, GOOGLE EN DESSOUS (Arthur, le 7 novembre 2026).
-              Ses mots : « il doit avoir une partie où on renseigne à la main
-              son email, et en bas mot de passe. Et maintenant en bas encore,
-              on va voir se connecter ou s'inscrire avec Google. »
-
-              CELA RENVERSE LA DISPOSITION DU 27 OCTOBRE, et le renversement
-              est justifié. Ce jour-là il avait demandé « Google en grand, et
-              une petite option pour écrire son email », parce que Google
-              ouvrait la session tout de suite quand l'email obligeait à
-              sortir chercher un message. Mais l'envoi des messages ne
-              marchait pas : le chemin par email n'existait que sur le papier,
-              et le replier derrière un `details` le rendait introuvable.
-
-              Depuis aujourd'hui l'email part vraiment (Resend, voir
-              outils/brancher-les-emails.mjs). Les deux chemins sont donc
-              réels, et c'est celui qui marche partout, y compris pour une
-              femme sans compte Google, qui se montre en premier.
-
-              Le `details` est supprimé, pas simplement ouvert par défaut :
-              un volet qu'on n'a plus de raison de fermer n'est plus un
-              volet, c'est une formulaire avec une flèche inutile. */}
-          <form method="POST" class="formulaire">
-            <input type="hidden" name="geste" value={attache ? 'attacher' : 'connecter'} />
-
-            <div class="champ-bloc">
-              <label class="libelle" for="email">Ton email</label>
-              <input class="champ" id="email" name="email" type="email" autocomplete="email" required value={emailSaisi} />
-            </div>
-
-            <div class="champ-bloc">
-              <label class="libelle" for="motdepasse">
-                {etape === 'inscrire' ? 'Choisis un mot de passe' : 'Ton mot de passe'}
-              </label>
-              <input
-                class="champ"
-                id="motdepasse"
-                name="motdepasse"
-                type="password"
-                autocomplete={etape === 'inscrire' ? 'new-password' : 'current-password'}
-                minlength={etape === 'inscrire' ? 8 : undefined}
-                required
-              />
-            </div>
-
-            {etape === 'inscrire' && (
-              <p class="aide">
-                Tu devras ouvrir le message que nous t'enverrons pour terminer. Avec
-                Google, il n'y a rien à ouvrir.
-              </p>
-            )}
-
-            <button class="btn btn-rose btn-plein" type="submit">{titre}</button>
-          </form>
-
-          {/* Le trait et le mot « ou » : sans eux, deux boutons l'un sous
-              l'autre se lisent comme une suite d'étapes, et on croit devoir
-              faire les deux. Il disparaît avec le bouton Google, sinon il
-              annoncerait un second chemin qui n'arrive pas. */}
-          {GOOGLE_DISPONIBLE && (
-            <>
-              <div class="ou" role="separator" aria-label="ou">
-                <span>ou</span>
-              </div>
-
-              <BoutonGoogle
-                grand
-                basculer={!attache && Boolean(moi)}
-                texte={etape === 'inscrire' ? "S'inscrire avec Google" : 'Se connecter avec Google'}
-              />
-            </>
-          )}
-
-          {/* Elle a un compte commencé et choisit d'en rejoindre un autre :
-              elle doit savoir ce qu'elle laisse, AVANT de toucher le bouton.
-              Sans le bouton Google, il n'y a plus de second compte à
-              rejoindre depuis cet écran : l'avertissement n'aurait plus
-              d'objet, et un avertissement sans objet inquiète pour rien. */}
-          {GOOGLE_DISPONIBLE && moi && !attache && (
-            <p class="prudence">
-              <Icone nom="info" taille={15} />
-              Ce que tu as noté depuis ce téléphone restera sur le compte commencé
-              ici, et ne suivra pas.
-            </p>
-          )}
-
-          {/* EN LOCAL, LA PORTE SANS MOT DE PASSE. Arthur, le 5 novembre 2026 :
-              « j'arrive pas à me connecter à admin Mousso Dambé ». Le banc
-              local recrée sa base à chaque redémarrage, donc sa session meurt
-              et il retombe ici, devant un bouton Google qui ne peut pas
-              marcher sur localhost. Ce lien n'apparaît qu'en développement :
-              src/pages/dev/admin.ts renvoie 404 en production. */}
-          {import.meta.env.DEV && surHoteAdmin && (
-            <a class="btn btn-contour btn-plein porte-locale" href="/dev/admin">
-              Entrer sans mot de passe (local)
-            </a>
-          )}
-        </>
-      )}
-    </div>
-  </main>
+      </div>
+    )}
+  </div>
 </Base>
 
 <style>
-  .page {
-    position: relative;
+  .section { padding: var(--e4); }
+  .marge-bas { margin-bottom: var(--e3); }
+
+  .tete { text-align: center; padding: 14px 0 20px; }
+
+  .pourquoi {
     display: flex;
-    flex-direction: column;
-    min-height: 100svh;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: var(--e3);
+    background: var(--surface-douce);
   }
+  .pourquoi p { margin: 0; font-size: 13.5px; line-height: 1.45; color: var(--texte-2); }
 
-  /* Avec la barre du bas, le corps de la page s'arrête au-dessus d'elle :
-     sinon la page mesure un écran PLUS la hauteur de la barre, et le contenu
-     centré se retrouve décalé, avec un défilement qui ne mène à rien. */
-  .page.avec-nav {
-    min-height: calc(100svh - var(--nav-hauteur));
-  }
-
-  .revenir {
-    position: absolute;
-    top: var(--e3);
-    left: 0;
-    display: grid;
-    place-items: center;
-    /* 44 px : la cible que le pouce atteint sans viser. */
-    width: 44px;
-    height: 44px;
-    color: var(--texte-2);
-    border-radius: 50%;
-  }
-
-  .revenir:focus-visible {
-    outline: 2px solid var(--rose);
-    outline-offset: 2px;
-  }
-
-  /* CENTRÉ VERTICALEMENT, ET AVEC DES MARGES AUTOMATIQUES PLUTÔT QU'UN
-     `justify-content: center`.
-     Les deux centrent pareil tant que ça tient dans l'écran. Mais quand la
-     petite option est dépliée, le formulaire dépasse : `justify-content:
-     center` déborde alors des DEUX côtés, et le haut de la page devient
-     impossible à atteindre au défilement, logo et titre compris. Une marge
-     automatique, elle, se réduit à zéro dès qu'il n'y a plus de place. */
-  .haut {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--e3);
-    margin-top: auto;
-    padding: var(--e5) 0 var(--e4);
-    text-align: center;
-  }
-
-  .haut h1 {
-    font-size: 31.5px;
-  }
-
-  .corps {
-    margin-bottom: auto;
-    padding-bottom: var(--e5);
-  }
-
-  /* Les deux chemins, de même largeur et l'un sous l'autre : côte à côte, les
-     libellés se seraient coupés en deux lignes sur un écran de 390 px. */
-  .choix {
-    display: grid;
-    gap: var(--e3);
-  }
-
-  /* La porte locale, sous Google et au-dessus du formulaire : visible sans
-     chercher, mais sans voler la vedette au chemin qui sera le vrai. */
-  .porte-locale {
-    margin-top: var(--e3);
-  }
-
-  .champ-bloc {
-    margin-bottom: var(--e4);
-  }
-
-  .marge-bas {
-    margin-bottom: var(--e4);
-  }
-
-  .pourquoi,
   .prudence {
     display: flex;
     align-items: flex-start;
-    gap: 6px;
-    margin: 0 0 var(--e4);
-    padding: var(--e3);
-    border-radius: var(--r-champ);
+    gap: 8px;
+    margin-bottom: var(--e3);
     background: var(--surface-douce);
-    font-size: 13.5px;
-    line-height: 1.45;
-    color: var(--texte-2);
   }
+  .prudence p { margin: 0; font-size: 13.5px; line-height: 1.45; color: var(--texte-2); }
+  .prudence a { font-weight: 700; }
 
-  .prudence {
-    margin: var(--e3) 0 0;
-  }
+  .separateur { display: flex; align-items: center; gap: 12px; margin: 18px 0 14px; }
+  .separateur::before,
+  .separateur::after { content: ''; flex: 1; height: 1px; background: var(--bordure); }
+  .separateur span { font-size: 12.5px; color: var(--texte-3); }
 
-  /* LE FORMULAIRE EN PREMIER (7 novembre 2026). Il remplace le volet
-     `details` qui cachait l'email derrière « Utiliser un email et un mot de
-     passe ». Rien à ouvrir, rien à deviner. */
   .formulaire {
-    margin-top: var(--e2);
+    background: var(--surface);
+    border: 1px solid var(--bordure);
+    border-radius: var(--r-carte);
+    padding: 16px;
   }
+  .formulaire .btn { margin-top: 18px; }
+  .champ-bloc + .champ-bloc { margin-top: 16px; }
 
-  /* LE « OU » ENTRE LES DEUX CHEMINS. Un trait de chaque côté du mot : sans
-     lui, deux boutons l'un sous l'autre se lisent comme deux étapes à faire
-     l'une après l'autre, et on croit devoir remplir le formulaire PUIS
-     appuyer sur Google. */
-  .ou {
+  .porte-locale { margin-top: var(--e3); }
+
+  .acheteuse {
     display: flex;
-    align-items: center;
-    gap: var(--e3);
-    margin: var(--e4) 0;
-    color: var(--texte-3);
-    font-size: 13.5px;
+    align-items: flex-start;
+    gap: 8px;
+    margin-top: 16px;
   }
-
-  .ou::before,
-  .ou::after {
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: var(--bordure);
-  }
-
-  .aide {
-    margin: calc(-1 * var(--e2)) 0 var(--e4);
-    font-size: 13px;
-    line-height: 1.45;
-    color: var(--texte-3);
-  }
+  .acheteuse p { margin: 0; font-size: 13.5px; line-height: 1.45; color: var(--texte-2); }
+  .acheteuse a { font-weight: 700; }
 </style>

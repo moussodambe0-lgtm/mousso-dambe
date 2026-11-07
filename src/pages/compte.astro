@@ -49,7 +49,7 @@ import { ADMIN_HOST } from 'astro:env/server';
 
 if (!baseConfiguree()) return Astro.redirect('/', 302);
 const moi = await visiteuse(Astro);
-if (!moi) return Astro.redirect('/connexion', 302);
+
 // UN VRAI COMPTE, PAS SEULEMENT UNE SESSION (Arthur, le 27 octobre 2026).
 //
 // « Pour accéder à la messagerie et au niveau de compte, la personne va devoir
@@ -57,8 +57,19 @@ if (!moi) return Astro.redirect('/connexion', 302);
 // et tout le reste de l'application lui est ouvert : son cycle, son journal,
 // la boutique, ses commandes. Mais ici il faut un email : sans lui, personne
 // ne peut lui répondre, et elle ne retrouverait rien en changeant de
-// téléphone. L'écran de connexion explique pourquoi grâce à `pour`.
-if (!moi.compteReel) return Astro.redirect('/connexion?pour=compte', 302);
+// téléphone.
+//
+// UN ACCUEIL, PLUS UNE REDIRECTION (Arthur, le 7 novembre 2026 : « quand on
+// part dans compte, nouvellement, on n'est pas connecté, on va voir le bouton
+// s'inscrire, se connecter, et la mascotte »).
+//
+// Les deux lignes qui étaient ici renvoyaient vers /connexion, et la femme se
+// retrouvait devant un formulaire sans savoir pourquoi, ni ce qu'elle y
+// gagnait. `Astro.rewrite` affiche l'accueil du compte SANS changer l'adresse :
+// elle reste sur /compte, la barre du bas garde son onglet allumé, et le
+// bouton « précédent » la ramène là d'où elle vient au lieu de la renvoyer
+// ici en boucle. C'est la mécanique de Jia, reprise telle quelle.
+if (!moi || !moi.compteReel) return Astro.rewrite('/compte/visiteur');
 
 const client = clientSession(Astro)!;
 const panier = comptePanier(lirePanier(Astro));

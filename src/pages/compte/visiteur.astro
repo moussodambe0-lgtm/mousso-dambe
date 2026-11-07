@@ -1,0 +1,217 @@
+---
+/**
+ * L'onglet Compte pour une femme qui n'est pas connectée.
+ *
+ * Arthur, le 7 novembre 2026 : « quand on part dans compte, nouvellement, on
+ * n'est pas connecté, on va voir le bouton s'inscrire, se connecter, et la
+ * mascotte. Comment la page pour s'inscrire ou bien se connecter de Jia est,
+ * je veux la même chose chez Mousso Dambé. Sauf les couleurs. »
+ *
+ * CETTE PAGE EST LA COPIE DE `src/pages/compte/visiteur.astro` DE JIA (dépôt
+ * yaar). Même scène, même chorégraphie, mêmes durées, mêmes pourcentages
+ * d'images clés. Seules les couleurs changent : le vert de Jia devient le
+ * rose de Mousso Dambé, et l'orange de ses losanges devient le rose clair.
+ *
+ * `/compte` l'affiche à la place du compte (par `Astro.rewrite`, donc
+ * l'adresse reste `/compte`), avec la barre du bas : elle peut toujours
+ * revenir à l'accueil.
+ *
+ * LA SCÈNE, telle que Jia la joue. La mascotte entre, tire le panneau
+ * « Se connecter / Créer un compte » par sa poignée en trois coups de corde,
+ * puis salue. Le fond dérive sans cesse. 2,6 s, en CSS seulement (`transform`
+ * et `opacity`), sans une ligne de JavaScript. Les boutons sont de vrais
+ * liens : dès que le panneau est à l'écran, ils répondent, rien n'attend la
+ * fin de l'animation. Si le téléphone demande moins de mouvement, tout
+ * s'affiche d'emblée en place.
+ *
+ * TROIS ÉCARTS, ET AUCUN N'EST UNE RETOUCHE DE GOÛT.
+ *
+ * 1. Jia a deux dessins faits pour la scène, « tire » et « salut ». Mousso
+ *    Dambé n'a pas de pose « tire » : on prend « ecoute », son dessin le plus
+ *    neutre, et « salut » pour la fin. La chorégraphie est la même.
+ * 2. Jia vouvoie, Mousso Dambé tutoie partout ailleurs. Vouvoyer ici seulement
+ *    sonnerait faux pour celle qui vient de traverser l'application.
+ * 3. Les quatre avantages listés sont ceux de Mousso Dambé, pas ceux d'une
+ *    place de marché : son cycle, ses commandes, ses adresses, ses messages.
+ */
+import Base from '../../layouts/Base.astro';
+import Icone from '../../components/Icone.astro';
+import Mascotte from '../../components/Mascotte.astro';
+
+export const prerender = false;
+
+Astro.response.headers.set('Cache-Control', 'private, no-store');
+---
+
+<Base titre="Mon compte" description="Connecte-toi ou crée ton compte Mousso Dambé." nav="compte">
+  <section class="scene-compte" aria-labelledby="titre-bienvenue">
+    <div class="fond-anime" aria-hidden="true">
+      <span class="tache t1"></span><span class="tache t2"></span><span class="tache t3"></span>
+      <i class="los l1"></i><i class="los l2"></i><i class="los l3"></i>
+    </div>
+
+    <h1 id="titre-bienvenue">Bienvenue sur Mousso Dambé</h1>
+    <p class="chapeau">Crée ton compte pour garder ton cycle, tes commandes et tes messages, sur tous tes téléphones.</p>
+
+    <div class="scene">
+      <div class="acteur" aria-hidden="true">
+        <Mascotte etat="ecoute" taille={100} titre={null} classe="md-tire" />
+        <Mascotte etat="salut" taille={100} titre={null} classe="md-salue" />
+      </div>
+      <span class="corde" aria-hidden="true"></span>
+
+      <div class="panneau">
+        <span class="poignee" aria-hidden="true"></span>
+        <a class="btn btn-rose" href="/connexion?suite=/compte">Se connecter</a>
+        <a class="btn btn-contour" href="/inscription?suite=/compte">Créer un compte</a>
+        <p class="gratuit">Gratuit, en une minute.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <ul class="avantages">
+      <li><span class="rond"><Icone nom="cycle" taille={18} /></span> Ton cycle gardé, même si tu changes de téléphone</li>
+      <li><span class="rond"><Icone nom="colis" taille={18} /></span> Tes commandes et leur suivi</li>
+      <li><span class="rond"><Icone nom="lieu" taille={18} /></span> Ton adresse de livraison retenue</li>
+      <li><span class="rond"><Icone nom="bulles" taille={18} /></span> Tes messages avec Dambé et la boutique</li>
+    </ul>
+  </section>
+
+  <section class="section">
+    <a class="continuer" href="/">
+      <Icone nom="accueil" taille={18} /> Continuer sans compte
+    </a>
+  </section>
+</Base>
+
+<style>
+  /* ---------- Le décor : un rose qui respire ---------- */
+
+  .scene-compte {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    background: var(--rose);
+    color: #ffffff;
+    padding: 26px var(--e4) 26px;
+  }
+  .scene-compte h1 { color: #ffffff; font-size: 26px; margin: 0; }
+  .chapeau { margin: 6px 0 0; font-size: 15px; line-height: 1.5; color: #ffdce9; max-width: 34ch; }
+
+  .fond-anime { position: absolute; inset: 0; z-index: -1; }
+  .tache { position: absolute; border-radius: 50%; background: var(--rose-fonce); animation: derive 14s ease-in-out infinite alternate; }
+  .t1 { width: 240px; height: 240px; left: -80px; top: 30px; }
+  .t2 { width: 180px; height: 180px; right: -50px; top: 150px; animation-duration: 11s; }
+  .t3 { width: 130px; height: 130px; left: 45%; bottom: -40px; animation-duration: 17s; }
+  .los { position: absolute; bottom: -20px; width: 10px; height: 10px; background: var(--rose-clair); transform: rotate(45deg); opacity: .8; animation: monte-losange 9s linear infinite; }
+  .l1 { left: 12%; }
+  .l2 { left: 58%; animation-delay: 3s; }
+  .l3 { left: 84%; animation-delay: 6s; width: 7px; height: 7px; }
+  @keyframes derive { to { transform: translate(40px, -30px) scale(1.08); } }
+  @keyframes monte-losange { to { transform: translateY(-560px) rotate(405deg); } }
+
+  /* ---------- La scène : la mascotte, la corde, le panneau ---------- */
+
+  /* Elle se tient sur le bord haut du panneau : 104 px lui sont réservés. */
+  .scene { position: relative; margin-top: 18px; padding-top: 104px; }
+  .acteur { position: absolute; left: 0; top: 4px; width: 100px; height: 100px; }
+  .acteur :global(.md-tire),
+  .acteur :global(.md-salue) { position: absolute; inset: 0; }
+
+  .panneau {
+    position: relative;
+    display: grid;
+    gap: 10px;
+    padding: 18px 16px 14px;
+    background: var(--surface);
+    border-radius: 20px;
+    color: var(--encre);
+  }
+  .panneau .btn { display: block; text-align: center; }
+  .gratuit { margin: 0; text-align: center; font-size: 14px; color: var(--texte-2); }
+
+  /* La poignée qu'elle tient : un onglet sur le bord du panneau. */
+  .poignee {
+    position: absolute;
+    left: 128px;
+    top: -44px;
+    width: 48px;
+    height: 48px;
+    border-radius: 12px 12px 0 0;
+    background: var(--surface);
+    display: grid;
+    place-items: center;
+  }
+  .poignee::after { content: ''; width: 18px; height: 4px; border-radius: 4px; background: var(--bordure); }
+
+  /* La corde va de sa main à la poignée. Elle mesure la largeur du panneau et
+     se raccourcit par transform (scaleX), au même rythme que le panneau
+     avance : 0,1 correspond au petit bout restant quand il est arrivé. */
+  .corde {
+    position: absolute;
+    left: 94px;
+    top: 62px;
+    width: 100%;
+    height: 3px;
+    border-radius: 3px;
+    background: var(--encre);
+    transform-origin: left center;
+    opacity: 0;
+  }
+
+  /* ---------- La chorégraphie : 2,6 s ---------- */
+
+  .acteur { animation: md-entre 2.6s cubic-bezier(.2, .8, .2, 1) both; }
+  .panneau { animation: panneau-arrive 2.6s both; }
+  .corde { animation: corde-tire 2.6s both; }
+  .acteur :global(.md-tire) { animation: md-part 2.6s both; }
+  .acteur :global(.md-salue) { animation: md-arrive 2.6s both; }
+
+  @keyframes md-entre { 0% { transform: translateX(-120px); } 16%, 100% { transform: translateX(0); } }
+
+  /* Trois coups de corde, puis le panneau se pose avec un petit rebond. */
+  @keyframes panneau-arrive {
+    0%, 16% { transform: translateX(118%); }
+    30% { transform: translateX(78%); }
+    36% { transform: translateX(80%); }
+    50% { transform: translateX(40%); }
+    56% { transform: translateX(42%); }
+    72% { transform: translateX(-3%); }
+    80% { transform: translateX(1.5%); }
+    88%, 100% { transform: translateX(0); }
+  }
+  @keyframes corde-tire {
+    0%, 14% { transform: scaleX(1.28); opacity: 0; }
+    16% { transform: scaleX(1.28); opacity: 1; }
+    30% { transform: scaleX(.88); }
+    36% { transform: scaleX(.9); }
+    50% { transform: scaleX(.5); }
+    56% { transform: scaleX(.52); }
+    72% { transform: scaleX(.07); }
+    80% { transform: scaleX(.115); }
+    88% { transform: scaleX(.1); opacity: 1; }
+    96%, 100% { transform: scaleX(.1); opacity: 0; }
+  }
+  /* Le panneau posé, elle lâche la corde et salue. */
+  @keyframes md-part { 0%, 87% { opacity: 1; } 89%, 100% { opacity: 0; } }
+  @keyframes md-arrive { 0%, 87% { opacity: 0; } 89%, 100% { opacity: 1; } }
+
+  @media (prefers-reduced-motion: reduce) {
+    .tache, .los, .acteur, .panneau, .corde { animation: none; }
+    .corde { opacity: 0; }
+    .acteur :global(.md-tire) { animation: none; opacity: 0; }
+    .acteur :global(.md-salue) { animation: none; opacity: 1; }
+  }
+
+  /* ---------- Sous la scène ---------- */
+
+  .section { padding: var(--e4); }
+  .section + .section { padding-top: 0; }
+
+  .avantages { list-style: none; margin: 0; padding: 16px; display: grid; gap: 12px; background: var(--surface); border: 1px solid var(--bordure); border-radius: var(--r-carte); }
+  .avantages li { display: flex; align-items: center; gap: 12px; font-size: 15px; font-weight: 700; line-height: 1.35; }
+  .rond { width: 36px; height: 36px; flex: none; display: grid; place-items: center; border-radius: 12px; background: var(--rose-clair); color: var(--rose); }
+
+  .continuer { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; font-size: 15px; font-weight: 700; }
+</style>

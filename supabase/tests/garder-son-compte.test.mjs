@@ -38,23 +38,58 @@ titre("L'écran de connexion n'est plus interdit à celle qui est déjà entrée
     'la session anonyme ne referme plus la porte',
     !/if \(baseConfiguree\(\) && \(await visiteuse\(Astro\)\)\) \{\s*return Astro\.redirect/.test(page)
   );
-  // DEUX BOUTONS AVANT GOOGLE (Arthur, le 27 octobre 2026) : « la personne doit
-  // voir s'inscrire ou se connecter, les deux options, deux boutons ». Les deux
-  // mènent au même second écran, mais celle qui n'a jamais eu de compte cherche
-  // « s'inscrire » et n'ose pas cliquer sur « se connecter ».
-  verifier("le premier écran propose de s'inscrire", page.includes("action=inscrire"));
-  verifier('il propose aussi de se connecter', page.includes('action=connecter'));
+  /*
+   * DEUX BOUTONS, SUR DEUX VRAIES PAGES (Arthur, le 27 octobre 2026 : « la
+   * personne doit voir s'inscrire ou se connecter, les deux options, deux
+   * boutons », puis le 7 novembre 2026 : « je veux la même page que Jia »).
+   *
+   * Le 27 octobre, les deux boutons menaient au MÊME écran, avec un paramètre
+   * `?action=`. Depuis le 7 novembre, chacun a sa page, comme chez Jia :
+   * l'écran de choix est /compte pour une visiteuse (compte/visiteur.astro),
+   * et l'inscription a retrouvé la sienne. La promesse, elle, n'a pas bougé :
+   * celle qui n'a jamais eu de compte cherche « s'inscrire » et n'ose pas
+   * cliquer sur « se connecter ».
+   */
+  const accueil = lire('src/pages/compte/visiteur.astro');
+  const inscription = lire('src/pages/inscription.astro');
+
+  verifier("l'écran d'accueil du compte propose de se connecter", accueil.includes('href="/connexion?suite=/compte"'));
+  verifier('il propose aussi de créer un compte', accueil.includes('href="/inscription?suite=/compte"'));
+  verifier(
+    'les anciennes adresses « ?action=inscrire » mènent toujours quelque part',
+    /action'\) === 'inscrire'[\s\S]{0,200}redirect\(`\/inscription/.test(page),
+    'un lien déjà partagé sur WhatsApp ne mènerait plus nulle part'
+  );
   verifier(
     's’inscrire ATTACHE l’email au compte commencé, au lieu d’en ouvrir un autre',
-    page.includes("geste === 'attacher'") && page.includes('auth.updateUser')
+    /const attache = Boolean\(moi\)/.test(inscription) && inscription.includes('auth.updateUser'),
+    "/inscription ouvrirait un compte neuf et vide a celle qui a deja note son cycle"
   );
   verifier(
     'se connecter rejoint bien un compte qui existe ailleurs',
     page.includes('signInWithPassword')
   );
+  /*
+   * L'AVERTISSEMENT A DISPARU UNE HEURE, le 7 novembre 2026, en coupant la
+   * page en deux, et c'est cette vérification qui l'a rattrapé.
+   *
+   * Il ne doit PAS être sur /inscription, qui attache et ne perd rien : il
+   * doit être sur /connexion, où rejoindre un autre compte abandonne pour de
+   * bon ce qu'elle a noté depuis ce téléphone.
+   */
   verifier(
     'et elle est prévenue de ce qu’elle laisse derrière elle',
-    /ne suivra pas/.test(page)
+    /ne suivra pas/.test(page),
+    "/connexion ne previent plus celle qui va abandonner son compte commence"
+  );
+  verifier(
+    'l’avertissement ne s’affiche que si elle a un compte commencé',
+    /\{moi && \([\s\S]{0,400}ne suivra pas/.test(page),
+    'il inquieterait celle qui arrive de nulle part'
+  );
+  verifier(
+    'et il lui montre la sortie, pas seulement le danger',
+    /ne suivra pas[\s\S]{0,200}versInscription/.test(page)
   );
 }
 
@@ -66,7 +101,7 @@ titre('L’email en premier, Google en dessous');
   // LES MOTS D'ARTHUR, LE 27 OCTOBRE 2026, APRÈS AVOIR VU L'ÉCRAN.
   verifier(
     'le bouton parle de Google, et pas d’autre chose',
-    /texte=\{etape === 'inscrire' \? "S'inscrire avec Google" : 'Se connecter avec Google'\}/.test(page),
+    page.includes("texte=\"Se connecter avec Google\""),
     'le libellé du bouton Google a changé de forme'
   );
   verifier('et plus « Garder avec Google »', !page.includes('Garder avec Google'));
@@ -88,14 +123,46 @@ titre('L’email en premier, Google en dessous');
     affiches.slice(0, 80)
   );
 
-  // LE CUL-DE-SAC : « la barre en bas disparaît, et il n'y a pas un truc pour
-  // revenir en arrière. Faut pas que les gens aillent là-bas se bloquer. »
-  verifier('la barre du bas reste pour celle qui est déjà dedans', /nav=\{onglet\}/.test(page));
+  /*
+   * LE CUL-DE-SAC, ET COMMENT IL EST FERMÉ DEPUIS LE 7 NOVEMBRE 2026.
+   *
+   * Arthur, le 27 octobre : « quand j'arrive là-bas, la barre en bas
+   * disparaît, et il n'y a pas un truc pour revenir en arrière. Faut pas que
+   * les gens aillent là-bas se bloquer. » La réponse d'alors : garder la
+   * barre du bas pour celle qui était déjà dans l'application.
+   *
+   * Les pages de Jia, qu'Arthur a demandées le 7 novembre, sont en écran
+   * plein avec une flèche de retour en haut, comme toutes les pages
+   * intérieures de Jia. La barre du bas disparaît donc à nouveau, MAIS la
+   * flèche, elle, est toujours là, et sur les deux pages. La promesse tenue
+   * est « on ne se bloque pas », pas « il y a une barre en bas » : on vérifie
+   * donc la sortie, quelle qu'en soit la forme.
+   *
+   * L'accueil du compte, lui, GARDE la barre : c'est un onglet, pas une page
+   * intérieure, et on y revient en changeant d'onglet.
+   */
+  const accueilCompte = lire('src/pages/compte/visiteur.astro');
+  const pageInscription = lire('src/pages/inscription.astro');
+
   verifier(
-    'l’écran plein ne vaut plus que pour celle qui vient de dehors',
-    /pleinEcran=\{!onglet\}/.test(page)
+    'la page de connexion a une sortie visible',
+    /<Entete titre="Se connecter" retour="\/compte" \/>/.test(page),
+    'plus aucune flèche de retour : on peut s’y bloquer'
   );
-  verifier('un retour existe', page.includes('class="revenir"'));
+  verifier(
+    'la page d’inscription aussi',
+    /<Entete titre="Créer un compte" retour="\/compte" \/>/.test(pageInscription),
+    'plus aucune flèche de retour : on peut s’y bloquer'
+  );
+  verifier(
+    'l’accueil du compte garde la barre du bas, parce que c’est un onglet',
+    /nav="compte"/.test(accueilCompte)
+  );
+  verifier(
+    'et /compte l’affiche sans changer d’adresse, pour que « précédent » marche',
+    /Astro\.rewrite\('\/compte\/visiteur'\)/.test(lire('src/pages/compte.astro')),
+    'une redirection renverrait la femme ici en boucle'
+  );
 
   verifier('le bouton Google est demandé en grand', /<BoutonGoogle\s+grand/.test(page));
   verifier('la version en grand existe vraiment', bouton.includes('btn-google-grand'));
@@ -126,7 +193,8 @@ titre('L’email en premier, Google en dessous');
   );
   verifier(
     'un « ou » sépare les deux chemins, pour qu’on ne croie pas devoir faire les deux',
-    /class="ou" role="separator"/.test(page)
+    /class="separateur"><span>ou/.test(page),
+    'sans lui, deux boutons l’un sous l’autre se lisent comme deux étapes'
   );
   verifier(
     'la page marche sans JavaScript : aucun script ne la pilote',
