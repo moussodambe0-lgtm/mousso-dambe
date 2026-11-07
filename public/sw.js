@@ -99,6 +99,50 @@ const gardable = (entete) => {
   return c.includes('s-maxage');
 };
 
+/*
+ * Rafraîchit en arrière-plan une copie déjà servie, sans faire attendre personne.
+ *
+ * LE DÉFAUT QUE ÇA CORRIGE (7 novembre 2026). Les fichiers figés étaient servis
+ * depuis la réserve en priorité et n'en sortaient JAMAIS : seul un changement du
+ * nom de la réserve les chassait, et personne ne pense à le changer. Or dix de
+ * ces fichiers portent un nom qui ne change pas d'une version à l'autre, et
+ * cinq d'entre eux sont les photos des produits (/produits/*.webp). Le jour où
+ * Arthur remplace la photo d'un article, les femmes qui ont déjà ouvert la
+ * boutique continuent de voir l'ancienne, indéfiniment, et rien ne l'explique.
+ * Pour une boutique, c'est un défaut qui coûte des ventes.
+ *
+ * POURQUOI ÇA NE COÛTE PRESQUE RIEN, ET C'EST MESURÉ. Vercel pose un ETag sur
+ * chacun de ces fichiers. On le renvoie en « If-None-Match » : quand le fichier
+ * n'a pas changé, le serveur répond 304 sans retransmettre un seul octet du
+ * contenu. Mesuré sur la vraie adresse : la photo pèse 58 074 octets, la
+ * requête conditionnelle en renvoie quelques centaines. Sur un forfait compté,
+ * c'est le prix d'une image à jour, pas celui d'une image.
+ *
+ * ON NE FAIT PAS ATTENDRE LA FEMME : la copie gardée est rendue tout de suite,
+ * le rafraîchissement se fait derrière, et sa version neuve servira à la visite
+ * suivante. Hors connexion, le rafraîchissement échoue sans bruit et la copie
+ * gardée reste la bonne réponse.
+ */
+async function rafraichir(reserve, requete, garde) {
+  try {
+    const empreinte = garde.headers.get('ETag');
+    // On refabrique la requête plutôt que de la copier : une requête d'image
+    // arrive en mode « no-cors », qui interdit d'ajouter « If-None-Match ».
+    // Ici on est déjà certain d'être sur notre propre origine.
+    const demande = new Request(requete.url, {
+      mode: 'same-origin',
+      credentials: 'same-origin',
+      headers: empreinte ? { 'If-None-Match': empreinte } : undefined,
+    });
+    const neuf = await fetch(demande);
+    // 304 : rien n'a changé, et la réponse n'a pas de corps à garder.
+    if (neuf.status === 304 || !neuf.ok) return;
+    await reserve.put(requete, neuf.clone());
+  } catch {
+    /* hors connexion, ou réserve pleine : la copie gardée fait l'affaire */
+  }
+}
+
 async function ouvrirReserve() {
   // caches.open échoue en navigation privée et quand la mémoire est pleine.
   // Sans ce filet, le service worker casserait le site entier.
@@ -188,13 +232,28 @@ self.addEventListener('fetch', (e) => {
    */
   const reservePromise = ouvrirReserve();
 
+  // Garde le service worker en vie le temps d'un travail de fond, quand
+  // l'environnement le permet. Sans ça, il peut s'arrêter dès la réponse rendue
+  // et le rafraîchissement serait interrompu au milieu.
+  const prolonger = (promesse) => {
+    try {
+      e.waitUntil(promesse);
+    } catch {
+      /* rien à faire : le rafraîchissement part quand même, sans garantie */
+    }
+  };
+
   e.respondWith(
     (async () => {
       if (estFige) {
         const reserve = await reservePromise;
         if (reserve) {
           const garde = await reserve.match(requete);
-          if (garde) return garde;
+          if (garde) {
+            // Rendue tout de suite, rafraîchie derrière : voir rafraichir().
+            prolonger(rafraichir(reserve, requete, garde));
+            return garde;
+          }
         }
       }
 

@@ -30,10 +30,17 @@ function chargerServiceWorker() {
   const ecouteurs = {};
   const reserve = new Map();
 
+  // Le vrai Cache API rend une réponse NEUVE à chaque match : son corps n'est
+  // lisible qu'une fois, et deux lectures de la même copie gardée doivent
+  // pouvoir se suivre. Sans ce clone, le bac à sable rendait deux fois le même
+  // objet et la deuxième lecture échouait là où le navigateur réussit.
   const fausseReserve = {
-    match: async (requete) => reserve.get(requete.url) ?? undefined,
+    match: async (requete) => {
+      const gardee = reserve.get(typeof requete === 'string' ? requete : requete.url);
+      return gardee ? gardee.clone() : undefined;
+    },
     put: async (requete, reponse) => {
-      reserve.set(requete.url, reponse);
+      reserve.set(typeof requete === 'string' ? requete : requete.url, reponse);
       return undefined;
     },
     addAll: async () => undefined,
@@ -52,27 +59,68 @@ function chargerServiceWorker() {
     clients: { claim: async () => undefined },
   };
 
+  // Ce que le service worker a demandé au réseau. On le garde pour pouvoir
+  // vérifier qu'un rafraîchissement part bien en requête CONDITIONNELLE : c'est
+  // ce qui fait toute la différence entre quelques centaines d'octets et une
+  // photo de 58 Ko retransmise à chaque visite.
+  const appels = [];
   let reponseDuReseau = null;
-  const fauxFetch = async () => {
+  /** Réponse servie au prochain appel seulement, puis on revient au défaut. */
+  let prochaine = null;
+
+  const fauxFetch = async (entree) => {
+    const demande = typeof entree === 'string' ? new Request(entree) : entree;
+    appels.push({ url: demande.url, siAbsent: demande.headers.get('if-none-match') });
+    if (prochaine !== null) {
+      const r = prochaine;
+      prochaine = null;
+      if (r === 'coupe') throw new Error('réseau coupé');
+      return r.clone();
+    }
     if (!reponseDuReseau) throw new Error('réseau coupé');
     return reponseDuReseau.clone();
   };
 
-  const fabrique = new Function('self', 'caches', 'fetch', 'Response', 'URL', code);
-  fabrique(fauxSelf, fauxCaches, fauxFetch, Response, URL);
+  const fabrique = new Function('self', 'caches', 'fetch', 'Response', 'Request', 'URL', code);
+  fabrique(fauxSelf, fauxCaches, fauxFetch, Response, Request, URL);
 
   return {
-    /** Rejoue une requête. Renvoie { interceptee, gardee }. */
+    /** Rejoue une requête. Renvoie { interceptee, gardee, corps }. */
     async requete(chemin, entetes = {}, { methode = 'GET' } = {}) {
       reponseDuReseau = new Response('<html>page</html>', { status: 200, headers: entetes });
       const requete = new Request(`https://moussodambe.com${chemin}`, { method: methode });
-      /** @type {Promise<Response> | null} */
-      let promesse = null;
-      ecouteurs.fetch({ request: requete, respondWith: (p) => { promesse = p; } });
-      const interceptee = promesse !== null;
-      if (interceptee) await Promise.resolve(promesse);
-      return { interceptee, gardee: reserve.has(requete.url) };
+      // Ce que le service worker a décidé de répondre. Un tableau plutôt qu'une
+      // variable : une variable affectée depuis un rappel reste « null » pour
+      // l'analyse de flux, et l'await qui suit passerait pour inutile.
+      /** @type {Promise<Response>[]} */
+      const rendues = [];
+      // Le vrai navigateur fournit waitUntil : c'est ce qui garde le service
+      // worker en vie pendant un travail de fond. On l'imite, et on attend ces
+      // travaux avant de rendre la main, sinon la vérification regarderait la
+      // réserve avant que le rafraîchissement l'ait touchée.
+      const fond = [];
+      ecouteurs.fetch({
+        request: requete,
+        respondWith: (p) => rendues.push(p),
+        waitUntil: (p) => fond.push(p),
+      });
+      const interceptee = rendues.length > 0;
+      let corps = null;
+      if (interceptee) {
+        const rendue = await rendues[0];
+        corps = await rendue.text();
+      }
+      await Promise.allSettled(fond);
+      return { interceptee, gardee: reserve.has(requete.url), corps };
     },
+    /** Programme la réponse du réseau pour le prochain appel ('coupe' pour une panne). */
+    prochaineReponse(r) {
+      prochaine = r;
+    },
+    oublierLesAppels() {
+      appels.length = 0;
+    },
+    appels,
     reserve,
   };
 }
@@ -111,6 +159,87 @@ titre("Le mot « public » seul ne suffit plus à faire garder une page");
 
   const fichier = await sw.requete('/fonts/figtree.woff2', {});
   verifier('une police est gardée, elle ne parle de personne', fichier.gardee === true);
+}
+
+titre("Une photo de produit remplacee finit par arriver sur le telephone");
+{
+  /*
+   * NE LE 7 NOVEMBRE 2026. Les fichiers figes etaient servis depuis la reserve
+   * et n'en sortaient JAMAIS : seul un changement du nom de la reserve les
+   * chassait, et personne ne pense a le changer. Mesure faite sur le vrai site :
+   * dix fichiers figes portent un nom qui ne change pas d'une version a
+   * l'autre, dont les CINQ photos des produits (/produits/*.webp). Le jour ou
+   * Arthur remplace la photo d'un article, les femmes qui ont deja ouvert la
+   * boutique voyaient l'ancienne indefiniment.
+   *
+   * Ces verifications tiennent les trois promesses du correctif : on ne fait
+   * pas attendre, on ne retransmet rien pour rien, et hors connexion la copie
+   * gardee reste la bonne reponse.
+   */
+  const PHOTO = '/produits/serviettes-nuit-600.webp';
+  const URL_PHOTO = `https://moussodambe.com${PHOTO}`;
+
+  // Premiere visite : rien en reserve, la photo vient du reseau et y entre.
+  sw.oublierLesAppels();
+  const premiere = await sw.requete(PHOTO, { ETag: '"photo-1"' });
+  verifier('a la premiere visite, la photo entre en reserve', premiere.gardee === true);
+
+  // On remet en reserve une reponse qui porte son empreinte, comme Vercel le fait.
+  sw.reserve.set(URL_PHOTO, new Response('ancienne-photo', { status: 200, headers: { ETag: '"photo-1"' } }));
+
+  // Deuxieme visite, rien n'a change : le serveur repond 304.
+  sw.oublierLesAppels();
+  sw.prochaineReponse(new Response(null, { status: 304 }));
+  const inchangee = await sw.requete(PHOTO, { ETag: '"photo-1"' });
+  verifier(
+    'la copie gardee est rendue tout de suite, sans attendre le reseau',
+    inchangee.corps === 'ancienne-photo',
+    inchangee.corps
+  );
+  verifier(
+    'le rafraichissement part en requete CONDITIONNELLE',
+    sw.appels.length === 1 && sw.appels[0].siAbsent === '"photo-1"',
+    JSON.stringify(sw.appels)
+  );
+  const apres304 = await sw.reserve.get(URL_PHOTO).clone().text();
+  verifier('un 304 ne remplace pas la copie gardee', apres304 === 'ancienne-photo', apres304);
+
+  // Arthur remplace la photo : le serveur repond 200 avec une nouvelle empreinte.
+  sw.oublierLesAppels();
+  sw.prochaineReponse(new Response('nouvelle-photo', { status: 200, headers: { ETag: '"photo-2"' } }));
+  const pendant = await sw.requete(PHOTO, {});
+  verifier(
+    "cette visite-la voit encore l'ancienne, on ne la fait pas attendre",
+    pendant.corps === 'ancienne-photo',
+    pendant.corps
+  );
+  const apres200 = await sw.reserve.get(URL_PHOTO).clone().text();
+  verifier('mais la reserve a pris la nouvelle', apres200 === 'nouvelle-photo', apres200);
+
+  // Visite suivante : la nouvelle photo est servie.
+  sw.oublierLesAppels();
+  sw.prochaineReponse(new Response(null, { status: 304 }));
+  const suivante = await sw.requete(PHOTO, {});
+  verifier('a la visite suivante, la nouvelle photo est servie', suivante.corps === 'nouvelle-photo', suivante.corps);
+
+  // Hors connexion : le rafraichissement echoue, la copie gardee tient.
+  sw.oublierLesAppels();
+  sw.prochaineReponse('coupe');
+  const horsLigne = await sw.requete(PHOTO, {});
+  verifier('hors connexion, la copie gardee est toujours rendue', horsLigne.corps === 'nouvelle-photo', horsLigne.corps);
+  const apresPanne = await sw.reserve.get(URL_PHOTO).clone().text();
+  verifier('et une panne reseau ne vide pas la reserve', apresPanne === 'nouvelle-photo', apresPanne);
+
+  // Une page n'est pas concernee : elle part au reseau d'abord, toujours.
+  const swSource = fs.readFileSync(path.join(RACINE, 'public', 'sw.js'), 'utf8');
+  verifier(
+    'le rafraichissement se fait sous waitUntil, pour ne pas etre interrompu',
+    /prolonger\(rafraichir\(/.test(swSource) && /e\.waitUntil\(/.test(swSource)
+  );
+  verifier(
+    "il renvoie l'empreinte et non une requete complete",
+    /If-None-Match/.test(swSource) && /status === 304/.test(swSource)
+  );
 }
 
 titre('La liste des chemins publics ne contient aucune page personnelle');
