@@ -106,7 +106,7 @@ titre('L’email en premier, Google en dessous');
   // LES MOTS D'ARTHUR, LE 27 OCTOBRE 2026, APRÈS AVOIR VU L'ÉCRAN.
   verifier(
     'le bouton parle de Google, et pas d’autre chose',
-    page.includes("texte=\"Se connecter avec Google\""),
+    /texte="Continuer avec Google"/.test(page),
     'le libellé du bouton Google a changé de forme'
   );
   verifier('et plus « Garder avec Google »', !page.includes('Garder avec Google'));
@@ -149,16 +149,17 @@ titre('L’email en premier, Google en dessous');
   const accueilCompte = lire('src/pages/compte/visiteur.astro');
   const pageInscription = lire('src/pages/inscription.astro');
 
-  verifier(
-    'la page de connexion a une sortie visible',
-    /<Entete titre="Se connecter" retour="\/compte" \/>/.test(page),
-    'plus aucune flèche de retour : on peut s’y bloquer'
-  );
-  verifier(
-    'la page d’inscription aussi',
-    /<Entete titre="Créer un compte" retour="\/compte" \/>/.test(pageInscription),
-    'plus aucune flèche de retour : on peut s’y bloquer'
-  );
+  // La flèche ronde en haut à gauche des captures de Jia. On vérifie que
+  // c'est un VRAI LIEN et non un retour d'historique : il doit marcher quand
+  // la page a été ouverte directement, et quand l'application est posée sur
+  // l'écran d'accueil, où il n'y a plus de bouton « précédent ».
+  for (const [nom, src] of [['connexion', page], ['inscription', pageInscription]]) {
+    verifier(
+      `la page de ${nom} a une sortie visible`,
+      /<a class="retour-rond" href="\/compte"/.test(src),
+      'plus aucune flèche de retour : on peut s’y bloquer'
+    );
+  }
   /*
    * LA BARRE DU BAS NE DISPARAÎT PLUS (Arthur, le 7 novembre 2026, après
    * avoir touché « Discussions ») : « la petite barre en bas, où il y a
@@ -202,27 +203,43 @@ titre('L’email en premier, Google en dessous');
    * sont réels, et c'est celui qui marche pour une femme sans compte Google
    * qui passe devant.
    */
+  /*
+   * LE VOLET EMAIL EST OUVERT TANT QUE RIEN D'AUTRE NE MARCHE.
+   *
+   * Les captures de Jia envoyées par Arthur le 7 novembre 2026 rangent
+   * l'email dans un volet, parce que chez Jia le chemin principal est le
+   * numéro de téléphone. Chez Mousso Dambé, le téléphone n'envoie pas encore
+   * de code : si le volet était fermé, la page n'offrirait AUCUN chemin
+   * praticable au premier coup d'œil.
+   *
+   * C'est `emailOuvert` qui tient cette promesse, et il doit rester lié à
+   * `TELEPHONE_DISPONIBLE` : le jour où le téléphone marche, le volet peut se
+   * refermer, et pas avant.
+   */
+  for (const [nom, src] of [['connexion', page], ['inscription', pageInscription]]) {
+    verifier(
+      `${nom} : le volet email s’ouvre tant que le téléphone n’est pas branché`,
+      /const emailOuvert = !TELEPHONE_DISPONIBLE/.test(src),
+      'la page pourrait n’offrir aucun chemin praticable'
+    );
+    verifier(
+      `${nom} : et le volet est bien ouvert par cette décision`,
+      /<details class="volet" open=\{emailOuvert\}>/.test(src)
+    );
+    verifier(
+      `${nom} : le volet s’ouvre sans JavaScript (c’est un <details>)`,
+      !/addEventListener\(.(click|toggle)./.test(src)
+    );
+  }
   verifier(
-    'le formulaire email est visible d’emblée, plus aucun volet à ouvrir',
-    !/<details class="replie"/.test(page) && /<form method="POST" class="formulaire">/.test(page)
+    'un « ou » sépare les chemins dès qu’il y en a plusieurs',
+    /\{TELEPHONE_DISPONIBLE && <div class="separateur">/.test(page),
+    'sans lui, deux blocs l’un sous l’autre se lisent comme deux étapes'
   );
   verifier(
-    'l’email est AVANT le bouton Google dans la page',
-    page.indexOf('class="formulaire"') < page.indexOf('<BoutonGoogle'),
-    'le bouton Google est remonté au-dessus du formulaire'
-  );
-  verifier(
-    'un « ou » sépare les deux chemins, pour qu’on ne croie pas devoir faire les deux',
-    /class="separateur"><span>ou/.test(page),
-    'sans lui, deux boutons l’un sous l’autre se lisent comme deux étapes'
-  );
-  verifier(
-    'la page marche sans JavaScript : aucun script ne la pilote',
-    !/addEventListener\(.(click|toggle)./.test(page)
-  );
-  verifier(
-    'un seul formulaire de mot de passe',
-    (page.match(/<form method="POST"/g) ?? []).length === 1
+    'un seul formulaire de mot de passe par page',
+    (page.match(/name="motdepasse"/g) ?? []).length === 1
+      && (pageInscription.match(/name="motdepasse"/g) ?? []).length === 1
   );
 }
 
@@ -343,14 +360,26 @@ titre('La messagerie et le compte demandent un vrai compte, le reste non');
     /Astro\.rewrite\('\/compte\/visiteur'\)/.test(lire('src/pages/compte.astro'))
   );
 
-  // Chaque zone fermée doit avoir sa phrase : sans elle, la femme voit deux
-  // boutons sans savoir ce qu'on lui reproche.
-  for (const debut of ['/discussions', '/dambe']) {
+  /*
+   * CHAQUE ZONE FERMÉE A SON ÉCRAN, copié de la capture envoyée par Arthur le
+   * 7 novembre 2026 : une icône, un titre, une phrase, puis « Créer un
+   * compte » en plein et « Se connecter » en contour.
+   *
+   * Sans le titre et la phrase, elle verrait deux boutons sans savoir ce
+   * qu'on lui reproche ni ce qu'elle gagne à continuer.
+   */
+  for (const debut of ['/discussions', '/dambe', '/cycle', '/journal']) {
     verifier(
-      `l'accueil sait dire pourquoi pour « ${debut} »`,
-      new RegExp(`debut: '${debut}'[\\s\\S]{0,400}pourquoi: '[^']{20,}`).test(accueilVisiteuse)
+      `l'accueil sait quoi afficher pour « ${debut} »`,
+      new RegExp(`debut: '${debut}'[\\s\\S]{0,500}titre: '[^']{5,}'[\\s\\S]{0,500}dit: '[^']{20,}`).test(accueilVisiteuse),
+      'cette zone tomberait sur la mascotte, sans dire pourquoi'
     );
   }
+  verifier(
+    'et « Créer un compte » passe devant « Se connecter » sur ces écrans',
+    accueilVisiteuse.indexOf("vers('/inscription')") < accueilVisiteuse.indexOf("vers('/connexion')"),
+    'celle qui arrive ici n’a le plus souvent pas de compte'
+  );
 }
 
 titre('Les icônes de l’application sont ce qu’elles prétendent être');

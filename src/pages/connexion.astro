@@ -2,31 +2,37 @@
 /**
  * Se connecter.
  *
- * Arthur, le 7 novembre 2026 : « comment la page pour s'inscrire ou bien se
- * connecter de Jia est, je veux la même chose chez Mousso Dambé. Sauf les
- * couleurs que tu vas utiliser. Faut pas essayer d'adapter. »
+ * Arthur, le 7 novembre 2026, captures d'écran de Jia à l'appui : « quand on
+ * clique se connecter, ça doit être la même chose. Tu copies tout même chose.
+ * À l'exception des couleurs. Sauf le nom, tu mets Mousso Dambé, le logo, tu
+ * mets le logo de Mousso Dambé. Faut même pas essayer d'adapter. »
  *
- * CETTE PAGE EST LA COPIE DE `src/pages/connexion.astro` DE JIA (dépôt
- * yaar) : même en-tête de retour, même logo centré, même carte de formulaire,
- * même séparateur, même ligne « Pas encore de compte ? ». Les couleurs sont
- * celles de Mousso Dambé.
+ * CETTE PAGE EST LA COPIE DE L'ÉCRAN DE CONNEXION DE JIA tel qu'il tourne en
+ * ligne (et non tel qu'il est dans le dépôt yaar, qui a une version plus
+ * ancienne). De haut en bas, dans cet ordre exact :
+ *
+ *   la flèche de retour ronde, le logo, « Se connecter », une phrase, le
+ *   numéro de téléphone avec l'indicatif +226, le bouton plein, « Ou »,
+ *   le volet « Adresse email », le bouton Google, la mention légale,
+ *   « Mot de passe oublié ? », puis « Pas encore inscrite ? Créer un compte ».
  *
  * ──────────────────────────────────────────────────────────────────────────
- * CE QUE CETTE PAGE NE FAIT PLUS, ET QUI EST PARTI AILLEURS
+ * LE NUMÉRO DE TÉLÉPHONE EST LÀ, MAIS IL N'EST PAS ALLUMÉ
  * ──────────────────────────────────────────────────────────────────────────
  *
- * Elle portait TROIS écrans en un, avec un paramètre `?action=` : un écran de
- * choix, puis l'inscription, puis la connexion. Arthur veut la séparation de
- * Jia, un bouton et une vraie page derrière chacun :
+ * Chez Jia, entrer par son numéro envoie un code (par WhatsApp) qu'elle
+ * recopie. Mousso Dambé n'a aucun moyen d'envoyer ce code : il faut un
+ * service d'envoi, qui se paie au message et qui demande un compte à ouvrir.
  *
- *   - l'écran de choix est devenu `src/pages/compte/visiteur.astro`, affiché
- *     à la place de /compte quand elle n'est pas connectée ;
- *   - l'inscription est redevenue `src/pages/inscription.astro`.
+ * Le bloc est donc écrit, à sa place, prêt. `TELEPHONE_DISPONIBLE` l'allume
+ * en un mot le jour où l'envoi est branché. Tant qu'il est éteint, c'est le
+ * volet email qui s'ouvre d'emblée, pour que la page ne soit pas qu'une
+ * promesse.
  *
- * Les anciennes adresses `?action=inscrire` et `?action=connecter` continuent
- * de fonctionner : la première redirige vers /inscription, la seconde tombe
- * simplement ici. Des liens de ce genre sont déjà partis sur WhatsApp, et un
- * lien partagé qui ne mène nulle part ne revient jamais.
+ * C'est la même règle que pour Google, et elle vient d'une erreur du matin :
+ * un bouton qui ne peut pas aboutir est pire que pas de bouton. Il occupe la
+ * place du chemin qui marche et apprend à celle qui arrive que le site est
+ * cassé, à l'instant précis où elle décide de confier son cycle.
  *
  * ──────────────────────────────────────────────────────────────────────────
  * CE QUI NE CHANGE PAS, ET QUI NE DOIT PAS CHANGER
@@ -34,24 +40,16 @@
  *
  * LE MESSAGE D'ERREUR EST LE MÊME QUE L'ADRESSE EXISTE OU NON. Dire « cette
  * adresse n'a pas de compte » révélerait à un mari curieux si sa femme
- * utilise l'application. Ce n'est pas une précaution théorique ici.
- *
- * Cette phrase était fausse pour un cas, jusqu'à l'audit du 26 octobre 2026 :
- * une adresse non confirmée recevait « ton adresse n'est pas encore
- * confirmée », donc l'aveu qu'un compte existe. Il n'y a plus qu'un seul
- * texte, et un garde-fou dans supabase/tests/connexion.test.mjs tombe si un
- * second réapparaît.
+ * utilise l'application. Ce n'est pas une précaution théorique ici. Un
+ * garde-fou dans supabase/tests/connexion.test.mjs tombe si un second texte
+ * réapparaît.
  *
  * SUR L'ADRESSE DE LA GESTION, il n'y a rien à créer : un administrateur se
- * connecte, il ne s'inscrit pas. Les liens vers /inscription sont donc
- * cachés là-bas (Arthur, le 24 octobre 2026 : « cette page n'est pas
- * disponible »).
+ * connecte, il ne s'inscrit pas. Les liens vers /inscription y sont cachés.
  *
- * JIA VOUVOIE, Mousso Dambé tutoie partout ailleurs. Vouvoyer sur cette seule
- * page sonnerait faux pour celle qui vient de traverser l'application.
+ * JIA VOUVOIE, Mousso Dambé tutoie partout ailleurs.
  */
 import Base from '../layouts/Base.astro';
-import Entete from '../components/Entete.astro';
 import Symbole from '../components/Symbole.astro';
 import BoutonGoogle from '../components/BoutonGoogle.astro';
 import Alerte from '../components/Alerte.astro';
@@ -72,44 +70,25 @@ const surHoteAdmin = estHoteAdmin(
 );
 
 const moi = baseConfiguree() ? await visiteuse(Astro) : null;
-
-// Celle qui a DÉJÀ un vrai compte n'a rien à faire ici.
 if (moi?.compteReel) return Astro.redirect('/', 302);
 
 const suite = suiteSure(Astro.url.searchParams.get('suite'), '/compte');
 
-// L'ANCIENNE ADRESSE, GARDÉE VIVANTE. `?action=inscrire` menait au formulaire
-// de création ; il vit maintenant sur sa propre page.
+// L'ANCIENNE ADRESSE, GARDÉE VIVANTE : des liens `?action=inscrire` sont déjà
+// partis sur WhatsApp, et un lien partagé qui ne mène nulle part ne revient
+// jamais.
 if (Astro.url.searchParams.get('action') === 'inscrire' && !surHoteAdmin) {
   return Astro.redirect(`/inscription?suite=${encodeURIComponent(suite)}`, 301);
 }
 
-/**
- * LE BOUTON GOOGLE EST-IL MONTRÉ ?
- *
- * Mettre `true` ici le fait réapparaître, sur cette page et sur
- * /inscription. C'est le seul geste à faire.
- *
- * POURQUOI IL EST ÉTEINT, LE 7 NOVEMBRE 2026. La base de Mousso Dambé a été
- * remontée de zéro le 6 novembre, l'ancienne ayant disparu. Le code est
- * revenu intact de GitHub, mais les RÉGLAGES ne vivent pas dans le code : ils
- * étaient dans l'ancien projet Supabase. Le fournisseur Google est donc
- * éteint côté base, et aucune connexion Google ne peut aboutir.
- *
- * Un bouton qui ne peut pas aboutir est pire que pas de bouton : il occupe la
- * place du chemin qui marche, et il apprend à celle qui arrive que le site
- * est cassé, à l'instant précis où elle décide de confier son cycle.
- *
- * POUR LE RALLUMER : un client OAuth dans la console Google Cloud, puis le
- * fournisseur activé côté Supabase, avec le rattachement manuel pour que les
- * femmes entrées par « Commencer » ne perdent pas ce qu'elles ont noté.
- */
+/** Entrer par son numéro : écrit, pas encore branché. Voir l'en-tête. */
+const TELEPHONE_DISPONIBLE = false;
+
+/** Le bouton Google : éteint tant que le fournisseur n'est pas rallumé côté base. */
 const GOOGLE_DISPONIBLE = false;
 
 let erreur = '';
 
-// Les retours de Google passent par l'adresse : on les traduit ici, sans
-// jamais dire si un compte existe ou non.
 const venuDe = Astro.url.searchParams.get('erreur');
 if (venuDe === 'google') {
   erreur = "La connexion avec Google n'a pas marché. Réessaie.";
@@ -155,11 +134,10 @@ if (Astro.request.method === 'POST') {
     if (error || !data.session) {
       // LE MÊME TEXTE DANS TOUS LES CAS. Il y en avait deux : « ton adresse
       // n'est pas encore confirmée » confirmait qu'un compte existe à cette
-      // adresse, et c'est exactement ce que l'en-tête de ce fichier promet de
-      // ne jamais dire. Un mari qui essaie l'adresse de sa femme avec
-      // n'importe quel mot de passe apprenait qu'elle a un compte ici (Cyber,
-      // 26 octobre 2026). Le texte unique dit les deux causes possibles, pour
-      // ne pas laisser sans secours celle qui n'a pas encore confirmé.
+      // adresse. Un mari qui essaie l'adresse de sa femme avec n'importe quel
+      // mot de passe apprenait qu'elle a un compte ici (Cyber, 26 octobre
+      // 2026). Le texte unique dit les deux causes possibles, pour ne pas
+      // laisser sans secours celle qui n'a pas encore confirmé.
       erreur =
         'Email ou mot de passe incorrect. Si tu viens de créer ton compte, '
         + "ouvre d'abord l'email de confirmation.";
@@ -174,18 +152,25 @@ if (Astro.request.method === 'POST') {
 }
 
 const versInscription = `/inscription?suite=${encodeURIComponent(suite)}`;
+// Le volet email s'ouvre d'emblée tant que le téléphone n'est pas branché :
+// sinon la page n'offrirait aucun chemin praticable au premier coup d'œil.
+const emailOuvert = !TELEPHONE_DISPONIBLE || Boolean(erreur) || surHoteAdmin;
 ---
 
 <Base titre="Connexion" description="Connecte-toi à ton compte Mousso Dambé." pleinEcran>
-  <Entete titre="Se connecter" retour="/compte" />
+  <main class="auth">
+    <a class="retour-rond" href="/compte" aria-label="Revenir en arrière">
+      <Icone nom="retour" taille={22} epaisseur={2} />
+    </a>
 
-  <div class="section">
     <div class="tete">
-      <Symbole taille={56} />
+      <Symbole taille={120} forme="nom" />
+      <h1>Se connecter</h1>
+      <p class="sous">Choisis comment te connecter.</p>
     </div>
 
     {pourquoi && (
-      <div class="encadre pourquoi">
+      <div class="encadre doux">
         <Icone nom="info" taille={19} />
         <p>{pourquoi}</p>
       </div>
@@ -195,20 +180,13 @@ const versInscription = `/inscription?suite=${encodeURIComponent(suite)}`;
         vide s'afficherait à chaque chargement. */}
     {erreur && <div class="marge-bas"><Alerte type="erreur" texte={erreur} /></div>}
 
-    {/* CE QU'ELLE LAISSE DERRIÈRE ELLE, DIT AVANT QU'ELLE TOUCHE AU
-        FORMULAIRE.
-
-        Elle est entrée par « Commencer » et vient se connecter à un compte
-        qui existe ailleurs : son cycle, son journal et ses commandes notés
-        depuis ce téléphone resteront sur le compte commencé ici, et ne
-        suivront pas. Si ce n'est pas ce qu'elle veut, c'est /inscription
-        qu'il lui faut, qui ATTACHE son email au compte où tout est déjà.
-
-        Cet avertissement a disparu une heure en coupant la page en deux, le
-        7 novembre 2026. Une vérification de garder-son-compte.test.mjs l'a
-        rattrapé : c'est exactement pour ça qu'elle existe. */}
+    {/* CE QU'ELLE LAISSE DERRIÈRE ELLE, dit avant qu'elle touche au
+        formulaire. Elle est entrée par « Commencer » et vient rejoindre un
+        compte qui existe ailleurs : ce qu'elle a noté depuis ce téléphone ne
+        suivra pas. Si ce n'est pas ce qu'elle veut, c'est /inscription qu'il
+        lui faut, qui ATTACHE son email au compte où tout est déjà. */}
     {moi && (
-      <div class="encadre prudence">
+      <div class="encadre doux">
         <Icone nom="info" taille={19} />
         <p>
           Ce que tu as noté depuis ce téléphone restera sur le compte commencé ici, et
@@ -217,114 +195,234 @@ const versInscription = `/inscription?suite=${encodeURIComponent(suite)}`;
       </div>
     )}
 
-    <form method="POST" class="formulaire">
-      <input type="hidden" name="suite" value={suite} />
-
-      <div class="champ-bloc">
-        <label class="libelle" for="email">Ton email</label>
-        <input class="champ" id="email" name="email" type="email" required autocomplete="email" inputmode="email" value={emailSaisi} />
-      </div>
-
-      <div class="champ-bloc">
-        <label class="libelle" for="motdepasse">Ton mot de passe</label>
-        <input class="champ" id="motdepasse" name="motdepasse" type="password" required autocomplete="current-password" />
-      </div>
-
-      <button type="submit" class="btn btn-rose btn-plein">Se connecter</button>
-    </form>
-
-    {/* GOOGLE APRÈS LE FORMULAIRE, ET C'EST LE SEUL ENDROIT OÙ JE M'ÉCARTE DE
-        JIA. Jia met Google en premier, puis « ou avec votre email », puis le
-        formulaire.
-
-        Deux consignes d'Arthur se croisent ici, le même jour.
-        Le matin : « il doit avoir une partie où on renseigne à la main son
-        email, et en bas mot de passe. Et maintenant en bas encore, on va voir
-        se connecter ou s'inscrire avec Google. »
-        L'après-midi : « je veux la même chose chez Mousso Dambé, sauf les
-        couleurs, faut pas essayer d'adapter. »
-
-        La seconde porte sur l'allure de la page entière, la première sur
-        cette question précise, et elle a été donnée après avoir vu l'écran.
-        On garde donc l'ordre qu'il a demandé expressément, et le reste de la
-        page suit Jia à la lettre. À inverser en deux lignes s'il préfère. */}
-    {GOOGLE_DISPONIBLE && (
-      <>
-        <div class="separateur"><span>ou</span></div>
-        <BoutonGoogle grand basculer={!!moi} texte="Se connecter avec Google" />
-      </>
+    {TELEPHONE_DISPONIBLE && (
+      <form method="POST" class="bloc-tel">
+        <input type="hidden" name="geste" value="telephone" />
+        <div class="rangee-tel">
+          <span class="indicatif"><span class="drapeau" aria-hidden="true">🇧🇫</span> +226</span>
+          <label class="sr-seul" for="tel">Ton numéro de téléphone</label>
+          <input class="champ-tel" id="tel" name="telephone" type="tel" inputmode="numeric" placeholder="70 12 34 56" maxlength="11" required />
+        </div>
+        <button type="submit" class="btn btn-rose btn-plein">Se connecter</button>
+      </form>
     )}
 
-    {/* EN LOCAL, LA PORTE SANS MOT DE PASSE. Arthur, le 5 novembre 2026 :
-        « j'arrive pas à me connecter à admin Mousso Dambé ». Le banc local
-        recrée sa base à chaque redémarrage, donc sa session meurt et il
-        retombe ici. Ce lien n'apparaît qu'en développement :
-        src/pages/dev/admin.ts renvoie 404 en production. */}
+    {TELEPHONE_DISPONIBLE && <div class="separateur"><span>Ou</span></div>}
+
+    {/* LE VOLET EMAIL. Un `details`, donc du HTML seul : il s'ouvre sans une
+        ligne de script, et il marche quand le JavaScript ne charge pas. */}
+    <details class="volet" open={emailOuvert}>
+      <summary>
+        <span class="volet-rond" aria-hidden="true"><Icone nom="envoyer" taille={18} /></span>
+        <span class="volet-mots"><span class="volet-titre">Adresse email</span></span>
+        <Icone nom="bas" taille={18} />
+      </summary>
+
+      <form method="POST" class="volet-dedans">
+        <input type="hidden" name="suite" value={suite} />
+
+        <div class="champ-bloc">
+          <label class="libelle" for="email">Ton email</label>
+          <input class="champ" id="email" name="email" type="email" required autocomplete="email" inputmode="email" value={emailSaisi} />
+        </div>
+
+        <div class="champ-bloc">
+          <label class="libelle" for="motdepasse">Ton mot de passe</label>
+          <input class="champ" id="motdepasse" name="motdepasse" type="password" required autocomplete="current-password" />
+        </div>
+
+        <button type="submit" class="btn btn-rose btn-plein">Se connecter</button>
+      </form>
+    </details>
+
+    {GOOGLE_DISPONIBLE && (
+      <div class="bloc-google">
+        <BoutonGoogle grand basculer={!!moi} texte="Continuer avec Google" />
+      </div>
+    )}
+
+    {/* EN LOCAL, LA PORTE SANS MOT DE PASSE. Le banc local recrée sa base à
+        chaque redémarrage, donc la session d'Arthur meurt et il retombe ici.
+        Ce lien n'apparaît qu'en développement : src/pages/dev/admin.ts
+        renvoie 404 en production. */}
     {import.meta.env.DEV && surHoteAdmin && (
       <a class="btn btn-contour btn-plein porte-locale" href="/dev/admin">
         Entrer sans mot de passe (local)
       </a>
     )}
 
+    {/* LA MENTION LÉGALE, SANS LIENS POUR L'INSTANT. Les pages publiques
+        correspondantes attendent 22 informations qu'Arthur seul possède
+        (RCCM, IFU, siège, représentant légal…). Un lien vers une page
+        introuvable, sur l'écran de connexion, vaut moins que pas de lien :
+        les liens seront posés le jour où les pages existeront. */}
+    <p class="legal">
+      En te connectant, tu acceptes les conditions d’utilisation de Mousso Dambé et sa
+      politique de confidentialité.
+    </p>
+
     {!surHoteAdmin && (
-      <div class="encadre acheteuse">
-        <Icone nom="info" taille={19} />
-        <p>
-          Pas encore de compte ? <a href={versInscription}>En créer un</a> prend une minute, et
-          garde ton cycle et tes commandes sur tous tes téléphones.
-        </p>
-      </div>
+      <p class="basculer">
+        Pas encore de compte ? <a href={versInscription}>Créer un compte</a>
+      </p>
     )}
-  </div>
+  </main>
 </Base>
 
 <style>
-  .section { padding: var(--e4); }
-  .marge-bas { margin-bottom: var(--e3); }
-
-  .tete { text-align: center; padding: 14px 0 20px; }
-
-  .pourquoi {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    margin-bottom: var(--e3);
-    background: var(--surface-douce);
+  .auth {
+    position: relative;
+    max-width: 440px;
+    margin: 0 auto;
+    padding: calc(var(--e6) + 12px) var(--e4) var(--e6);
   }
-  .pourquoi p { margin: 0; font-size: 13.5px; line-height: 1.45; color: var(--texte-2); }
 
-  .prudence {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    margin-bottom: var(--e3);
-    background: var(--surface-douce);
-  }
-  .prudence p { margin: 0; font-size: 13.5px; line-height: 1.45; color: var(--texte-2); }
-  .prudence a { font-weight: 700; }
-
-  .separateur { display: flex; align-items: center; gap: 12px; margin: 18px 0 14px; }
-  .separateur::before,
-  .separateur::after { content: ''; flex: 1; height: 1px; background: var(--bordure); }
-  .separateur span { font-size: 12.5px; color: var(--texte-3); }
-
-  .formulaire {
+  /* La flèche ronde, posée en haut à gauche par-dessus le contenu, comme sur
+     la capture. 44 px : la cible que le pouce atteint sans viser. */
+  .retour-rond {
+    position: absolute;
+    top: var(--e3);
+    left: var(--e4);
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
     background: var(--surface);
     border: 1px solid var(--bordure);
-    border-radius: var(--r-carte);
-    padding: 16px;
+    color: var(--encre);
   }
-  .formulaire .btn { margin-top: 18px; }
-  .champ-bloc + .champ-bloc { margin-top: 16px; }
 
-  .porte-locale { margin-top: var(--e3); }
+  .tete { text-align: center; padding: var(--e3) 0 var(--e4); }
+  .tete h1 { margin: var(--e3) 0 0; font-size: 28px; line-height: 1.2; }
+  .sous { margin: 6px 0 0; font-size: 15px; color: var(--texte-2); }
 
-  .acheteuse {
+  .marge-bas { margin-bottom: var(--e3); }
+
+  .doux {
     display: flex;
     align-items: flex-start;
     gap: 8px;
-    margin-top: 16px;
+    margin-bottom: var(--e3);
+    background: var(--surface-douce);
   }
-  .acheteuse p { margin: 0; font-size: 13.5px; line-height: 1.45; color: var(--texte-2); }
-  .acheteuse a { font-weight: 700; }
+  .doux p { margin: 0; font-size: 13.5px; line-height: 1.45; color: var(--texte-2); }
+  .doux a { font-weight: 700; }
+
+  /* ---------- Le numéro de téléphone ---------- */
+
+  .bloc-tel { display: grid; gap: var(--e3); }
+
+  .rangee-tel {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: stretch;
+    border: 1px solid var(--bordure);
+    border-radius: var(--r-champ);
+    overflow: hidden;
+    background: var(--surface);
+  }
+
+  .indicatif {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 var(--e3);
+    font-weight: 700;
+    font-size: 15px;
+    border-right: 1px solid var(--bordure);
+    white-space: nowrap;
+  }
+  .drapeau { font-size: 17px; line-height: 1; }
+
+  .champ-tel {
+    min-height: 52px;
+    padding: 0 var(--e3);
+    border: 0;
+    background: var(--surface-douce);
+    font: inherit;
+    font-size: 16px; /* 16 px : en dessous, les iPhone zooment tout seuls. */
+    color: var(--encre);
+  }
+  .champ-tel:focus { outline: 2px solid var(--rose); outline-offset: -2px; }
+
+  .sr-seul {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  /* ---------- Le « Ou » ---------- */
+
+  .separateur { display: flex; align-items: center; gap: 12px; margin: var(--e4) 0; }
+  .separateur::before,
+  .separateur::after { content: ''; flex: 1; height: 1px; background: var(--bordure); }
+  .separateur span { font-size: 13px; color: var(--texte-3); }
+
+  /* ---------- Le volet email ---------- */
+
+  .volet {
+    border: 1px solid var(--bordure);
+    border-radius: var(--r-carte);
+    background: var(--surface);
+    padding: 0 var(--e3);
+  }
+
+  .volet summary {
+    display: flex;
+    align-items: center;
+    gap: var(--e3);
+    min-height: 64px;
+    cursor: pointer;
+    list-style: none;
+    color: var(--encre);
+  }
+  .volet summary::-webkit-details-marker { display: none; }
+  .volet summary::marker { content: ''; }
+  .volet summary:focus-visible { outline: 2px solid var(--rose); outline-offset: 2px; border-radius: var(--r-champ); }
+
+  .volet-rond {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    flex: none;
+    border-radius: 50%;
+    background: var(--rose-clair);
+    color: var(--rose);
+  }
+  .volet-mots { flex: 1; }
+  .volet-titre { display: block; font-size: 16px; font-weight: 700; }
+
+  .volet summary :global(svg:last-child) { transition: transform var(--vite) ease; }
+  .volet[open] summary :global(svg:last-child) { transform: rotate(180deg); }
+  @media (prefers-reduced-motion: reduce) {
+    .volet summary :global(svg:last-child) { transition: none; }
+  }
+
+  .volet-dedans { padding: 0 0 var(--e3); }
+  .volet-dedans .btn { margin-top: var(--e4); }
+  .champ-bloc + .champ-bloc { margin-top: var(--e3); }
+
+  .bloc-google { margin-top: var(--e3); }
+  .porte-locale { margin-top: var(--e3); }
+
+  .legal {
+    margin: var(--e4) 0 0;
+    text-align: center;
+    font-size: 12.5px;
+    line-height: 1.55;
+    color: var(--texte-3);
+  }
+
+  .basculer {
+    margin: var(--e4) 0 0;
+    text-align: center;
+    font-size: 14.5px;
+    color: var(--texte-2);
+  }
+  .basculer a { font-weight: 700; }
 </style>

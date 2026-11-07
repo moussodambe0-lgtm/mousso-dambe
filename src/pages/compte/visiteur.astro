@@ -57,81 +57,205 @@ Astro.response.headers.set('Cache-Control', 'private, no-store');
  * allumé alors qu'elle a touché « Discussions », ce qui est à peine mieux.
  */
 type Onglet = 'accueil' | 'cycle' | 'discussions' | 'boutique' | 'compte';
+type Zone = {
+  debut: string;
+  onglet: Onglet;
+  /** L'icône du grand écran vide. Absente pour /compte, qui a la mascotte. */
+  icone?: string;
+  titre?: string;
+  dit?: string;
+  note?: string;
+};
 
+/*
+ * DEUX ÉCRANS, ET C'EST ARTHUR QUI A MONTRÉ LES DEUX.
+ *
+ * Pour /compte, le 7 novembre 2026 : « on va voir le bouton s'inscrire, se
+ * connecter, et la mascotte ». C'est la scène qui suit.
+ *
+ * Pour les autres zones fermées, il a envoyé la capture de l'écran de Jia :
+ * une icône seule, un titre, une phrase, puis « Créer un compte » en plein et
+ * « Se connecter » en contour, et une petite note en dessous. Pas de
+ * mascotte, pas de décor : l'écran dit ce qu'elle rate et comment y accéder,
+ * rien d'autre. C'est plus court et ça se lit d'un coup, ce qui est juste
+ * quand elle venait pour faire quelque chose de précis.
+ *
+ * LA BARRE DU BAS RESTE CELLE DE MOUSSO DAMBÉ. Arthur : « au niveau des
+ * discussions, la barre d'en bas où il y a les menus, ça tu copies pas, parce
+ * que Mousso Dambé a déjà une barre en bas. »
+ */
 const chemin = Astro.url.pathname;
-const ONGLETS: { debut: string; onglet: Onglet; pourquoi: string }[] = [
+const ZONES: Zone[] = [
   {
     debut: '/discussions',
     onglet: 'discussions',
-    pourquoi: 'Pour écrire à Dambé ou à la boutique, il faut un compte : c’est ce qui permet de retrouver tes messages, et à la boutique de te répondre.',
+    icone: 'bulles',
+    titre: 'Écris à la boutique',
+    dit: 'Pose tes questions avant d’acheter, et garde une trace de ce que la boutique t’a promis. Il faut un compte pour écrire.',
+    note: 'Tes échanges restent dans Mousso Dambé : en cas de souci, on peut les relire.',
   },
   {
     debut: '/dambe',
     onglet: 'discussions',
-    pourquoi: 'Pour poser tes questions à Dambé, il faut un compte : c’est ce qui garde tes réponses d’une fois sur l’autre.',
+    icone: 'dambe',
+    titre: 'Pose tes questions à Dambé',
+    dit: 'Demande ce que tu veux sur ton corps, tes règles, tes douleurs. Il faut un compte pour qu’elle garde tes réponses.',
+    note: 'Ce que tu écris à Dambé ne sort jamais de ton compte.',
   },
-  { debut: '/cycle', onglet: 'cycle', pourquoi: 'Pour suivre ton cycle, il faut un compte : sinon tout se perd en changeant de téléphone.' },
-  { debut: '/journal', onglet: 'cycle', pourquoi: 'Pour tenir ton journal, il faut un compte : sinon tout se perd en changeant de téléphone.' },
-  { debut: '/commandes', onglet: 'boutique', pourquoi: 'Pour retrouver tes commandes, il faut un compte.' },
-  { debut: '/favoris', onglet: 'boutique', pourquoi: 'Pour garder tes favoris, il faut un compte.' },
-  { debut: '/compte', onglet: 'compte', pourquoi: '' },
-  { debut: '/parametres', onglet: 'compte', pourquoi: 'Pour régler ton compte, connecte-toi d’abord.' },
+  {
+    debut: '/cycle',
+    onglet: 'cycle',
+    icone: 'cycle',
+    titre: 'Suis ton cycle',
+    dit: 'Note tes règles et sache quand les prochaines arrivent. Il faut un compte pour les garder.',
+    note: 'Sans compte, tout se perd le jour où tu changes de téléphone.',
+  },
+  {
+    debut: '/journal',
+    onglet: 'cycle',
+    icone: 'crayon',
+    titre: 'Tiens ton journal',
+    dit: 'Écris ce que tu ressens, jour après jour. Il faut un compte pour le retrouver.',
+    note: 'Sans compte, tout se perd le jour où tu changes de téléphone.',
+  },
+  {
+    debut: '/commandes',
+    onglet: 'boutique',
+    icone: 'colis',
+    titre: 'Retrouve tes commandes',
+    dit: 'Suis tes livraisons et retrouve ce que tu as déjà commandé. Il faut un compte.',
+  },
+  {
+    debut: '/favoris',
+    onglet: 'boutique',
+    icone: 'coeur',
+    titre: 'Garde tes favoris',
+    dit: 'Mets de côté ce qui t’intéresse pour y revenir. Il faut un compte.',
+  },
+  {
+    debut: '/parametres',
+    onglet: 'compte',
+    icone: 'reglages',
+    titre: 'Tes réglages',
+    dit: 'Choisis ce que l’application affiche et ce qu’elle garde. Il faut un compte.',
+  },
+  // /compte n'a pas d'icône : c'est lui qui garde la mascotte.
+  { debut: '/compte', onglet: 'compte' },
 ];
 
-const venue = ONGLETS.find((o) => chemin === o.debut || chemin.startsWith(`${o.debut}/`));
+const venue = ZONES.find((o) => chemin === o.debut || chemin.startsWith(`${o.debut}/`));
 const onglet: Onglet = venue?.onglet ?? 'compte';
-const pourquoi = venue?.pourquoi ?? '';
+/** La scène avec la mascotte, ou l'écran court propre à la zone. */
+const avecMascotte = !venue?.icone;
 
 // Une fois connectée, on la remet exactement où elle allait.
 const suite = suiteSure(chemin, '/compte');
 const vers = (page: string) => `${page}?suite=${encodeURIComponent(suite)}`;
 ---
 
-<Base titre="Mon compte" description="Connecte-toi ou crée ton compte Mousso Dambé." nav={onglet}>
-  <section class="scene-compte" aria-labelledby="titre-bienvenue">
-    <div class="fond-anime" aria-hidden="true">
-      <span class="tache t1"></span><span class="tache t2"></span><span class="tache t3"></span>
-      <i class="los l1"></i><i class="los l2"></i><i class="los l3"></i>
-    </div>
+<Base titre={avecMascotte ? 'Mon compte' : (venue?.titre ?? 'Mon compte')} description="Connecte-toi ou crée ton compte Mousso Dambé." nav={onglet}>
+  {!avecMascotte && (
+    /* L'ÉCRAN COURT, copié de la capture envoyée par Arthur le 7 novembre
+       2026 : l'icône seule, le titre, la phrase, « Créer un compte » en
+       plein, « Se connecter » en contour, la note en petit. Dans cet
+       ordre : celle qui arrive ici n'a le plus souvent pas de compte, c'est
+       donc la création qui prend le bouton plein. */
+    <section class="vide">
+      <span class="vide-icone" aria-hidden="true"><Icone nom={venue!.icone!} taille={34} /></span>
+      <h1>{venue!.titre}</h1>
+      <p class="vide-dit">{venue!.dit}</p>
+      <a class="btn btn-rose btn-plein" href={vers('/inscription')}>Créer un compte</a>
+      <a class="btn btn-contour btn-plein" href={vers('/connexion')}>Se connecter</a>
+      {venue!.note && <p class="vide-note">{venue!.note}</p>}
+    </section>
+  )}
 
-    <h1 id="titre-bienvenue">Bienvenue sur Mousso Dambé</h1>
-    <p class="chapeau">
-      {pourquoi || 'Crée ton compte pour garder ton cycle, tes commandes et tes messages, sur tous tes téléphones.'}
-    </p>
+  {avecMascotte && (
+    <>
+      <section class="scene-compte" aria-labelledby="titre-bienvenue">
+        <div class="fond-anime" aria-hidden="true">
+          <span class="tache t1"></span><span class="tache t2"></span><span class="tache t3"></span>
+          <i class="los l1"></i><i class="los l2"></i><i class="los l3"></i>
+        </div>
 
-    <div class="scene">
-      <div class="acteur" aria-hidden="true">
-        <Mascotte etat="ecoute" taille={100} titre={null} classe="md-tire" />
-        <Mascotte etat="salut" taille={100} titre={null} classe="md-salue" />
-      </div>
-      <span class="corde" aria-hidden="true"></span>
+        <h1 id="titre-bienvenue">Bienvenue sur Mousso Dambé</h1>
+        <p class="chapeau">
+          Crée ton compte pour garder ton cycle, tes commandes et tes messages, sur tous tes téléphones.
+        </p>
 
-      <div class="panneau">
-        <span class="poignee" aria-hidden="true"></span>
-        <a class="btn btn-rose" href={vers('/connexion')}>Se connecter</a>
-        <a class="btn btn-contour" href={vers('/inscription')}>Créer un compte</a>
-        <p class="gratuit">Gratuit, en une minute.</p>
-      </div>
-    </div>
-  </section>
+        <div class="scene">
+          <div class="acteur" aria-hidden="true">
+            <Mascotte etat="ecoute" taille={100} titre={null} classe="md-tire" />
+            <Mascotte etat="salut" taille={100} titre={null} classe="md-salue" />
+          </div>
+          <span class="corde" aria-hidden="true"></span>
 
-  <section class="section">
-    <ul class="avantages">
-      <li><span class="rond"><Icone nom="cycle" taille={18} /></span> Ton cycle gardé, même si tu changes de téléphone</li>
-      <li><span class="rond"><Icone nom="colis" taille={18} /></span> Tes commandes et leur suivi</li>
-      <li><span class="rond"><Icone nom="lieu" taille={18} /></span> Ton adresse de livraison retenue</li>
-      <li><span class="rond"><Icone nom="bulles" taille={18} /></span> Tes messages avec Dambé et la boutique</li>
-    </ul>
-  </section>
+          <div class="panneau">
+            <span class="poignee" aria-hidden="true"></span>
+            <a class="btn btn-rose" href={vers('/connexion')}>Se connecter</a>
+            <a class="btn btn-contour" href={vers('/inscription')}>Créer un compte</a>
+            <p class="gratuit">Gratuit, en une minute.</p>
+          </div>
+        </div>
+      </section>
 
-  <section class="section">
-    <a class="continuer" href="/">
-      <Icone nom="accueil" taille={18} /> Continuer sans compte
-    </a>
-  </section>
+      <section class="section">
+        <ul class="avantages">
+          <li><span class="rond"><Icone nom="cycle" taille={18} /></span> Ton cycle gardé, même si tu changes de téléphone</li>
+          <li><span class="rond"><Icone nom="colis" taille={18} /></span> Tes commandes et leur suivi</li>
+          <li><span class="rond"><Icone nom="lieu" taille={18} /></span> Ton adresse de livraison retenue</li>
+          <li><span class="rond"><Icone nom="bulles" taille={18} /></span> Tes messages avec Dambé et la boutique</li>
+        </ul>
+      </section>
+
+      <section class="section">
+        <a class="continuer" href="/">
+          <Icone nom="accueil" taille={18} /> Continuer sans compte
+        </a>
+      </section>
+    </>
+  )}
 </Base>
 
 <style>
+  /* ---------- L'écran court des zones fermées ---------- */
+
+  /* Centré et haut dans la page, comme sur la capture : elle lit le titre
+     sans faire défiler, et les deux boutons tombent sous le pouce. */
+  .vide {
+    display: grid;
+    justify-items: center;
+    gap: var(--e2);
+    max-width: 420px;
+    margin: 0 auto;
+    padding: var(--e6) var(--e4) var(--e4);
+    text-align: center;
+  }
+
+  .vide-icone { color: var(--texte-3); line-height: 0; }
+
+  .vide h1 {
+    margin: var(--e2) 0 0;
+    font-size: 20px;
+    line-height: 1.3;
+  }
+
+  .vide-dit {
+    margin: 0 0 var(--e3);
+    font-size: 15px;
+    line-height: 1.55;
+    color: var(--texte-2);
+  }
+
+  .vide .btn + .btn { margin-top: var(--e2); }
+
+  .vide-note {
+    margin: var(--e3) 0 0;
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--texte-3);
+  }
+
   /* ---------- Le décor : un rose qui respire ---------- */
 
   .scene-compte {

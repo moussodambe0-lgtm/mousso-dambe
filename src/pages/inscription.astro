@@ -1,51 +1,54 @@
 ---
 /**
- * Créer son compte.
+ * Créer un compte.
  *
- * Arthur, le 7 novembre 2026 : « comment la page pour s'inscrire ou bien se
- * connecter de Jia est, je veux la même chose chez Mousso Dambé. Sauf les
- * couleurs que tu vas utiliser. Faut pas essayer d'adapter. »
+ * Arthur, le 7 novembre 2026, captures d'écran de Jia à l'appui : « quand
+ * quelqu'un clique pour créer un compte, la page qui s'affiche doit être la
+ * même chose. Tu copies tout même chose, à l'exception des couleurs. Sauf le
+ * nom, tu mets Mousso Dambé, et le logo de Mousso Dambé. »
  *
- * CETTE PAGE EST LA COPIE DE `src/pages/inscription.astro` DE JIA (dépôt
- * yaar) : même en-tête de retour, même séparateur, même carte de formulaire,
- * mêmes champs dans le même ordre, même bloc d'avantages, même ligne « Déjà
- * un compte ? ». Les couleurs sont celles de Mousso Dambé.
+ * CETTE PAGE EST LA COPIE DE L'ÉCRAN D'INSCRIPTION DE JIA tel qu'il tourne en
+ * ligne. De haut en bas, dans cet ordre exact :
  *
- * CE FICHIER ÉTAIT UNE REDIRECTION. Depuis le 12 octobre, /inscription
- * renvoyait vers /ouverture : on entrait sans compte, et il n'y avait plus de
- * page d'inscription du tout. Elle revient, parce qu'Arthur veut les deux
- * chemins séparés comme chez Jia : un bouton « Se connecter », un bouton
- * « Créer un compte », et une vraie page derrière chacun.
+ *   la flèche de retour ronde, le logo, « Créer un compte », une phrase,
+ *   « Tes informations » avec Nom et Prénom côte à côte, le cadre « Continuer
+ *   avec un numéro de téléphone » et sa note « c'est le numéro que le livreur
+ *   appellera », « Ou », le volet « Connexion avec email », « Ou », le bouton
+ *   Google, la mention légale, puis « Déjà un compte ? Se connecter ».
  *
  * ──────────────────────────────────────────────────────────────────────────
- * TROIS ÉCARTS AVEC JIA, ET AUCUN N'EST UNE RETOUCHE DE GOÛT
+ * LE NUMÉRO DE TÉLÉPHONE EST LÀ, MAIS IL N'EST PAS ALLUMÉ
+ * ──────────────────────────────────────────────────────────────────────────
+ *
+ * Chez Jia, s'inscrire par son numéro envoie un code qu'elle recopie. Mousso
+ * Dambé n'a aucun moyen d'envoyer ce code : il faut un service d'envoi, qui
+ * se paie au message. Le cadre est écrit, à sa place, prêt :
+ * `TELEPHONE_DISPONIBLE` l'allume en un mot.
+ *
+ * Tant qu'il est éteint, le numéro est demandé dans le formulaire email, où
+ * il sert déjà : c'est le numéro que le livreur appellera, et il est recopié
+ * dans son profil par le déclencheur `profil_a_la_creation` (migration
+ * 20261107160000). Rien n'est donc perdu, c'est l'ENTRÉE par le numéro qui
+ * attend, pas le numéro lui-même.
+ *
+ * ──────────────────────────────────────────────────────────────────────────
+ * DEUX ÉCARTS AVEC JIA, ET AUCUN N'EST UNE RETOUCHE DE GOÛT
  * ──────────────────────────────────────────────────────────────────────────
  *
  * 1. PAS DE CHOIX « ACHETER / VENDRE ». Jia est une place de marché avec
- *    plusieurs boutiques ; Mousso Dambé est sa propre et unique boutique
- *    (voir src/pages/vendeur/commandes.astro). Demander à une femme si elle
- *    vient vendre n'aurait aucun sens, et la question la ferait hésiter.
+ *    plusieurs boutiques ; Mousso Dambé est sa propre et unique boutique.
+ *    Demander à une femme si elle vient vendre n'aurait aucun sens.
  *
  * 2. S'INSCRIRE DEPUIS UN COMPTE COMMENCÉ L'ATTACHE, il n'en ouvre pas un
- *    second. C'est la différence la plus importante, et elle n'existe pas
- *    chez Jia : ici on entre par « Commencer », donc une femme qui arrive sur
- *    cette page a souvent DÉJÀ trois mois de règles notées. `signUp` lui
- *    donnerait un compte neuf et vide, et son cycle, son journal et ses
- *    commandes deviendraient inaccessibles au moment précis où elle essaie de
- *    les mettre à l'abri. On appelle donc `updateUser` sur sa session
- *    existante. Voir src/lib/identite.ts.
- *
- * 3. JIA VOUVOIE, Mousso Dambé tutoie partout ailleurs. Vouvoyer sur cette
- *    seule page sonnerait faux pour celle qui vient de traverser
- *    l'application.
- *
- * LE PRÉNOM ET LE TÉLÉPHONE sont demandés ici comme chez Jia, et recopiés
- * dans son profil par le déclencheur `profil_a_la_creation` (migration
- * 20261107160000). Le numéro est le seul moyen de la joindre : sans lui, une
- * livraison se perd.
+ *    second. Cela n'existe pas chez Jia, et c'est vital ici : on entre par
+ *    « Commencer », donc une femme qui arrive sur cette page a souvent DÉJÀ
+ *    trois mois de règles notées. `signUp` lui donnerait un compte neuf et
+ *    vide au moment précis où elle essaie de les mettre à l'abri. Voir
+ *    src/lib/identite.ts.
  */
 import Base from '../layouts/Base.astro';
-import Entete from '../components/Entete.astro';
+import Symbole from '../components/Symbole.astro';
+import BoutonGoogle from '../components/BoutonGoogle.astro';
 import Icone from '../components/Icone.astro';
 import Alerte from '../components/Alerte.astro';
 import { clientPublic, poserSession, baseConfiguree } from '../lib/supabase';
@@ -61,30 +64,40 @@ if (!baseConfiguree()) return Astro.redirect('/', 302);
 
 const moi = await visiteuse(Astro);
 const suite = suiteSure(Astro.url.searchParams.get('suite'), '/compte');
-
-// Celle qui a déjà un vrai compte n'a rien à faire ici.
 if (moi?.compteReel) return Astro.redirect(suite, 303);
 
 /** Elle est entrée par « Commencer » : on attache, on n'ouvre pas un second compte. */
 const attache = Boolean(moi);
 
+/** S'inscrire par son numéro : écrit, pas encore branché. Voir l'en-tête. */
+const TELEPHONE_DISPONIBLE = false;
+const GOOGLE_DISPONIBLE = false;
+
 let erreur = '';
 let reussite = '';
-let saisie = { prenom: moi?.prenom ?? '', telephone: moi?.telephone ?? '', email: '' };
+let saisie = {
+  nom: '',
+  prenom: moi?.prenom ?? '',
+  telephone: moi?.telephone ?? '',
+  email: '',
+};
 
 if (Astro.request.method === 'POST') {
   const f = await Astro.request.formData();
   saisie = {
+    nom: String(f.get('nom') ?? '').trim(),
     prenom: String(f.get('prenom') ?? '').trim(),
     telephone: String(f.get('telephone') ?? '').trim(),
     email: String(f.get('email') ?? '').trim().toLowerCase(),
   };
   const motDePasse = String(f.get('motdepasse') ?? '');
   // Les mêmes règles que la base : 8 chiffres commençant par 5, 6 ou 7, et
-  // l'indicatif accepté. On vérifie ici pour pouvoir le dire tout de suite,
-  // la base revérifie de toute façon (telephone_burkina).
+  // l'indicatif accepté. On vérifie ici pour pouvoir le dire tout de suite ;
+  // `telephone_burkina` revérifie de toute façon côté base.
   const numeroPropre = saisie.telephone.replace(/[^0-9]/g, '').replace(/^(00)?226/, '');
   const numeroValide = /^[567][0-9]{7}$/.test(numeroPropre);
+  // Le nom complet, pour le livreur. Le prénom seul sert dans l'application.
+  const nomLivraison = [saisie.prenom, saisie.nom].filter(Boolean).join(' ').trim();
 
   if (saisie.prenom.length < 2) {
     erreur = 'Dis-nous comment t’appeler, en toutes lettres.';
@@ -96,8 +109,7 @@ if (Astro.request.method === 'POST') {
     erreur = 'Choisis un mot de passe d’au moins 8 caractères.';
   } else if (attache) {
     // ELLE A DÉJÀ UN COMPTE COMMENCÉ : on y attache l'email et le mot de
-    // passe. Son identifiant ne change pas, donc rien de ce qu'elle a noté
-    // n'est perdu.
+    // passe. Son identifiant ne change pas, donc rien n'est perdu.
     const sac: Record<string, string> = {};
     const client = await clientAuthentifie(Astro, sac);
     if (!client) {
@@ -106,7 +118,7 @@ if (Astro.request.method === 'POST') {
       const { error } = await client.auth.updateUser({
         email: saisie.email,
         password: motDePasse,
-        data: { prenom: saisie.prenom, telephone: numeroPropre },
+        data: { prenom: saisie.prenom, nom: nomLivraison, telephone: numeroPropre },
       });
       const cause = error ? causeDeLEchec(error.message) : null;
       if (cause === 'deja-pris') {
@@ -124,14 +136,10 @@ if (Astro.request.method === 'POST') {
     const { data, error } = await clientPublic(Astro).auth.signUp({
       email: saisie.email,
       password: motDePasse,
-      options: { data: { prenom: saisie.prenom, telephone: numeroPropre } },
+      options: { data: { prenom: saisie.prenom, nom: nomLivraison, telephone: numeroPropre } },
     });
     const cause = error ? causeDeLEchec(error.message) : null;
     if (cause === 'deja-pris') {
-      // LE MÊME SOIN QU'À LA CONNEXION : on ne confirme pas à un inconnu qu'un
-      // compte existe à cette adresse. Ici on ne peut pas l'éviter tout à
-      // fait, Supabase répondant différemment, mais le texte ne l'affirme pas
-      // et renvoie simplement vers la connexion.
       erreur = 'Cette adresse a déjà un compte. Choisis « Se connecter » pour le rejoindre.';
     } else if (cause === 'mot-de-passe-faible') {
       erreur = 'Choisis un mot de passe un peu plus long, au moins huit caractères.';
@@ -151,86 +159,306 @@ if (Astro.request.method === 'POST') {
 }
 
 const versConnexion = `/connexion?suite=${encodeURIComponent(suite)}`;
+// Le volet email s'ouvre d'emblée tant que le téléphone n'est pas branché.
+const emailOuvert = !TELEPHONE_DISPONIBLE || Boolean(erreur);
 ---
 
 <Base titre="Créer un compte" description="Crée ton compte Mousso Dambé pour retrouver ton cycle partout." pleinEcran>
-  <Entete titre="Créer un compte" retour="/compte" />
+  <main class="auth">
+    <a class="retour-rond" href="/compte" aria-label="Revenir en arrière">
+      <Icone nom="retour" taille={22} epaisseur={2} />
+    </a>
 
-  <div class="section">
-    {/* `Alerte` n'a pas de garde interne : sans ces conditions, un encadré
-        vide s'afficherait à chaque chargement de la page. */}
+    <div class="tete">
+      <Symbole taille={120} forme="nom" />
+      <h1>Créer un compte</h1>
+      <p class="sous">Une minute, et tes commandes te suivent sur tous tes téléphones.</p>
+    </div>
+
     {erreur && <div class="marge-bas"><Alerte type="erreur" texte={erreur} /></div>}
     {reussite && <div class="marge-bas"><Alerte type="reussite" texte={reussite} /></div>}
 
     {attache && !reussite && (
-      <div class="encadre garde">
+      <div class="encadre doux">
         <Icone nom="bouclier-coche" taille={19} />
         <p>Ce que tu as déjà noté depuis ce téléphone reste sur ce compte. Rien ne se perd.</p>
       </div>
     )}
 
-    <form method="POST" class="formulaire">
-      <div class="champ-bloc">
-        <label class="libelle" for="prenom">Ton prénom</label>
-        <input class="champ" id="prenom" name="prenom" required minlength="2" maxlength="40" autocomplete="given-name" value={saisie.prenom} placeholder="Awa" />
+    <form method="POST" class="tout">
+      <input type="hidden" name="suite" value={suite} />
+
+      <h2 class="rubrique">Tes informations</h2>
+      <div class="deux">
+        <div class="champ-bloc">
+          <label class="libelle" for="nom">Nom</label>
+          <input class="champ" id="nom" name="nom" maxlength="40" autocomplete="family-name" value={saisie.nom} />
+        </div>
+        <div class="champ-bloc">
+          <label class="libelle" for="prenom">Prénom</label>
+          <input class="champ" id="prenom" name="prenom" required minlength="2" maxlength="40" autocomplete="given-name" value={saisie.prenom} />
+        </div>
       </div>
 
-      <div class="champ-bloc">
-        <label class="libelle" for="telephone">Ton téléphone</label>
-        <input class="champ" id="telephone" name="telephone" type="tel" inputmode="numeric" required maxlength="16" autocomplete="tel-national" value={saisie.telephone} placeholder="70 12 34 56" />
-        <span class="aide">8 chiffres, commençant par 5, 6 ou 7.</span>
-      </div>
+      {TELEPHONE_DISPONIBLE ? (
+        /* LE CADRE DU TÉLÉPHONE, mis en avant comme sur la capture : bord
+           rose, icône ronde, titre, note, champ, bouton plein. */
+        <section class="cadre-tel">
+          <div class="cadre-tete">
+            <span class="cadre-rond" aria-hidden="true"><Icone nom="telephone" taille={18} /></span>
+            <div>
+              <p class="cadre-titre">Continuer avec un numéro de téléphone</p>
+              <p class="cadre-note">C’est le numéro que le livreur appellera</p>
+            </div>
+          </div>
+          <div class="rangee-tel">
+            <span class="indicatif"><span class="drapeau" aria-hidden="true">🇧🇫</span> +226</span>
+            <label class="sr-seul" for="telephone">Ton numéro de téléphone</label>
+            <input class="champ-tel" id="telephone" name="telephone" type="tel" inputmode="numeric" placeholder="70 12 34 56" maxlength="11" value={saisie.telephone} required />
+          </div>
+          <button type="submit" class="btn btn-rose btn-plein">Créer mon compte</button>
+        </section>
+      ) : (
+        /* Le téléphone n'ouvre pas encore de session, mais il reste demandé :
+           c'est le numéro que le livreur appellera, et sans lui une livraison
+           se perd. Il vit donc dans le formulaire email. */
+        <div class="champ-bloc">
+          <label class="libelle" for="telephone">Ton téléphone</label>
+          <div class="rangee-tel">
+            <span class="indicatif"><span class="drapeau" aria-hidden="true">🇧🇫</span> +226</span>
+            <input class="champ-tel" id="telephone" name="telephone" type="tel" inputmode="numeric" placeholder="70 12 34 56" maxlength="11" value={saisie.telephone} required />
+          </div>
+          <span class="aide">C’est le numéro que le livreur appellera.</span>
+        </div>
+      )}
 
-      <div class="champ-bloc">
-        <label class="libelle" for="email">Ton email</label>
-        <input class="champ" id="email" name="email" type="email" required autocomplete="email" inputmode="email" value={saisie.email} />
-      </div>
+      {TELEPHONE_DISPONIBLE && <div class="separateur"><span>Ou</span></div>}
 
-      <div class="champ-bloc">
-        <label class="libelle" for="motdepasse">Choisis un mot de passe</label>
-        <input class="champ" id="motdepasse" name="motdepasse" type="password" required minlength="8" autocomplete="new-password" />
-        <span class="aide">8 caractères minimum.</span>
-      </div>
+      <details class="volet" open={emailOuvert}>
+        <summary>
+          <span class="volet-rond" aria-hidden="true"><Icone nom="envoyer" taille={18} /></span>
+          <span class="volet-mots">
+            <span class="volet-titre">Connexion avec email</span>
+            <span class="volet-sous">Ton email et un mot de passe</span>
+          </span>
+          <Icone nom="bas" taille={18} />
+        </summary>
 
-      <button type="submit" class="btn btn-rose btn-plein">Créer mon compte</button>
+        <div class="volet-dedans">
+          <div class="champ-bloc">
+            <label class="libelle" for="email">Ton email</label>
+            <input class="champ" id="email" name="email" type="email" required autocomplete="email" inputmode="email" value={saisie.email} />
+          </div>
+
+          <div class="champ-bloc">
+            <label class="libelle" for="motdepasse">Choisis un mot de passe</label>
+            <input class="champ" id="motdepasse" name="motdepasse" type="password" required minlength="8" autocomplete="new-password" />
+            <span class="aide">8 caractères minimum.</span>
+          </div>
+
+          <button type="submit" class="btn btn-rose btn-plein">Créer mon compte</button>
+        </div>
+      </details>
     </form>
 
-    <div class="avantages">
-      <div><Icone nom="cycle" taille={18} /> Ton cycle gardé, même si tu changes de téléphone</div>
-      <div><Icone nom="colis" taille={18} /> Tes commandes et leur suivi</div>
-      <div><Icone nom="bulles" taille={18} /> Tes messages avec Dambé et la boutique</div>
-    </div>
+    {GOOGLE_DISPONIBLE && (
+      <>
+        <div class="separateur"><span>Ou</span></div>
+        <BoutonGoogle grand basculer={false} texte="S’inscrire avec Google" />
+      </>
+    )}
 
-    <p class="deja">Déjà un compte ? <a href={versConnexion}>Se connecter</a></p>
-  </div>
+    {/* LA MENTION LÉGALE, SANS LIENS POUR L'INSTANT : les pages publiques
+        correspondantes attendent 22 informations qu'Arthur seul possède
+        (RCCM, IFU, siège, représentant légal…). Un lien vers une page
+        introuvable vaut moins que pas de lien. */}
+    <p class="legal">
+      En créant un compte, tu acceptes les conditions d’utilisation de Mousso Dambé et sa
+      politique de confidentialité.
+    </p>
+
+    <p class="basculer">Déjà un compte ? <a href={versConnexion}>Se connecter</a></p>
+  </main>
 </Base>
 
 <style>
-  .section { padding: var(--e4); }
+  .auth {
+    position: relative;
+    max-width: 440px;
+    margin: 0 auto;
+    padding: calc(var(--e6) + 12px) var(--e4) var(--e6);
+  }
+
+  .retour-rond {
+    position: absolute;
+    top: var(--e3);
+    left: var(--e4);
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--surface);
+    border: 1px solid var(--bordure);
+    color: var(--encre);
+  }
+
+  .tete { text-align: center; padding: var(--e3) 0 var(--e4); }
+  .tete h1 { margin: var(--e3) 0 0; font-size: 28px; line-height: 1.2; }
+  .sous { margin: 6px 0 0; font-size: 15px; line-height: 1.45; color: var(--texte-2); }
+
   .marge-bas { margin-bottom: var(--e3); }
 
-  .garde {
+  .doux {
     display: flex;
     align-items: flex-start;
     gap: 8px;
-    margin-bottom: 14px;
+    margin-bottom: var(--e3);
     background: var(--surface-douce);
   }
-  .garde p { margin: 0; font-size: 13.5px; line-height: 1.45; color: var(--texte-2); }
+  .doux p { margin: 0; font-size: 13.5px; line-height: 1.45; color: var(--texte-2); }
 
-  .formulaire {
+  .rubrique { margin: 0 0 var(--e2); font-size: 17px; }
+
+  /* Nom et prénom côte à côte, comme sur la capture. Ils passent l'un sous
+     l'autre sur un très petit écran, où deux champs de 150 px sont
+     inutilisables. */
+  .deux { display: grid; grid-template-columns: 1fr 1fr; gap: var(--e3); }
+  @media (max-width: 340px) { .deux { grid-template-columns: 1fr; } }
+
+  .champ-bloc { margin-top: var(--e3); }
+  .deux .champ-bloc { margin-top: 0; }
+
+  /* ---------- Le cadre du téléphone ---------- */
+
+  .cadre-tel {
+    display: grid;
+    gap: var(--e3);
+    margin-top: var(--e4);
+    padding: var(--e3);
+    border: 1.5px solid var(--rose);
+    border-radius: var(--r-carte);
     background: var(--surface);
+  }
+  .cadre-tete { display: flex; align-items: flex-start; gap: var(--e3); }
+  .cadre-rond {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    flex: none;
+    border-radius: 50%;
+    background: var(--rose-clair);
+    color: var(--rose);
+  }
+  .cadre-titre { margin: 0; font-size: 15.5px; font-weight: 700; line-height: 1.3; }
+  .cadre-note { margin: 3px 0 0; font-size: 13px; color: var(--texte-2); }
+
+  .rangee-tel {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: stretch;
+    border: 1px solid var(--bordure);
+    border-radius: var(--r-champ);
+    overflow: hidden;
+    background: var(--surface);
+  }
+  .indicatif {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 var(--e3);
+    font-weight: 700;
+    font-size: 15px;
+    border-right: 1px solid var(--bordure);
+    white-space: nowrap;
+  }
+  .drapeau { font-size: 17px; line-height: 1; }
+  .champ-tel {
+    min-height: 52px;
+    padding: 0 var(--e3);
+    border: 0;
+    background: var(--surface-douce);
+    font: inherit;
+    font-size: 16px; /* 16 px : en dessous, les iPhone zooment tout seuls. */
+    color: var(--encre);
+  }
+  .champ-tel:focus { outline: 2px solid var(--rose); outline-offset: -2px; }
+
+  .sr-seul {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  /* ---------- Le « Ou » ---------- */
+
+  .separateur { display: flex; align-items: center; gap: 12px; margin: var(--e4) 0; }
+  .separateur::before,
+  .separateur::after { content: ''; flex: 1; height: 1px; background: var(--bordure); }
+  .separateur span { font-size: 13px; color: var(--texte-3); }
+
+  /* ---------- Le volet email ---------- */
+
+  .volet {
+    margin-top: var(--e4);
     border: 1px solid var(--bordure);
     border-radius: var(--r-carte);
-    padding: 16px;
+    background: var(--surface);
+    padding: 0 var(--e3);
   }
-  .formulaire .btn { margin-top: 18px; }
-  .champ-bloc + .champ-bloc { margin-top: 16px; }
+  .volet summary {
+    display: flex;
+    align-items: center;
+    gap: var(--e3);
+    min-height: 68px;
+    cursor: pointer;
+    list-style: none;
+    color: var(--encre);
+  }
+  .volet summary::-webkit-details-marker { display: none; }
+  .volet summary::marker { content: ''; }
+  .volet summary:focus-visible { outline: 2px solid var(--rose); outline-offset: 2px; border-radius: var(--r-champ); }
 
-  .avantages { display: grid; gap: 8px; margin-top: 20px; }
-  .avantages div { display: flex; align-items: center; gap: 9px; font-size: 14.5px; font-weight: 700; line-height: 1.35; }
-  .avantages :global(svg) { color: var(--rose); flex: 0 0 auto; }
+  .volet-rond {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    flex: none;
+    border-radius: 50%;
+    background: var(--rose-clair);
+    color: var(--rose);
+  }
+  .volet-mots { flex: 1; }
+  .volet-titre { display: block; font-size: 16px; font-weight: 700; }
+  .volet-sous { display: block; font-size: 13px; color: var(--texte-2); }
 
-  .deja { text-align: center; font-size: 14.5px; color: var(--texte-2); margin: 18px 0 0; }
-  .deja a { font-weight: 700; }
+  .volet summary :global(svg:last-child) { transition: transform var(--vite) ease; }
+  .volet[open] summary :global(svg:last-child) { transform: rotate(180deg); }
+  @media (prefers-reduced-motion: reduce) {
+    .volet summary :global(svg:last-child) { transition: none; }
+  }
+
+  .volet-dedans { padding: 0 0 var(--e3); }
+  .volet-dedans .btn { margin-top: var(--e4); }
+
+  .legal {
+    margin: var(--e4) 0 0;
+    text-align: center;
+    font-size: 12.5px;
+    line-height: 1.55;
+    color: var(--texte-3);
+  }
+
+  .basculer {
+    margin: var(--e3) 0 0;
+    text-align: center;
+    font-size: 14.5px;
+    color: var(--texte-2);
+  }
+  .basculer a { font-weight: 700; }
 </style>
