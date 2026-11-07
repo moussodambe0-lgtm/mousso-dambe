@@ -163,17 +163,46 @@ self.addEventListener('fetch', (e) => {
   const estStyleOuScript = /\.(css|js|mjs)$/.test(url.pathname);
   const estFichier = estFige || estStyleOuScript;
 
+  /*
+   * LE RÉSEAU PART D'ABORD, LA RÉSERVE S'OUVRE À CÔTÉ (7 novembre 2026).
+   *
+   * Arthur : « l'application est très lente, quand on clique sur un bouton ça
+   * prend 5 secondes ».
+   *
+   * Ce fichier y était pour sa part. Il écrivait `await ouvrirReserve()` AVANT
+   * de lancer quoi que ce soit : chaque requête de l'application attendait
+   * donc l'ouverture du magasin local avant même que le premier octet parte
+   * sur le réseau. Sur un téléphone d'entrée de gamme, ouvrir ce magasin
+   * coûte quelques dizaines de millisecondes, et il faut d'abord RÉVEILLER le
+   * service worker, ce qui en coûte davantage. Multiplié par la douzaine de
+   * fichiers d'une page, cela se voit.
+   *
+   * Les deux ne dépendent pas l'un de l'autre : on les lance ENSEMBLE. La
+   * réserve n'est attendue qu'au moment où l'on en a vraiment besoin, c'est-
+   * à-dire pour y ranger la réponse, ou pour y chercher un fichier figé.
+   *
+   * CE QUI NE CHANGE PAS : les fichiers figés (polices, images, icônes) sont
+   * toujours servis depuis la réserve en priorité, parce que c'est ce qui
+   * économise le plus de données sur un forfait compté. Pour eux seuls, on
+   * attend la réserve avant de décider.
+   */
+  const reservePromise = ouvrirReserve();
+
   e.respondWith(
     (async () => {
-      const reserve = await ouvrirReserve();
-
-      if (estFige && reserve) {
-        const garde = await reserve.match(requete);
-        if (garde) return garde;
+      if (estFige) {
+        const reserve = await reservePromise;
+        if (reserve) {
+          const garde = await reserve.match(requete);
+          if (garde) return garde;
+        }
       }
 
       try {
+        // Le réseau part sans attendre la réserve : c'est tout l'objet du
+        // changement.
         const reseau = await fetch(requete);
+        const reserve = await reservePromise;
         if (reserve && reseau.ok && (estFichier || url.pathname.startsWith('/boutique'))) {
           // Une page n'entre dans la réserve que si elle se déclare cacheable
           // par le réseau de diffusion. Les fichiers (polices, images, styles)
@@ -184,6 +213,9 @@ self.addEventListener('fetch', (e) => {
         }
         return reseau;
       } catch {
+        // Le réseau est tombé. C'est le seul moment où la réserve est le
+        // dernier recours, et c'est ici qu'on l'attend.
+        const reserve = await reservePromise;
         if (reserve) {
           const garde = await reserve.match(requete);
           if (garde) return garde;
