@@ -43,7 +43,7 @@ function ouMourir(v, quoi) {
 
 const admin = ouMourir(emailAdmin(), "l'adresse d'administration");
 const anon = ouMourir(valeurUnique(motifMousso('.*anon.*key'), { quoi: 'la clé anonyme' }), 'la clé anonyme');
-const apiBrevo = ouMourir(valeurUnique(/^api_brevo mousso dambe$/i, { quoi: 'la clé API Brevo' }), 'la clé Brevo');
+const cleResend = ouMourir(valeurUnique(/^resend api key mousso dambe$/i, { quoi: 'la clé Resend' }), 'la clé Resend');
 const jetonSupa = ouMourir(
   valeurUnique(/^jeton supabase auth mousso dambe$/i, { quoi: 'le jeton Supabase' }),
   'le jeton Supabase'
@@ -85,45 +85,45 @@ const confirmeA = compte?.confirmed_at ?? compte?.user?.confirmed_at ?? null;
 console.log('  compte créé            :', identifiant ? 'oui' : 'non');
 console.log('  confirmation demandée  :', confirmeA ? 'NON (déjà confirmé ?)' : 'oui, un message doit partir');
 
-// --- 2. Ce que Brevo en a fait -----------------------------------------------
+// --- 2. Ce que Resend en a fait ----------------------------------------------
 
-const entetesBrevo = { 'api-key': apiBrevo, accept: 'application/json' };
+const entetesResend = { Authorization: `Bearer ${cleResend}`, accept: 'application/json' };
 
-async function evenements() {
-  const u = new URL('https://api.brevo.com/v3/smtp/statistics/events');
-  u.searchParams.set('email', adresse);
-  u.searchParams.set('limit', '20');
-  const r = await fetch(u, { headers: entetesBrevo, signal: AbortSignal.timeout(30_000) });
+async function derniers() {
+  const r = await fetch('https://api.resend.com/emails?limit=20', {
+    headers: entetesResend,
+    signal: AbortSignal.timeout(30_000),
+  });
   if (!r.ok) return { erreur: `HTTP ${r.status}` };
   return r.json();
 }
 
-console.log('\n--- Journal de Brevo ---');
+console.log('\n--- Journal de Resend ---');
 let vus = [];
-// Brevo met quelques secondes a enregistrer. On regarde plusieurs fois plutot
+// Resend met quelques secondes a enregistrer. On regarde plusieurs fois plutot
 // que d'attendre une duree choisie au hasard.
 for (let essai = 1; essai <= 8; essai++) {
-  const j = await evenements();
+  const j = await derniers();
   if (j.erreur) {
     console.log('  lecture impossible :', j.erreur);
     break;
   }
-  vus = j.events ?? [];
+  vus = (j.data ?? []).filter((e) => (e.to ?? []).some((t) => t === adresse));
   if (vus.length > 0) break;
   await new Promise((r) => setTimeout(r, 4000));
   console.log(`  rien encore (${essai * 4} s)…`);
 }
 
 if (vus.length === 0) {
-  console.log('  AUCUN ÉVÉNEMENT. Le message n’est pas parti par Brevo.');
+  console.log('  AUCUN MESSAGE. Rien n’est parti par Resend.');
 } else {
   for (const e of vus) {
-    console.log(`  ${e.date}  ${e.event}${e.reason ? `  (${e.reason})` : ''}`);
+    console.log(`  ${e.created_at}  ${e.last_event}  « ${e.subject} »`);
   }
 }
 
-const livre = vus.some((e) => e.event === 'delivered');
-const dur = vus.find((e) => ['hardBounce', 'softBounce', 'blocked', 'spam', 'invalid', 'error'].includes(e.event));
+const livre = vus.some((e) => ['delivered', 'sent'].includes(e.last_event));
+const dur = vus.find((e) => ['bounced', 'complained', 'failed'].includes(e.last_event));
 
 // --- 3. Le ménage ------------------------------------------------------------
 
@@ -140,8 +140,8 @@ if (!GARDER && identifiant) {
 }
 
 console.log('\n--- Verdict ---');
-if (livre) console.log('  LIVRÉ. La connexion par email fonctionne de bout en bout.');
-else if (dur) console.log(`  ÉCHEC : ${dur.event}${dur.reason ? ` — ${dur.reason}` : ''}`);
+if (livre) console.log('  PARTI ET LIVRÉ. La connexion par email fonctionne de bout en bout.');
+else if (dur) console.log(`  ÉCHEC : ${dur.last_event}`);
 else if (vus.length > 0) console.log('  Parti, pas encore confirmé livré. Relancer dans une minute.');
 else console.log('  Rien n’est parti. Le branchement SMTP est en cause.');
 process.exit(livre ? 0 : 1);

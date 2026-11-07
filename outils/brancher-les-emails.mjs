@@ -13,15 +13,39 @@
  * et reserve aux membres de l'equipe du projet. Autrement dit, une inscription
  * sur trois aboutissait, et seulement pour Arthur.
  *
- * CE QUI ETAIT DEJA FAIT, ET QU'ON NE REFAIT PAS : le compte Brevo, et surtout
- * l'authentification du domaine moussodambe.com (DKIM et DMARC poses dans le
- * DNS le 6 novembre). C'est elle qui fait qu'un message partant de
- * @moussodambe.com arrive dans la boite de reception et pas dans les
- * indesirables. Sans elle, tout le reste ne sert a rien.
+ * POURQUOI RESEND ET PAS BREVO
+ *
+ * Brevo avait ete branche en premier : compte cree, domaine authentifie dans
+ * le DNS le 6 novembre, cles rangees dans le coffre. Il a fallu l'abandonner,
+ * et la raison merite d'etre ecrite pour qu'on n'y revienne pas par erreur.
+ *
+ * BREVO REFUSE L'AUTHENTIFICATION DES SERVEURS DE SUPABASE. Mesure, pas
+ * suppose : avec un serveur SMTP qui n'existe pas, Supabase echoue au bout de
+ * 37 secondes ; avec Brevo, en 1 seconde. Il joint donc le relais et se fait
+ * renvoyer. Les memes identifiants, utilises a la main depuis un poste,
+ * marchent de bout en bout : AUTH 235, MAIL FROM 250, message en file
+ * d'attente, livre, et ouvert. Le mot de passe a ete ressaisi a la main dans
+ * le tableau de bord de Supabase : meme refus. Le compteur de Brevo est reste
+ * a UNE seule requete sur toute la periode, celle de l'essai direct.
+ *
+ * Ecartes un par un : les gabarits (vides, meme echec), l'accent du nom de
+ * l'expediteur, les ports 465, 2525 et 25, l'adresse d'expedition, et un
+ * redemarrage complet du projet. Les journaux d'authentification de Supabase
+ * ne sont pas disponibles sur ce projet, d'ou la methode par elimination.
+ *
+ * Le compte Brevo n'est pas supprime : il reste bon pour les emails de la
+ * boutique, qui partiraient de nos serveurs et non de ceux de Supabase.
+ *
+ * CE QUI EST DEJA FAIT, ET QU'ON NE REFAIT PAS : l'authentification du domaine
+ * moussodambe.com chez Resend (DKIM, SPF, MX de retour et CNAME poses dans le
+ * DNS de Vercel le 7 novembre par outils/dns-vercel.mjs, verifies en une
+ * minute). C'est elle qui fait qu'un message partant de @moussodambe.com
+ * arrive dans la boite de reception et pas dans les indesirables. Sans elle,
+ * tout le reste ne sert a rien.
  *
  * CE QUE CET OUTIL FAIT
  *
- *   1. Pose le relais SMTP de Brevo dans les reglages de la base.
+ *   1. Pose le relais SMTP de Resend dans les reglages de la base.
  *   2. Releve la limite de 2 messages par heure, qui est celle du depannage.
  *   3. Remplace les cinq messages anglais de Supabase par des messages en
  *      francais, aux couleurs de l'application.
@@ -50,17 +74,24 @@ import { valeurUnique, motifMousso } from './coffre.mjs';
 
 const LIRE_SEULEMENT = process.argv.includes('--lire');
 
-/** Le relais de Brevo. Le port 587 est celui du STARTTLS, le seul que Supabase accepte. */
-const SMTP_HOTE = 'smtp-relay.brevo.com';
+/** Le relais de Resend. Le port 587 est celui du STARTTLS. */
+const SMTP_HOTE = 'smtp.resend.com';
 const SMTP_PORT = '587';
+
+/**
+ * L'identifiant SMTP de Resend est le mot « resend », pour tout le monde. Ce
+ * n'est pas une erreur de recopie : c'est la cle d'API qui tient lieu de mot
+ * de passe et qui identifie le compte.
+ */
+const SMTP_IDENTIFIANT = 'resend';
 
 /**
  * L'adresse qui envoie.
  *
- * Elle est sur moussodambe.com, et c'est exprès : Brevo n'authentifie que les
- * domaines, pas les adresses gmail. Un message parti d'une adresse gmail via
- * Brevo arrive signe par le mauvais domaine, et Gmail le range dans les
- * indesirables. Le domaine etant authentifie, n'importe quelle adresse en
+ * Elle est sur moussodambe.com, et c'est exprès : Resend n'autorise l'envoi
+ * que depuis un domaine verifie chez lui. Un message parti d'une adresse gmail
+ * arriverait signe par le mauvais domaine, et Gmail le rangerait dans les
+ * indesirables. Le domaine etant verifie, n'importe quelle adresse en
  * @moussodambe.com est legitime sans avoir a la declarer une par une.
  */
 const EXPEDITEUR = 'bonjour@moussodambe.com';
@@ -69,10 +100,10 @@ const NOM_EXPEDITEUR = 'Mousso Dambé';
 /**
  * Combien de messages par heure.
  *
- * Le defaut est 2, celui de l'expediteur de depannage. Brevo en offre 300 par
- * jour sur le plan gratuit : 100 par heure laisse de la marge pour une pointe
- * sans pouvoir vider le quota de la journee en vingt minutes si quelque chose
- * tourne en boucle.
+ * Le defaut est 2, celui de l'expediteur de depannage. Resend en offre 3000
+ * par mois et 100 par jour sur le plan gratuit : 100 par heure laisse de la
+ * marge pour une pointe sans pouvoir vider le quota en vingt minutes si
+ * quelque chose tourne en boucle.
  */
 const PAR_HEURE = 100;
 
@@ -178,11 +209,11 @@ const MESSAGES = {
 
 // --- Ce qu'on envoie ---------------------------------------------------------
 
-function reglages(identifiantSmtp, cleSmtp) {
+function reglages(cleSmtp) {
   const r = {
     smtp_host: SMTP_HOTE,
     smtp_port: SMTP_PORT,
-    smtp_user: identifiantSmtp,
+    smtp_user: SMTP_IDENTIFIANT,
     smtp_pass: cleSmtp,
     smtp_admin_email: EXPEDITEUR,
     smtp_sender_name: NOM_EXPEDITEUR,
@@ -201,14 +232,11 @@ function reglages(identifiantSmtp, cleSmtp) {
 const jeton = valeurUnique(/^jeton supabase auth mousso dambe$/i, {
   quoi: "le jeton Supabase avec la permission « Auth Config »",
 });
-const identifiant = valeurUnique(motifMousso('.*brevo.*smtp.*login|.*smtp.*login.*brevo'), {
-  quoi: "l'identifiant SMTP de Brevo",
-});
-const cle = valeurUnique(motifMousso('.*brevo.*smtp.*key|.*smtp.*key.*brevo'), {
-  quoi: 'la clé SMTP de Brevo',
+const cle = valeurUnique(/^resend api key mousso dambe$/i, {
+  quoi: "la clé d'API Resend",
 });
 
-for (const [quoi, v] of [['jeton', jeton], ['identifiant SMTP', identifiant], ['clé SMTP', cle]]) {
+for (const [quoi, v] of [['jeton', jeton], ['clé Resend', cle]]) {
   if (v.erreur) {
     console.error(`Arrêt : ${v.erreur}`);
     process.exit(1);
@@ -244,7 +272,7 @@ console.log('\n--- Envoi ---');
 const envoi = await fetch(API, {
   method: 'PATCH',
   headers: entetes,
-  body: JSON.stringify(reglages(identifiant.valeur, cle.valeur)),
+  body: JSON.stringify(reglages(cle.valeur)),
   signal: AbortSignal.timeout(30_000),
 });
 
@@ -285,9 +313,13 @@ for (const [nom, obtenu, voulu] of attendu) {
   console.log(`  ${bon ? 'OK  ' : 'NON '} ${nom.padEnd(22)} ${bon ? obtenu : `${obtenu} (attendu ${voulu})`}`);
 }
 
-// Le mot de passe SMTP ne se relit pas : l'API le renvoie masque. On verifie
-// seulement qu'il y a quelque chose, et le vrai essai est l'envoi d'un message.
-console.log(`  ${apres.smtp_user ? 'OK  ' : 'NON '} identifiant SMTP      ${apres.smtp_user ? 'posé' : 'VIDE'}`);
+// Le mot de passe SMTP ne se relit pas : l'API renvoie une empreinte opaque,
+// qui ne correspond a aucune transformation connue de la cle. On ne peut donc
+// RIEN en conclure, et le seul vrai essai est l'envoi d'un message :
+// outils/essai-email.mjs.
+const bonId = apres.smtp_user === SMTP_IDENTIFIANT;
+if (!bonId) faux++;
+console.log(`  ${bonId ? 'OK  ' : 'NON '} identifiant SMTP      ${apres.smtp_user || 'VIDE'}`);
 
 console.log(
   faux === 0
