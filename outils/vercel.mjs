@@ -29,7 +29,19 @@ const action = process.argv[2] ?? 'etat';
  * relance des deploiements : il n'a aucune raison de tenir un jeton de compte
  * capable de toucher au DNS d'un domaine.
  */
-const jeton = valeurUnique(/^(?!.*dns)(?=.*vercel)(?=.*mousso)/i, {
+/*
+ * LE NOM EXACT, ET RIEN QUI LUI RESSEMBLE (durci le 7 novembre 2026).
+ *
+ * Le motif d'avant acceptait toute ligne contenant « vercel » et « mousso »
+ * sans « dns ». Le coffre s'est enrichi ce jour-là d'une ligne ABÎMÉE : un
+ * jeton collé sans retour à la ligne, si bien qu'une partie de sa valeur
+ * s'est retrouvée DANS LE NOM (« vcp_…JETON VERCEL COMPTE mousso dambe »).
+ * Elle correspondait au motif, et l'outil s'est arrêté en demandant de
+ * choisir — ce qu'il fait bien, mais il n'aurait pas dû avoir à le demander.
+ *
+ * Un nom exact ne peut pas attraper une ligne mal recopiée par accident.
+ */
+const jeton = valeurUnique(/^jeton vercel mousso dambe$/i, {
   quoi: 'le jeton Vercel du projet',
 });
 if (!jeton.valeur) {
@@ -89,6 +101,43 @@ const ATTENDUES = [
     motif: /^resend api key mousso dambe$/i,
     quoi: "la cle d'API Resend",
     secrete: true,
+  },
+  /*
+   * L'ASSISTANTE DAMBE (7 novembre 2026). Arthur : « et pourquoi l'IA ne
+   * repond pas ? »
+   *
+   * Parce que ces trois lignes n'existaient pas sur Vercel. La cle dormait
+   * dans le coffre depuis le 13 octobre, mais personne ne l'avait posee, et
+   * `ollamaConfigure()` ne regarde qu'une chose : la presence de OLLAMA_URL.
+   * Sans elle, Dambe se taisait, et l'ecran l'annoncait a tout le monde.
+   *
+   * L'ADRESSE EST ECRITE ICI, et c'est voulu : c'est l'adresse publique
+   * d'Ollama en ligne, elle n'a rien d'un secret et elle ne depend d'aucun
+   * projet. Un Ollama installe sur le PC d'Arthur ne conviendrait pas : le
+   * site tourne sur Vercel et ne verrait jamais cette machine.
+   */
+  {
+    cle: 'OLLAMA_URL',
+    valeur: () => 'https://ollama.com',
+    secrete: false,
+  },
+  {
+    cle: 'OLLAMA_API_KEY',
+    motif: /^ollama_api_key mousso dambe$/i,
+    quoi: "la cle Ollama de Mousso Dambe",
+    secrete: true,
+  },
+  {
+    /*
+     * `gemma3:4b` a ete RETIRE par Ollama le 15 juillet 2026 : il repond
+     * « 410, retired ». Verifie ce jour contre la vraie cle, les trois
+     * modeles donnent : gemma4:31b repond « Bonjour » en 800 ms,
+     * gemma3:4b repond 410, et gpt-oss:20b repond 200 avec un texte VIDE
+     * (il met tout dans un champ « thinking »). Un seul tient.
+     */
+    cle: 'ASSISTANTE_MODELE',
+    valeur: () => 'gemma4:31b',
+    secrete: false,
   },
 ];
 

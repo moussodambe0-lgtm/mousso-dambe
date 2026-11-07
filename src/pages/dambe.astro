@@ -22,16 +22,14 @@ import { visiteuse, lirePanier, comptePanier } from '../lib/session';
 import { ollamaConfigure, demanderOllama, ErreurOllama } from '../lib/ollama';
 import { alerte, messagesPour, nettoyer, SUGGESTIONS, type ContexteAssistante } from '../lib/assistante';
 import { prix, messageErreur } from '../lib/format';
-import {
-  VERSION_ACCORD_ASSISTANTE,
-  TITRE_ACCORD_ASSISTANTE,
-  PARAGRAPHES_ACCORD_ASSISTANTE,
-  BOUTON_ACCORD_OUI,
-  BOUTON_ACCORD_NON,
-  LIGNE_SOUS_LA_SAISIE,
-  PARAGRAPHE_ACCUEIL,
-  texteAccordAssistante,
-} from '../lib/accords';
+/*
+ * src/lib/accords.ts n'est plus importé ici depuis le 7 novembre 2026.
+ *
+ * Le fichier RESTE dans le dépôt, avec ses 48 vérifications, et la table
+ * `consentements` avec lui : le jour où un texte d'information revient, tout
+ * est prêt et rien n'est à réécrire. Ce sont les imports qui partent, pas le
+ * travail. Voir le bloc en tête de ce fichier.
+ */
 import { sansCompte } from '../lib/porte';
 
 if (!baseConfiguree()) return Astro.redirect('/', 302);
@@ -61,39 +59,47 @@ let erreur = '';
  * La version compte autant que le oui : si le texte change, l'accord d'hier
  * portait sur un autre texte, et il faut le redemander.
  */
-async function accordDonne(): Promise<boolean> {
-  const { data } = await client.rpc('consentement_etat', { p_objet: 'assistante' });
-  return data?.ok === true && data.accorde === true && data.version === VERSION_ACCORD_ASSISTANTE;
-}
-let aAccepte = await accordDonne();
+/*
+ * ══════════════════════════════════════════════════════════════════════════
+ * L'ACCORD N'EST PLUS DEMANDÉ. DÉCISION D'ARTHUR DU 7 NOVEMBRE 2026.
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * Il a vu l'écran d'accord, ses trois paragraphes, la phrase d'accueil et la
+ * ligne sous la case de saisie, et a répondu « SUPPRIME » à chacun. La
+ * question lui a ensuite été posée en toutes lettres, avec les deux
+ * conséquences ci-dessous, et il a choisi de tout retirer en connaissance de
+ * cause.
+ *
+ * CE QUI EST PERDU, ET QU'IL FAUT POUVOIR RELIRE DANS SIX MOIS :
+ *
+ * 1. L'article 26 de la loi n°037-2026/ALP n'exige pas un consentement, il
+ *    INTERDIT de traiter des données de santé sans consentement exprès et
+ *    éclairé. Ce consentement n'est plus demandé, plus recueilli, plus
+ *    prouvable. La politique de confidentialité, publiée le même jour et
+ *    atteignable depuis le pied de page et les paramètres, devient le seul
+ *    endroit où l'information existe.
+ *
+ * 2. `a_accepte_dambe` garde les fonctions de lecture de l'espace
+ *    d'administration (`conversations_ia`, `fil_ia`, migration
+ *    20261106093000). Sans accord noté, elles répondent
+ *    `fermes_faute_accord`, et l'administration ne voit plus les
+ *    conversations. C'est la conséquence mécanique du retrait, et elle a été
+ *    annoncée avant la décision.
+ *
+ * CE QUI RESTE EN PLACE, INTACT : la table `consentements`, ses deux
+ * fonctions, src/lib/accords.ts et ses 48 vérifications, et le verrou de la
+ * base. Rien n'est effacé. Remettre la barrière tient en une vingtaine de
+ * lignes, le jour où on le décide ou le jour où l'ARCOD le demande.
+ */
+const aAccepte = true;
 
 if (Astro.request.method === 'POST') {
   // Le corps d'une requête ne se lit qu'une fois : tout ce qui vient du
   // formulaire est pris ici, et nulle part ailleurs.
   const f = await Astro.request.formData();
-  const geste = String(f.get('geste') ?? '');
   const question = String(f.get('question') ?? '').trim();
 
-  // Elle renonce : on ne garde rien, on ne note aucun refus. Un non n'est pas
-  // une donnée à conserver, c'est l'absence d'un oui.
-  if (geste === 'refus') return Astro.redirect('/', 303);
-
-  if (geste === 'accord') {
-    const { data } = await client.rpc('consentement_noter', {
-      p_objet: 'assistante',
-      p_accorde: true,
-      p_version: VERSION_ACCORD_ASSISTANTE,
-      p_texte: texteAccordAssistante(),
-    });
-    if (data?.ok !== true) erreur = "Ton accord n'a pas pu être enregistré. Réessaie.";
-    else return Astro.redirect('/dambe', 303);
-  } else if (!aAccepte) {
-    // DERNIER VERROU, CÔTÉ SERVEUR. L'écran ne montre pas la case de saisie
-    // sans accord, mais une page ne se protège pas avec ce qu'elle affiche :
-    // une requête forgée arriverait ici sans jamais l'avoir vu. C'est ici que
-    // l'interdiction de l'article 26 est réellement tenue.
-    erreur = "Il faut d'abord lire et accepter ce qui est écrit au-dessus.";
-  } else if (question.length < 2) {
+  if (question.length < 2) {
     erreur = 'Écris ta question.';
   } else {
     // 1. La base enregistre et compte. Si elle refuse, on s'arrête là : aucun
@@ -211,15 +217,12 @@ const branchee = ollamaConfigure();
     {
       messages.length === 0 ? (
         <div class="accueil-dambe apparait">
+          {/* Le paragraphe « les douleurs, le retard, l'hygiène… » et celui
+              qui disait que l'équipe peut relire les questions sont retirés
+              (Arthur, le 7 novembre 2026 : « SUPPRIME »). Il ne reste que la
+              mascotte et l'invitation à écrire. */}
           <Mascotte etat="salut" taille={120} titre="IA Dambé" />
           <h2>Pose ta question</h2>
-          <p class="doux">
-            Les douleurs, le retard, l'hygiène, les protections, ce qui est normal et ce qui ne l'est pas. Ce que tu
-            n'oses pas demander ailleurs.
-          </p>
-          {/* Ce qu'elle doit savoir avant d'écrire, et pas dans un document
-              qu'elle n'ouvrira jamais (Juriste, 5 novembre 2026, § 1.4 B). */}
-          <p class="doux ce-quil-faut-savoir">{PARAGRAPHE_ACCUEIL}</p>
         </div>
       ) : (
         <div class="fil">
@@ -263,16 +266,22 @@ const branchee = ollamaConfigure();
 
     {erreur && <div class="marge"><Alerte type="erreur" texte={erreur} /></div>}
 
-    {
-      !branchee && (
-        <div class="marge">
-          <Alerte
-            type="attention"
-            texte="Dambé répond dès qu'Arthur dépose l'adresse et la clé Ollama dans les réglages du site. Les réponses d'orientation vers un centre de santé, elles, marchent déjà."
-          />
-        </div>
-      )
-    }
+    {/* L'AVERTISSEMENT « Dambé répond dès qu'Arthur dépose l'adresse et la
+        clé Ollama » EST RETIRÉ (Arthur, le 7 novembre 2026 : « SUPPRIME »).
+
+        Il devait partir de toute façon, et pour une raison plus grave que la
+        demande : IL ÉCRIVAIT LE PRÉNOM DU PROPRIÉTAIRE À L'ÉCRAN, sur un
+        site qui parle du corps des femmes. C'est la faute même que Juriste
+        venait de corriger dans les documents légaux, le même jour.
+
+        Il annonçait aussi à n'importe qui ce qui manque dans la configuration
+        du site : cela ne regarde pas une cliente, et cela renseigne qui
+        cherche une faiblesse.
+
+        Dambé est branchée depuis ce jour (OLLAMA_URL, OLLAMA_API_KEY et
+        ASSISTANTE_MODELE posés sur Vercel), donc le cas ne devrait plus se
+        présenter. S'il se représentait, la question est refusée plus bas avec
+        un message qui parle d'elle et non de nous. */}
 
     {
       messages.length === 0 && aAccepte && (
@@ -311,33 +320,9 @@ const branchee = ollamaConfigure();
       Le vrai vocal, celui qu'on enregistre et qu'on envoie, est dans la
       discussion avec le médecin : là-bas un humain écoute, donc le moré et le
       dioula passent, et aucun son ne sort vers un service extérieur. */}
-  {
-    !aAccepte ? (
-      /* L'ACCORD, DEMANDÉ UNE SEULE FOIS, AVANT LA PREMIÈRE QUESTION.
-         Il prend la place de la case de saisie plutôt que de se poser
-         par-dessus : une fenêtre qui recouvre se ferme d'un geste distrait, et
-         l'article 26 demande un oui donné en connaissance de cause, pas un
-         obstacle qu'on écarte. Tant qu'il n'est pas donné, il n'y a nulle part
-         où écrire. */
-      <section class="accord" aria-labelledby="titre-accord">
-        <div class="page accord-dedans">
-          <h2 id="titre-accord">{TITRE_ACCORD_ASSISTANTE}</h2>
-          {PARAGRAPHES_ACCORD_ASSISTANTE.map((p) => (
-            <p>{p}</p>
-          ))}
-          <div class="accord-boutons">
-            <form method="POST">
-              <input type="hidden" name="geste" value="accord" />
-              <button class="btn btn-rose btn-plein" type="submit">{BOUTON_ACCORD_OUI}</button>
-            </form>
-            <form method="POST">
-              <input type="hidden" name="geste" value="refus" />
-              <button class="btn btn-contour btn-plein" type="submit">{BOUTON_ACCORD_NON}</button>
-            </form>
-          </div>
-        </div>
-      </section>
-    ) : (
+  {/* L'ÉCRAN D'ACCORD QUI PRENAIT LA PLACE DE LA CASE DE SAISIE EST RETIRÉ
+      (Arthur, le 7 novembre 2026 : « SUPPRIME »). La raison et ce que cela
+      coûte sont écrits en tête de ce fichier. */}
   <form method="POST" class="saisie">
     <div class="page saisie-dedans">
       <label class="lecture-seule" for="question">Ta question</label>
@@ -361,14 +346,12 @@ const branchee = ollamaConfigure();
     {/* Ce que le micro entend, dit à voix haute pour le lecteur d'écran :
         `aria-live` fait relire la ligne à chaque changement. */}
     <p class="page dictee-dit" aria-live="polite" hidden></p>
-    {/* LA LIGNE PERMANENTE. Le Juriste la tient pour la plus importante des
-        trois : elle est là au moment où elle écrit, et pas dans un document
-        qu'elle n'ouvrira jamais (5 novembre 2026, § 1.4 A). Elle ne se cache
-        pas quand la conversation est longue, et elle ne se replie pas. */}
-    <p class="page sous-la-saisie">{LIGNE_SOUS_LA_SAISIE}</p>
+    {/* LA LIGNE PERMANENTE SOUS LA CASE EST RETIRÉE (Arthur, le 7 novembre
+        2026 : « SUPPRIME »). Juriste la tenait pour la plus importante des
+        trois informations, parce qu'elle était là AU MOMENT où elle écrit, et
+        non dans un document qu'elle n'ouvrira jamais (5 novembre 2026,
+        § 1.4 A). Voir la décision et son coût en tête de ce fichier. */}
   </form>
-    )
-  }
 
   {/* Le modèle que `dambe-attente.ts` recopie quand elle envoie sa question
       (Arthur, 14 octobre 2026 : « ça doit partir, ensuite la tête de la
