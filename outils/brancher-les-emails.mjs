@@ -70,7 +70,7 @@
  * Lancer : node outils/brancher-les-emails.mjs
  *          node outils/brancher-les-emails.mjs --lire   (ne modifie rien)
  */
-import { valeurUnique, motifMousso } from './coffre.mjs';
+import { valeurUnique } from './coffre.mjs';
 
 const LIRE_SEULEMENT = process.argv.includes('--lire');
 

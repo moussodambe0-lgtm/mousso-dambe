@@ -16,7 +16,22 @@ import { valeurUnique } from './coffre.mjs';
 const PROJET = 'prj_8fr446kbsmMrxoT0H45KO6VtqafT';
 const action = process.argv[2] ?? 'etat';
 
-const jeton = valeurUnique(/vercel.*mousso|mousso.*vercel/i, { quoi: 'le jeton Vercel' });
+/*
+ * LE JETON DU PROJET, PAS CELUI DU DNS (corrige le 7 novembre 2026).
+ *
+ * Le coffre contient deux jetons Vercel depuis le 6 novembre : celui du projet,
+ * et un jeton de compte reserve aux enregistrements DNS (voir dns-vercel.mjs,
+ * qui fait l'inverse et cherche « dns » en premier). L'ancien motif
+ * reconnaissait les deux, et l'outil s'arretait en demandant d'en supprimer un,
+ * alors que les deux doivent exister.
+ *
+ * On exclut donc « dns » ici. Cet outil pose des variables d'environnement et
+ * relance des deploiements : il n'a aucune raison de tenir un jeton de compte
+ * capable de toucher au DNS d'un domaine.
+ */
+const jeton = valeurUnique(/^(?!.*dns)(?=.*vercel)(?=.*mousso)/i, {
+  quoi: 'le jeton Vercel du projet',
+});
 if (!jeton.valeur) {
   console.error(jeton.erreur);
   process.exit(1);

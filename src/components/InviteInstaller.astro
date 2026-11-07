@@ -35,12 +35,18 @@
  *     le geste, « Partager, puis Sur l'écran d'accueil ». Alors on l'écrit,
  *     plutôt que de montrer un bouton qui ne ferait rien.
  *
- * QUAND ELLE EST RELANCÉE (Arthur, le 7 novembre 2026 : « si la personne
- * supprime l'application, on lui repropose encore »). « Plus tard » est retenu
- * dans le téléphone, mais pour trente jours, pas pour toujours. Et le jour où
- * elle désinstalle l'application, la proposition revient : le navigateur nous
- * le dit sans le savoir, en renvoyant un événement qu'il retient tant que
- * l'application est posée. Le détail est en tête de scripts/invite-installer.ts.
+ * À CHAQUE VISITE, TANT QU'ELLE NE L'A PAS (Arthur, le 7 novembre 2026 :
+ * « quand je rentre sur la plateforme, on doit TOUJOURS me proposer de
+ * télécharger l'application »). Deux états, pas trois : elle l'a, ou elle ne
+ * l'a pas. Aucun refus n'est gardé d'une visite à l'autre. Un « Plus tard »
+ * ne vaut que jusqu'à la fermeture du navigateur, pour ne pas reposer la
+ * question à la page suivante.
+ *
+ * Le navigateur fait le travail : il n'envoie l'événement d'installation que
+ * si l'application n'est PAS posée. Son arrivée suffit donc à savoir qu'il
+ * faut proposer, et le jour où elle désinstalle, il revient de lui-même. Le
+ * détail, et l'histoire des deux versions précédentes, sont en tête de
+ * scripts/invite-installer.ts.
  */
 ---
 

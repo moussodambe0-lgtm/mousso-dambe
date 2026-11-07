@@ -51,7 +51,16 @@ titre('Une commande passe, et les prix sont ceux de la base');
   );
   verifier('la commande passe', r.x.ok === true, JSON.stringify(r.x));
   verifier('le total vaut 9000 + 1500 + 1000 de livraison', r.x.total === 11500, `total ${r.x.total}`);
-  verifier('le numéro suit le format MD-AAMM-00001', /^MD-\d{4}-00001$/.test(r.x.numero), r.x.numero);
+  // Le compteur démarre à 200 depuis le 7 novembre 2026, à la demande
+  // d'Arthur : « 00001 » apprend à la cliente qu'elle est la première, ce qui
+  // fait hésiter au moment de payer un inconnu à la livraison. Voir
+  // supabase/migrations/20261107140000_le_compteur_ne_part_pas_de_un.sql.
+  verifier('le numéro suit le format MD-AAMM-NNNNN', /^MD-\d{4}-\d{5}$/.test(r.x.numero), r.x.numero);
+  verifier(
+    'et le compteur ne part pas de 1',
+    Number(r.x.numero.slice(-5)) >= 200,
+    `${r.x.numero} : le décalage du compteur a disparu`
+  );
 
   const c = await rpc(`select articles_cfa, livraison_cfa, total_cfa, etat::text, telephone, quartier
                          from public.commandes where numero = $1`, [r.x.numero]);

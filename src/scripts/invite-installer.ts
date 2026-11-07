@@ -1,43 +1,51 @@
 /**
- * Proposer d'installer l'application, et la reproposer le jour où elle la
- * désinstalle.
+ * Proposer d'installer l'application, à chaque visite, tant qu'elle ne l'a pas.
  *
- * Arthur, le 27 octobre 2026 : « je veux qu'on puisse installer l'application
- * directement dans son téléphone ». Puis le 7 novembre 2026 : « dès que
- * quelqu'un rentre sur le site, on lui propose de télécharger. Mais si la
- * personne a l'application dans son téléphone, cette proposition n'a pas lieu.
- * Si la personne supprime l'application, on lui repropose encore. »
+ * Arthur, le 7 novembre 2026, et c'est la règle entière :
  *
- * CE QUE LA PREMIÈRE VERSION FAISAIT, ET QUI EMPÊCHAIT EXACTEMENT CELA. Elle
- * gardait un simple « non » définitif dans le téléphone, et elle l'écrivait
- * AUSSI quand la femme acceptait : « accepté ou refusé, la question est posée,
- * on ne la repose pas ». Une femme qui installait puis désinstallait ne
- * revoyait donc jamais la proposition, pour toujours. C'était le contraire du
- * comportement demandé.
+ *   « Quand je rentre sur la plateforme, on doit TOUJOURS me proposer de
+ *     télécharger l'application. Une fois que je télécharge l'application et
+ *     que l'application est dans mon téléphone, on me propose plus. Mais une
+ *     fois que je supprime l'application de mon téléphone, si je repars sur
+ *     le site, on doit me proposer de télécharger. »
  *
- * CE QUI REND LA CHOSE POSSIBLE, et c'est le navigateur qui fait le travail :
- * `beforeinstallprompt` N'ARRIVE PAS quand l'application est installée. Donc
- * si on l'avait notée installée et que l'événement revient, c'est qu'elle ne
- * l'est plus. La désinstallation n'a pas d'événement à elle, mais on n'en a
- * pas besoin : le retour de celui-ci la prouve.
+ * DEUX ÉTATS, PAS TROIS. Elle l'a, ou elle ne l'a pas. Il n'y a pas de
+ * troisième cas à retenir.
  *
- * TROIS ÉTATS GARDÉS DANS LE TÉLÉPHONE, et pas dans son compte. Installer
- * concerne CE téléphone : une femme qui dit non sur le téléphone de la maison
- * peut vouloir oui sur le sien. Un stockage qui échoue (navigation privée,
- * site bloqué) ne doit rien casser, chaque accès est entouré d'un filet.
+ * CE QUE J'AVAIS AJOUTÉ, ET QU'IL A FALLU RETIRER
  *
- *   rien       jamais proposé, ou elle a vidé son navigateur : on propose.
- *   refuse     elle a dit « plus tard ». On se tait DÉLAI_REFUS_JOURS, pas
- *              pour toujours : un non d'octobre n'engage pas décembre, et
- *              une femme qui a pris l'habitude de l'application n'a pas la
- *              même réponse qu'une femme qui la découvre.
- *   installee  elle l'a posée sur son écran d'accueil. On se tait, jusqu'au
- *              jour où le navigateur nous dit qu'elle ne l'est plus.
+ * La version du matin gardait un « plus tard » pendant trente jours. Personne
+ * ne l'avait demandé : je l'avais ajouté pour ne pas harceler. Deux
+ * conséquences, toutes deux mauvaises. D'abord elle contredisait la demande :
+ * une femme qui n'a pas l'application ne se voyait plus rien proposer pendant
+ * un mois. Ensuite la reprise de l'ancienne clé datait ce refus du JOUR DE LA
+ * MISE À JOUR : tous ceux qui avaient dit non en octobre, Arthur compris, se
+ * retrouvaient muets trente jours de plus, sans avoir rien touché. C'est
+ * exactement comme ça qu'il s'en est aperçu.
+ *
+ * La leçon n'est pas « le délai était mauvais ». C'est qu'une règle inventée
+ * en plus de la demande doit être proposée, pas glissée dans le code.
+ *
+ * CE QUI REND LA CHOSE SIMPLE, et c'est le navigateur qui fait le travail :
+ * `beforeinstallprompt` N'ARRIVE PAS quand l'application est installée. Son
+ * arrivée prouve donc, à elle seule, que l'application n'est pas là. On n'a
+ * rien à retenir entre deux visites, rien à dater, rien à faire vieillir : on
+ * écoute, et si le navigateur parle, on propose. Le jour où elle désinstalle,
+ * l'événement revient de lui-même.
+ *
+ * CE QU'ON GARDE QUAND MÊME, ET POURQUOI C'EST LE MINIMUM. Si elle appuie sur
+ * « Plus tard », on se tait jusqu'à la fin de sa visite. Pas un mois : le
+ * temps de cette visite. Sans cela, le bandeau reviendrait à chaque page
+ * qu'elle ouvre, dans la minute, après qu'elle vient de dire non. Ce n'est pas
+ * un délai, c'est le respect d'un refus qu'on vient d'entendre. C'est rangé
+ * dans `sessionStorage`, qui s'efface tout seul quand elle ferme : la visite
+ * suivante repropose, comme demandé.
  *
  * SUR IPHONE, rien de tout cela n'existe : Safari n'a ni événement, ni moyen
- * de savoir si l'application est posée. On ne peut que décrire le geste, et
- * se taire pendant DÉLAI_REFUS_JOURS après un refus. C'est une limite de
- * Safari, pas un oubli.
+ * de savoir si l'application est posée. On ne peut que décrire le geste. Une
+ * femme qui a déjà l'application sur son iPhone et qui revient par Safari
+ * reverra donc la proposition. C'est une limite de Safari, pas un oubli, et
+ * c'est pour ça qu'on attend quelques secondes avant de l'afficher.
  */
 
 /** Ce que Chrome envoie, et que les types du navigateur ne décrivent pas. */
@@ -46,64 +54,44 @@ interface DemandeInstallation extends Event {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 }
 
-const CLE = 'md-installer';
+/** Le refus du moment, effacé par le navigateur à la fin de la visite. */
+const CLE_VISITE = 'md-installer-pas-maintenant';
 
 /**
- * Combien de temps un « plus tard » vaut.
+ * Les deux clés des versions précédentes, effacées au passage.
  *
- * Trente jours : assez pour qu'elle ne soit pas harcelée, assez court pour
- * qu'un refus donné le jour de sa découverte ne la prive pas de
- * l'application pour toujours. C'est à peu près un cycle, et ce n'est pas un
- * hasard : une femme qui a traversé un mois avec l'application sait si elle
- * lui sert.
+ * `md-installer-non` (27 octobre) était un « non » définitif, et il était
+ * écrit AUSSI quand elle acceptait. `md-installer` (ce matin) portait le
+ * refus de trente jours. Les deux feraient taire la proposition pour des
+ * femmes qui n'ont pas l'application. On ne se contente pas de les ignorer :
+ * on les enlève, pour qu'il ne reste rien à mal relire un jour.
  */
-const DELAI_REFUS_JOURS = 30;
+const CLES_MORTES = ['md-installer-non', 'md-installer'];
 
-/** Ancienne clé, un simple « 1 » définitif. Lue une fois, puis effacée. */
-const CLE_ANCIENNE = 'md-installer-non';
-
-type Etat = { quoi: 'refuse' | 'installee'; le: number };
-
-function lireEtat(): Etat | null {
+function oublierLesAnciennes(): void {
   try {
-    // La version d'octobre ne gardait qu'un « 1 ». On la relit comme un refus
-    // daté d'aujourd'hui : celles qui avaient dit non ne sont pas harcelées
-    // du jour au lendemain, mais elles reverront la proposition dans un mois
-    // au lieu de jamais.
-    if (localStorage.getItem(CLE_ANCIENNE) === '1') {
-      localStorage.removeItem(CLE_ANCIENNE);
-      const reprise: Etat = { quoi: 'refuse', le: Date.now() };
-      localStorage.setItem(CLE, JSON.stringify(reprise));
-      return reprise;
-    }
-    const brut = localStorage.getItem(CLE);
-    if (!brut) return null;
-    const lu = JSON.parse(brut) as Partial<Etat>;
-    if (lu.quoi !== 'refuse' && lu.quoi !== 'installee') return null;
-    return { quoi: lu.quoi, le: typeof lu.le === 'number' ? lu.le : 0 };
+    for (const cle of CLES_MORTES) localStorage.removeItem(cle);
   } catch {
-    // Pas de stockage, ou valeur abîmée : on préfère proposer que se taire.
-    return null;
+    /* pas de stockage : il n'y a alors rien à effacer */
   }
 }
 
-function ecrireEtat(quoi: Etat['quoi']): void {
+function refuseePourCetteVisite(): boolean {
   try {
-    localStorage.setItem(CLE, JSON.stringify({ quoi, le: Date.now() }));
+    return sessionStorage.getItem(CLE_VISITE) === '1';
   } catch {
-    /* tant pis : la proposition reviendra, elle ne cassera rien */
+    // Navigation privée, stockage bloqué : on préfère proposer que se taire.
+    return false;
   }
 }
 
-function oublier(): void {
+function noterLeRefus(): void {
   try {
-    localStorage.removeItem(CLE);
+    sessionStorage.setItem(CLE_VISITE, '1');
   } catch {
-    /* idem */
+    /* tant pis : au pire le bandeau revient à la page suivante */
   }
 }
-
-const joursDepuis = (quand: number) => (Date.now() - quand) / 86_400_000;
 
 /** Tourne-t-elle en ce moment DANS l'application installée ? */
 function dansLApplication(): boolean {
@@ -116,6 +104,7 @@ function montrer(famille: 'android' | 'ios', quandOui: (() => void) | null): voi
   const bandeau = document.getElementById('invite-installer');
   if (!bandeau) return;
   if (document.documentElement.dataset.installer) return; // déjà affiché
+  if (refuseePourCetteVisite()) return;
 
   document.documentElement.dataset.installer = famille;
   bandeau.hidden = false;
@@ -126,7 +115,7 @@ function montrer(famille: 'android' | 'ios', quandOui: (() => void) | null): voi
   };
 
   document.getElementById('invite-non')?.addEventListener('click', () => {
-    ecrireEtat('refuse');
+    noterLeRefus();
     ranger();
   });
 
@@ -138,61 +127,25 @@ function montrer(famille: 'android' | 'ios', quandOui: (() => void) | null): voi
 
 // --- Ce qu'on fait, et quand --------------------------------------------------
 
-const etat = lireEtat();
+oublierLesAnciennes();
 
-// Elle est DEDANS, maintenant : rien à proposer, et on note qu'elle l'a, pour
-// que le retour de l'événement nous dise plus tard qu'elle ne l'a plus.
-if (dansLApplication()) {
-  if (etat?.quoi !== 'installee') ecrireEtat('installee');
-} else {
-  // Un « plus tard » encore frais : on se tait.
-  const refusFrais = etat?.quoi === 'refuse' && joursDepuis(etat.le) < DELAI_REFUS_JOURS;
-
+if (!dansLApplication()) {
   /*
-   * ANDROID ET CHROME.
-   *
-   * On écoute TOUJOURS, même quand on s'est promis de se taire, parce que
-   * l'arrivée de cet événement est en elle-même une information : le
-   * navigateur ne l'envoie que si l'application n'est PAS installée. S'il
-   * arrive alors qu'on la croyait installée, c'est qu'elle vient de la
-   * supprimer, et c'est précisément le moment de reproposer.
+   * ANDROID ET CHROME. L'événement n'arrive que si l'application n'est pas
+   * installée : il n'y a donc aucune condition à ajouter. S'il arrive, on
+   * propose.
    */
   window.addEventListener('beforeinstallprompt', (evenement) => {
     // Sans ça, Chrome affiche sa propre invitation par-dessus la nôtre.
     evenement.preventDefault();
     const demande = evenement as DemandeInstallation;
 
-    // Elle l'avait, elle ne l'a plus. On repart de zéro et on propose.
-    const desinstallee = etat?.quoi === 'installee';
-    if (desinstallee) oublier();
-    else if (refusFrais) return;
-
     montrer('android', () => {
-      demande.prompt().then(
-        () =>
-          demande.userChoice.then(
-            (choix) => {
-              if (choix.outcome === 'accepted') {
-                // Posée sur l'écran d'accueil. On NE note PAS un refus : c'est
-                // ce que faisait la version d'octobre, et c'est ce qui la
-                // privait de la proposition le jour où elle désinstallait.
-                ecrireEtat('installee');
-              } else {
-                ecrireEtat('refuse');
-              }
-            },
-            () => ecrireEtat('refuse')
-          ),
-        () => {
-          /* la demande a expiré : la proposition reviendra à la prochaine visite */
-        }
-      );
+      demande.prompt().catch(() => {
+        /* la demande a expiré : la proposition reviendra à la prochaine visite */
+      });
     });
   });
-
-  // Le navigateur confirme l'installation, même quand elle passe par son menu
-  // à lui plutôt que par notre bouton.
-  window.addEventListener('appinstalled', () => ecrireEtat('installee'));
 
   /*
    * IPHONE ET SAFARI. Aucun événement, aucune interface : il n'y a que le
@@ -204,7 +157,7 @@ if (dansLApplication()) {
     /safari/i.test(navigator.userAgent) &&
     !/crios|fxios|edgios/i.test(navigator.userAgent);
 
-  if (surIPhone && !refusFrais) {
+  if (surIPhone) {
     window.setTimeout(() => montrer('ios', null), 4000);
   }
 }
