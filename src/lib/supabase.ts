@@ -37,10 +37,52 @@ export function baseConfiguree(): boolean {
   return !!PUBLIC_SUPABASE_URL && !!PUBLIC_SUPABASE_ANON_KEY;
 }
 
+/** Une vraie adresse, et pas le mot « inconnue » que `ipVisiteuse` rend à défaut. */
+function ressembleAUneAdresse(valeur: string): boolean {
+  // Large exprès : on ne valide pas une adresse, on écarte « inconnue » et les
+  // bizarreries. Une valeur que Supabase ne comprend pas, il l'ignore (mesuré
+  // le 8 novembre 2026), donc le pire cas est l'état d'avant.
+  return /^[0-9a-fA-F.:]{3,45}$/.test(valeur);
+}
+
 function entetes(astro?: ContexteAstro): Record<string, string> {
   const e: Record<string, string> = {};
   if (MD_CLE_SERVEUR) e['x-md-cle'] = MD_CLE_SERVEUR;
-  if (astro) e['x-md-ip'] = ipVisiteuse(astro);
+  if (astro) {
+    const ip = ipVisiteuse(astro);
+    e['x-md-ip'] = ip;
+
+    /*
+     * ON DIT AUSSI SON ADRESSE À SUPABASE (audit de Cyber, 8 novembre 2026).
+     *
+     * LE DÉFAUT. Supabase freine les créations de comptes anonymes par adresse
+     * IP. Mais le site lui parle depuis SON SERVEUR : Supabase voyait donc une
+     * seule adresse, celle de Vercel, pour toutes les clientes du pays. Son
+     * frein ne protégeait de rien, et pire, il se retournait contre nous :
+     * qui épuisait ce quota fermait « Commencer » et « Se connecter » À TOUT
+     * LE MONDE, avec une boucle de trois lignes et sans compte.
+     *
+     * CE QUE CETTE LIGNE CHANGE. Le frein de Supabase redevient un frein par
+     * personne. C'est strictement meilleur dans les deux sens : si Supabase
+     * s'en sert, le quota cesse d'être commun ; s'il l'ignore, rien ne change.
+     *
+     * CE QUI A ÉTÉ MESURÉ AVANT DE LA POSER, parce que cette fonction est
+     * traversée par TOUS les appels à la base et qu'une passerelle qui
+     * refuserait l'en-tête ferait tomber l'application entière : trois appels à
+     * /auth/v1/settings sur la vraie base, sans en-tête, avec une adresse, puis
+     * avec une valeur absurde. Les trois répondent 200 avec le même corps. La
+     * passerelle l'accepte, et ce qu'elle ne comprend pas, elle l'ignore.
+     *
+     * CE QUI N'EST PAS PROUVÉ, et qu'il faut dire : qu'elle s'en SERVE pour son
+     * frein. Le vérifier demanderait d'épuiser le quota pour de vrai, donc de
+     * fermer la porte d'entrée aux vraies clientes. On ne fait pas ça.
+     *
+     * L'adresse vient de `ipVisiteuse`, qui demande d'abord à l'hébergeur et ne
+     * lit l'en-tête qu'à défaut, en prenant son dernier maillon : une visiteuse
+     * ne peut donc pas choisir l'adresse qu'on transmet ici.
+     */
+    if (ressembleAUneAdresse(ip)) e['X-Forwarded-For'] = ip;
+  }
   return e;
 }
 

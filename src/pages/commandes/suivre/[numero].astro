@@ -200,7 +200,27 @@ const journal = CHEMIN.slice(0, place + 1)
 const elle = c.lat != null && c.lng != null ? { lat: c.lat, lng: c.lng } : null;
 const leLivreur =
   c.livreur_lat != null && c.livreur_lng != null ? { lat: c.livreur_lat, lng: c.livreur_lng } : null;
-const carteUtile = c.etat === 'envoyee' && (elle || leLivreur);
+/*
+ * QUAND LA CARTE S'AFFICHE (élargi le 8 novembre 2026).
+ *
+ * Elle ne se montrait que pendant la livraison. Arthur, le soir même : « ET LA
+ * MAP ? JE LA VOIS PAS ». Mesuré plutôt que supposé : sa base n'avait aucune
+ * commande à l'état « envoyee », donc la carte n'avait jamais l'occasion
+ * d'exister. La condition était juste, et inutilement étroite.
+ *
+ * ELLE S'AFFICHE MAINTENANT DÈS QUE LA COMMANDE EST EN COURS, et ce n'est pas
+ * une complaisance : avant que le colis parte, la carte sert à VÉRIFIER. Elle a
+ * appuyé sur « Partager ma position » sans jamais voir où le point tombait ;
+ * elle peut maintenant regarder, et le corriger pendant qu'il en est encore
+ * temps. Un point faux corrigé avant le départ vaut mieux qu'un livreur perdu.
+ *
+ * ELLE DISPARAÎT UNE FOIS LIVRÉE : le colis est arrivé, il n'y a plus rien à
+ * suivre, et une carte de plus sur un forfait compté ne sert personne.
+ *
+ * ET TOUJOURS PAS DE CARTE VIDE : sans aucun point, il n'y a rien à montrer.
+ */
+const EN_COURS = ['nouvelle', 'preparee', 'envoyee'];
+const carteUtile = EN_COURS.includes(c.etat) && (elle || leLivreur);
 
 const page = pageDeLEtat(c.etat);
 const panier = comptePanier(lirePanier(Astro));

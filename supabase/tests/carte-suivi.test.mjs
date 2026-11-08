@@ -214,8 +214,17 @@ titre('La politique de securite reste fermee');
 titre('La carte ne s affiche que s il y a quelque chose a montrer');
 {
   verifier(
-    'elle est posee seulement quand le colis roule ET qu un point existe',
-    /carteUtile = c\.etat === 'envoyee' && \(elle \|\| leLivreur\)/.test(suivi)
+    'elle est posee quand la commande est en cours ET qu un point existe',
+    /carteUtile = EN_COURS\.includes\(c\.etat\) && \(elle \|\| leLivreur\)/.test(suivi)
+  );
+  verifier(
+    'une commande livree n affiche plus de carte',
+    /const EN_COURS = \['nouvelle', 'preparee', 'envoyee'\]/.test(suivi),
+    "le colis est arrive : il n'y a plus rien a suivre"
+  );
+  verifier(
+    'sans aucun point, pas de carte vide',
+    /&& \(elle \|\| leLivreur\)/.test(suivi)
   );
   verifier('et la page respecte cette condition', /carteUtile && \(\s*<CarteSuivi/.test(suivi));
   verifier(
