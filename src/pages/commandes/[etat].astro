@@ -63,22 +63,91 @@ const toutes = (brutes ?? []) as {
   total: number;
   cree_le: string;
   quartier: string;
-  articles: { nom: string; taille: string | null; quantite: number; total: number }[];
+  articles: {
+    nom: string;
+    taille: string | null;
+    quantite: number;
+    total: number;
+    /* Ajoutés par la migration 20261108000000. `image` est null quand le
+       produit a été retiré de la boutique depuis la commande : la jointure est
+       un `left join`, pour qu'une commande ne disparaisse pas de la liste
+       parce que sa fiche n'est plus en ligne. */
+    image: string | null;
+    slug: string | null;
+  }[];
 }[];
 
 const commandes = toutes.filter((c) => page.etats.includes(c.etat));
 const compteur = (cles: string[]) => toutes.filter((c) => cles.includes(c.etat)).length;
 
-// Ce qu'elle peut encore noter. Demandé seulement sur la page des livrées : les
-// autres états n'ont rien à évaluer, et la requête serait payée pour rien. La
-// base ne rend que les produits reçus ET pas encore notés, donc un bouton
-// disparaît de lui-même une fois l'avis donné.
-const { data: aNoter } =
-  page.cle === 'livrees' ? await client.rpc('mes_avis_a_donner') : { data: null };
+/*
+ * CE QU'ELLE PEUT ENCORE NOTER, DEMANDÉ SUR TOUTES LES PAGES DEPUIS LE
+ * 8 NOVEMBRE 2026.
+ *
+ * C'était réservé à la page des livrées, pour ne pas payer la requête ailleurs.
+ * Mais « À évaluer » est devenu une tuile de la grille du bas, visible depuis
+ * n'importe quel état, et une tuile dont le compteur ne s'allume que sur une
+ * page donnée est pire qu'une tuile absente : elle fait croire qu'il n'y a rien
+ * à noter.
+ *
+ * La base ne rend que les produits reçus ET pas encore notés, donc un bouton
+ * disparaît de lui-même une fois l'avis donné.
+ */
+const { data: aNoter } = await client.rpc('mes_avis_a_donner');
 const aEvaluer = (aNoter ?? []) as { numero: string; slug: string; nom: string }[];
+
+/*
+ * LES TUILES DU BAS, d'après la capture d'Arthur du 7 novembre 2026.
+ *
+ * Les onglets qui défilaient horizontalement sont remplacés par une grille :
+ * l'état courant occupe le haut de la page avec ses commandes, et les autres
+ * deviennent des tuiles. Arthur : « si quelqu'un appuie sur ça, ça doit
+ * s'afficher comme ça ».
+ *
+ * DEUX TUILES DE SA CAPTURE NE SONT PAS REPRISES, et c'est délibéré. « À
+ * payer » n'existe pas ici : tout se paie à la livraison, la tuile serait grise
+ * pour toujours. « Remboursement » non plus : il n'y a pas de remboursement en
+ * ligne à demander, et une tuile qui ne mène à rien est une promesse qu'on ne
+ * tient pas. Les cinq qui restent correspondent toutes à quelque chose de réel.
+ */
+const TUILES = [
+  ...ETATS_CLIENTE.map((e) => ({
+    cle: e.cle,
+    mot: e.mot,
+    href: `/commandes/${e.cle}`,
+    nombre: compteur(e.etats),
+    // Les noms viennent de components/Icone.astro, et seulement de là : une
+    // icône inventée ne dessine rien, en silence.
+    icone: ({ 'en-preparation': 'colis', 'en-livraison': 'scooter', livrees: 'coche', annulees: 'croix' } as Record<string, string>)[e.cle] ?? 'colis',
+  })),
+  {
+    cle: 'a-evaluer',
+    mot: 'À évaluer',
+    // Les boutons d'avis vivent sur la page des livrées : c'est là qu'on
+    // l'envoie, plutôt que sur une page qui n'existe pas.
+    href: '/commandes/livrees',
+    nombre: aEvaluer.length,
+    icone: 'etoile',
+  },
+].filter((t) => t.cle !== page.cle);
 
 // Ce que chaque état dit, sans annoncer de délai : il n'y a pas encore d'équipe
 // logistique pour tenir une promesse d'heure ou de jour.
+/*
+ * LE MOT DE LA PASTILLE, celui de la capture : « En livraison » en haut de la
+ * carte, en couleur, avec son point.
+ *
+ * Il ne redit pas le titre de la page : sur « En préparation », une commande
+ * peut être `nouvelle` ou `preparee`, et la nuance intéresse celle qui attend.
+ */
+const MOT_ETAT: Record<string, string> = {
+  nouvelle: 'Reçue',
+  preparee: 'Prête à partir',
+  envoyee: 'En livraison',
+  livree: 'Livrée',
+  annulee: 'Annulée',
+};
+
 const DIT: Record<string, string> = {
   nouvelle: 'On prépare ton colis.',
   preparee: 'Ton colis est prêt. Il part bientôt.',
@@ -92,28 +161,15 @@ const panier = comptePanier(lirePanier(Astro));
 
 <Base titre={`Mes commandes · ${page.mot}`} nav="compte" panier={panier}>
   <main class="page">
-    <Entete titre="Mes commandes" retour="/compte" />
-
-    {/* Les onglets : chacun est une vraie page, donc un vrai lien. L'onglet
-        courant n'est pas un lien vers lui-même, il porte `aria-current`. */}
-    <nav class="onglets" aria-label="États de mes commandes">
-      {
-        ETATS_CLIENTE.map((e) => {
-          const n = compteur(e.etats);
-          const actif = e.cle === page.cle;
-          return (
-            <a
-              class:list={['onglet', actif && 'onglet-actif']}
-              href={`/commandes/${e.cle}`}
-              aria-current={actif ? 'page' : undefined}
-            >
-              {e.mot}
-              {n > 0 && <span class="onglet-nombre">{n}</span>}
-            </a>
-          );
-        })
-      }
-    </nav>
+    {/* L'ÉTAT COURANT EST LE TITRE DE LA PAGE, avec son nombre dessous.
+        Arthur, capture à l'appui le 7 novembre 2026 : l'écran ne s'appelle
+        plus « Mes commandes », il s'appelle « En cours de livraison », et il
+        dit « 1 commande ». On sait d'un coup d'œil ce qu'on regarde, sans
+        chercher quel onglet est allumé. */}
+    <Entete titre={page.mot} retour="/compte" />
+    <p class="compte-page">
+      {commandes.length} commande{commandes.length > 1 ? 's' : ''}
+    </p>
 
     {message && <div class="marge-bas"><Alerte type="reussite" texte={message} /></div>}
     {erreur && <div class="marge-bas"><Alerte type="erreur" texte={erreur} /></div>}
@@ -128,15 +184,43 @@ const panier = comptePanier(lirePanier(Astro));
         </div>
       ) : (
         <div class="liste">
-          {commandes.map((c) => (
+          {commandes.map((c) => {
+            // La capture montre UN article par carte, avec sa photo. Une
+            // commande peut en contenir plusieurs : on présente le premier et
+            // on dit combien d'autres suivent, plutôt que d'empiler des
+            // vignettes qui ne tiendraient pas sur 390 px.
+            const premier = c.articles[0];
+            const autres = c.articles.length - 1;
+            return (
             <section class="carte bloc commande apparait">
-              <div class="haut-commande">
-                <div class="gris">{dateLongue(c.cree_le)}</div>
-                <a class="suivre" href={`/commandes/suivre/${c.numero}`}>
-                  Suivre
-                  <Icone nom="avant" taille={16} />
-                </a>
-              </div>
+              {/* Toute la carte mène au suivi : c'est le geste de la capture,
+                  où la flèche est en haut à droite mais où l'on appuie
+                  n'importe où. */}
+              <a class="tete-carte" href={`/commandes/suivre/${c.numero}`}>
+                <span class:list={['pastille-etat', `etat-${c.etat}`]}>
+                  <span class="point" aria-hidden="true"></span>
+                  {MOT_ETAT[c.etat] ?? page.mot}
+                </span>
+                <Icone nom="avant" taille={18} />
+              </a>
+
+              <a class="article-tete" href={`/commandes/suivre/${c.numero}`}>
+                {/* La photo peut manquer : un produit retiré de la boutique ne
+                    rend plus d'image, et la commande doit rester lisible. */}
+                {premier?.image ? (
+                  <img class="vignette" src={premier.image} alt="" width="64" height="64" loading="lazy" />
+                ) : (
+                  <span class="vignette vignette-vide"><Icone nom="colis" taille={24} /></span>
+                )}
+                <span class="article-mots">
+                  <strong>{premier?.nom ?? 'Commande'}</strong>
+                  <span class="gris">
+                    Mousso Dambé · {dateLongue(c.cree_le)}
+                    {autres > 0 && ` · +${autres} article${autres > 1 ? 's' : ''}`}
+                  </span>
+                </span>
+                <span class="article-prix chiffre">{prix(c.total)} FCFA</span>
+              </a>
 
               <ul class="articles">
                 {c.articles.map((a) => (
@@ -179,56 +263,187 @@ const panier = comptePanier(lirePanier(Astro));
                   </a>
                 ))}
             </section>
-          ))}
+            );
+          })}
         </div>
       )
     }
+
+    {/* ---------------- Mes autres commandes ----------------
+        La grille de tuiles de la capture d'Arthur. Chaque tuile est une vraie
+        page, donc un vrai lien ; celles qui n'ont rien sont grisées mais
+        restent cliquables, parce qu'une page vide explique pourquoi elle est
+        vide, et qu'un lien mort ne le fait pas. */}
+    <h2 class="titre-autres">Mes autres commandes</h2>
+    <nav class="tuiles" aria-label="Mes autres commandes">
+      {TUILES.map((t) => (
+        <a class:list={['tuile', { creuse: t.nombre === 0 }]} href={t.href}>
+          <span class="tuile-icone">
+            <Icone nom={t.icone} taille={24} />
+            {t.nombre > 0 && <span class="tuile-nombre">{t.nombre}</span>}
+          </span>
+          <span class="tuile-mot">{t.mot}</span>
+        </a>
+      ))}
+    </nav>
   </main>
 </Base>
 
 <style>
-  /* Les onglets défilent horizontalement : quatre mots français avec leurs
-     compteurs ne tiennent pas sur 390 px, et les couper en deux lignes ferait
-     sauter la page à chaque changement d'onglet. */
-  .onglets {
-    display: flex;
-    gap: var(--e2);
-    margin-bottom: var(--e4);
-    overflow-x: auto;
-    scrollbar-width: none;
-    /* Le bandeau touche les bords de l'écran, mais les onglets gardent leur
-       marge : sans cela, le premier colle au bord en défilant. */
-    padding: 2px var(--e1);
-    margin-left: calc(var(--e1) * -1);
-    margin-right: calc(var(--e1) * -1);
-  }
-
-  .onglets::-webkit-scrollbar {
-    display: none;
-  }
-
-  .onglet {
-    display: flex;
-    gap: 6px;
-    align-items: center;
-    flex: none;
-    padding: 8px 14px;
-    border: 1px solid var(--bordure);
-    border-radius: 999px;
-    background: var(--surface);
+  /* Le nombre de commandes, sous le titre de la page. */
+  .compte-page {
+    margin: -6px 0 var(--e4);
+    font-size: 15px;
     color: var(--texte-2);
-    font-size: 14px;
+  }
+
+  /* ---------------- La carte, d'après la capture du 7 novembre 2026 ------- */
+  .tete-carte {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--e2);
+    color: var(--texte-2);
+  }
+  .tete-carte:hover { color: var(--texte-2); }
+
+  .pastille-etat {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 5px 11px;
+    border-radius: 999px;
+    background: var(--rose-clair);
+    color: var(--rose-fonce);
+    font-size: 13.5px;
     font-weight: 700;
+  }
+  .pastille-etat .point {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: currentColor;
+    flex: none;
+  }
+  /* Livrée et annulée sortent du rose : l'une est un soulagement, l'autre une
+     fin. Les laisser toutes deux de la couleur qui agit ferait croire qu'il
+     reste quelque chose à faire. */
+  .pastille-etat.etat-livree { background: var(--vert-clair, #E6F4EC); color: var(--vert-fonce, #1F6B43); }
+  .pastille-etat.etat-annulee { background: var(--fond); color: var(--texte-3); }
+
+  .article-tete {
+    display: flex;
+    align-items: center;
+    gap: var(--e3);
+    margin-top: var(--e3);
+    color: inherit;
+  }
+  .article-tete:hover { color: inherit; }
+
+  .vignette {
+    width: 64px;
+    height: 64px;
+    flex: none;
+    border-radius: var(--r2, 12px);
+    object-fit: cover;
+    background: var(--fond);
+  }
+  .vignette-vide {
+    display: grid;
+    place-items: center;
+    color: var(--texte-3);
+  }
+
+  .article-mots {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .article-mots strong {
+    font-size: 16px;
+    line-height: 1.25;
+    /* Deux lignes au plus : « Pack Ciné Maison HY300 » en prend deux dans la
+       capture, un nom à rallonge ne doit pas en prendre cinq. */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .article-mots .gris { font-size: 13.5px; }
+
+  .article-prix {
+    flex: none;
+    align-self: flex-start;
+    font-size: 17px;
+    font-weight: 800;
+    color: var(--rose-fonce);
     white-space: nowrap;
   }
 
-  .onglet-actif {
-    border-color: transparent;
-    background: var(--rose);
-    color: #fff;
+  /* ---------------- Les tuiles ---------------- */
+  .titre-autres {
+    margin: var(--e6) 0 var(--e3);
+    font-size: 20px;
   }
 
-  .onglet-nombre {
+  /* Trois par ligne comme dans la capture, et elles se replient à deux sur un
+     écran étroit plutôt que d'écraser les mots. */
+  .tuiles {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--e2);
+  }
+  @media (max-width: 359px) {
+    .tuiles { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  .tuile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    /* 44 px au moins sous le doigt, et de la place pour un mot sur deux
+       lignes comme « En préparation ». */
+    min-height: 92px;
+    padding: var(--e3) 6px;
+    border-radius: var(--r3, 16px);
+    background: var(--surface);
+    color: var(--texte-1);
+    text-align: center;
+  }
+  .tuile:hover { color: var(--texte-1); }
+
+  .tuile-icone { position: relative; color: var(--rose-fonce); line-height: 0; }
+
+  /* Le compteur en pastille rouge, posé sur le coin de l'icône. */
+  .tuile-nombre {
+    position: absolute;
+    top: -7px;
+    left: calc(100% - 8px);
+    display: grid;
+    place-items: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: var(--rouge, #D92D20);
+    color: #fff;
+    font-size: 11.5px;
+    font-weight: 800;
+    line-height: 1;
+  }
+
+  .tuile-mot { font-size: 14px; font-weight: 700; line-height: 1.2; }
+
+  /* Vide : grisée, mais toujours cliquable. Une page vide explique pourquoi
+     elle est vide ; un lien mort ne le fait pas. */
+  .tuile.creuse { color: var(--texte-3); }
+  .tuile.creuse .tuile-icone { color: var(--texte-3); }
+
+  .onglet-nombre-inutilise {
     display: grid;
     place-items: center;
     min-width: 18px;
