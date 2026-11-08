@@ -187,6 +187,89 @@ export async function connexionAnonyme(
 export const DELAI_RAFRAICHISSEMENT_MS = 5000;
 
 /**
+ * FERMER LA SESSION CHEZ SUPABASE, POUR DE VRAI (audit de Cyber, 8 novembre
+ * 2026).
+ *
+ * CE QUI NE MARCHAIT PAS, ET POURQUOI C'EST GRAVE ICI PRÉCISÉMENT.
+ *
+ * `/deconnexion` appelait `client.auth.signOut({ scope: 'local' })`, et son
+ * commentaire disait : « On révoque la session auprès de Supabase AVANT de
+ * supprimer les cookies. Supprimer le cookie seul ne fermait rien. » C'était
+ * la bonne intention, et l'appel ne la tenait pas.
+ *
+ * `clientSession()` ne pose le jeton que dans un EN-TÊTE. La partie « auth »
+ * de supabase-js, elle, ne lit que sa propre session, et avec
+ * `persistSession: false` elle n'en a aucune. `signOut` commence par demander
+ * `getSession()`, n'obtient rien, et n'a donc aucun jeton à envoyer : il vide
+ * un stockage déjà vide et rend la main sans avoir parlé à Supabase. Le jeton
+ * de rafraîchissement restait valable des semaines.
+ *
+ * Dans cette application, ce n'est pas une subtilité : le danger numéro un est
+ * le téléphone qu'on se passe à la maison. « Je me déconnecte » doit vouloir
+ * dire « c'est fermé », y compris pour quelqu'un qui aurait gardé une copie du
+ * cookie. C'était l'objet même de l'audit du 12 octobre 2026, et la réparation
+ * d'alors ne faisait rien.
+ *
+ * ET C'EST LA MÊME RACINE QUE LES DEUX PANNES DU 6 NOVEMBRE (voir l'en-tête de
+ * ce fichier) : un appel `auth.*` sur un serveur. `signOut` prend en plus le
+ * même verrou que `refreshSession`, sans aucune limite de temps autour. Un
+ * `try/catch` attrape une erreur, il n'attrape pas une lenteur : la page de
+ * déconnexion pouvait rendre 504.
+ *
+ * On applique donc la règle du fichier : une requête HTTP ordinaire, écrite
+ * ici, bornée dans le temps, qui ne lève jamais.
+ *
+ * `scope=local` ne ferme QUE cette session : elle a peut-être l'application sur
+ * un deuxième téléphone, et on ne la déconnecte pas de partout sans qu'elle
+ * l'ait demandé.
+ *
+ * Rend `true` si Supabase a bien fermé la session. L'appelant supprime les
+ * cookies DANS TOUS LES CAS : jamais laisser quelqu'une sur une page connectée
+ * parce que la révocation a raté.
+ */
+export async function deconnexionSupabase(
+  urlBase: string,
+  cleAnonyme: string,
+  jetonAcces: string,
+  delaiMs: number = DELAI_RAFRAICHISSEMENT_MS,
+  chercher: typeof fetch = fetch
+): Promise<boolean> {
+  if (!urlBase || !cleAnonyme || !jetonAcces) return false;
+
+  let minuteur: ReturnType<typeof setTimeout> | undefined;
+  const trancher = new Promise<null>((resoudre) => {
+    minuteur = setTimeout(() => resoudre(null), delaiMs);
+  });
+
+  try {
+    const reponse = await Promise.race([
+      chercher(`${urlBase.replace(/\/+$/, '')}/auth/v1/logout?scope=local`, {
+        method: 'POST',
+        headers: {
+          apikey: cleAnonyme,
+          // C'est CE jeton qui désigne la session à fermer. C'est exactement ce
+          // qui manquait à l'appel d'avant.
+          Authorization: `Bearer ${jetonAcces}`,
+          'Content-Type': 'application/json',
+        },
+        body: '{}',
+        signal: AbortSignal.timeout(delaiMs),
+      }),
+      trancher,
+    ]);
+
+    if (!reponse) return false;
+    // 204 quand c'est fait. 401 quand le jeton était déjà périmé : la session
+    // est fermée de toute façon, il n'y a rien à réparer.
+    return reponse.ok || reponse.status === 401;
+  } catch {
+    return false;
+  } finally {
+    if (minuteur) clearTimeout(minuteur);
+  }
+}
+
+/**
  * Échange le jeton de rafraîchissement contre un couple neuf.
  *
  * Rend `null` dans tous les cas d'échec, sans jamais lever : jeton révoqué,

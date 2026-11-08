@@ -18,6 +18,25 @@ import { clientSession } from '../../lib/supabase';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ENTETES = { 'cache-control': 'private, no-store', 'x-content-type-options': 'nosniff' };
 
+/**
+ * LES TROIS SEULS TYPES QUI SORTENT D'ICI (ajouté le 8 novembre 2026, audit de
+ * Cyber).
+ *
+ * Le type venait de la base et était servi sur parole. La base le tient par une
+ * contrainte de colonne (`type_mime in ('audio/webm','audio/mp4','audio/ogg')`,
+ * migration 20261013140000), donc rien ne passait aujourd'hui. Mais c'était la
+ * SEULE serrure, et on ne fait pas reposer sur une seule serrure une valeur qui
+ * décide de la façon dont le navigateur interprète des octets envoyés par
+ * quelqu'un d'autre : un `text/html` servi depuis notre domaine, c'est du code
+ * qui s'exécute chez qui ouvre le fichier, et ici celui qui ouvre les vocaux
+ * d'une cliente, c'est l'espace de gestion.
+ *
+ * La route des photos d'avis le faisait déjà, pour exactement cette raison
+ * (« un type inattendu deviendrait une façon de faire interpréter un fichier
+ * par le navigateur »). Les deux routes disent maintenant la même chose.
+ */
+const TYPES = ['audio/webm', 'audio/mp4', 'audio/ogg'];
+
 export const GET: APIRoute = async (contexte) => {
   const id = contexte.params.id ?? '';
   if (!UUID.test(id)) return new Response('Introuvable', { status: 404, headers: ENTETES });
@@ -30,9 +49,13 @@ export const GET: APIRoute = async (contexte) => {
   // confirme pas qu'une autre femme a envoyé un vocal.
   if (!data?.ok) return new Response('Introuvable', { status: 404, headers: ENTETES });
 
+  const type = String(data.type);
+  // Même réponse que « pas à toi » et « n'existe pas » : on ne renseigne pas
+  // sur ce qui est rangé en base.
+  if (!TYPES.includes(type)) return new Response('Introuvable', { status: 404, headers: ENTETES });
+
   const octets = Buffer.from(String(data.base64), 'base64');
   const total = octets.length;
-  const type = String(data.type);
 
   const demande = contexte.request.headers.get('range');
   const m = demande ? /^bytes=(\d*)-(\d*)$/.exec(demande.trim()) : null;

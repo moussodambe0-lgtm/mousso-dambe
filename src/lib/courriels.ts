@@ -101,6 +101,16 @@ export async function envoyer(
 ): Promise<boolean> {
   if (!cle) return false;
   if (!message.a || !message.a.includes('@')) return false;
+  /*
+   * UNE SEULE ADRESSE, SUR UNE SEULE LIGNE (audit de Cyber, 8 novembre 2026).
+   *
+   * L'adresse vient aujourd'hui de Supabase, qui l'a vérifiée : rien ne pouvait
+   * s'y glisser. Mais c'est le dernier point par lequel tout email passe, et
+   * c'est donc ici que la vérification coûte le moins cher. Un espace, une
+   * virgule ou un retour à la ligne dans une adresse, c'est soit un second
+   * destinataire, soit un en-tête de plus.
+   */
+  if (/[\s,;<>]/.test(message.a) || message.a.length > 254) return false;
 
   try {
     const r = await chercher('https://api.resend.com/emails', {
@@ -112,7 +122,9 @@ export async function envoyer(
       body: JSON.stringify({
         from: EXPEDITEUR,
         to: [message.a],
-        subject: message.sujet,
+        // Le seul endroit par lequel tout objet passe : on le nettoie ici, et
+        // pas seulement au modèle qui l'a écrit. Voir `sujetPropre`.
+        subject: sujetPropre(message.sujet),
         html: message.html,
       }),
       signal: AbortSignal.timeout(delaiMs),
@@ -178,6 +190,39 @@ export function propre(texte: string): string {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+/**
+ * UN OBJET DE MESSAGE N'EST PAS DU HTML, ET IL TIENT SUR UNE LIGNE
+ * (ajouté le 8 novembre 2026, audit de Cyber).
+ *
+ * DEUX DÉFAUTS EN UN SEUL ENDROIT, et c'est le même réflexe qui les causait :
+ * l'objet de l'email de la boutique passait par `propre()`, qui échappe le
+ * HTML.
+ *
+ *   1. UN ÉCHAPPEMENT AU MAUVAIS ENDROIT SE VOIT. Un quartier écrit
+ *      « Zone & bois » arrivait dans la boîte d'Arthur en « Zone &amp; bois ».
+ *      Dans un corps HTML c'est juste ; dans un objet, qui est du texte, c'est
+ *      un défaut visible.
+ *   2. UN RETOUR À LA LIGNE DANS UN OBJET N'EST PAS DU TEXTE, C'EST UN EN-TÊTE.
+ *      Le quartier est tapé par la cliente. Un en-tête d'email se termine par
+ *      un retour à la ligne : historiquement, un objet qui en contient un
+ *      permet d'écrire les en-têtes suivants (un destinataire caché, par
+ *      exemple). Resend reçoit du JSON et encode ses en-têtes lui-même, donc ce
+ *      n'était pas exploitable aujourd'hui ; mais la seule serrure était chez
+ *      un prestataire, et une serrure qu'on ne tient pas n'est pas une serrure.
+ *
+ * On enlève donc tout caractère de commande, on réduit les espaces, et on
+ * borne. Rien d'autre : l'accent, l'apostrophe et l'esperluette d'un nom de
+ * quartier burkinabè doivent arriver tels qu'elle les a écrits.
+ */
+export function sujetPropre(texte: string): string {
+  return String(texte ?? '')
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\u0000-\u001f\u007f-\u009f]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 120);
 }
 
 interface Gabarit {
@@ -345,7 +390,7 @@ export function nouvelleCommandePourLaBoutique(f: {
 }): Courriel {
   return {
     a: '',
-    sujet: `Nouvelle commande · ${propre(f.quartier) || 'quartier à préciser'}`,
+    sujet: `Nouvelle commande · ${sujetPropre(f.quartier) || 'quartier à préciser'}`,
     html: page({
       titre: 'Une commande vient de tomber',
       corps: 'Elle attend d’être préparée.',
