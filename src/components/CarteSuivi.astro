@@ -1,0 +1,251 @@
+---
+/**
+ * La carte du suivi de commande.
+ *
+ * Arthur, le 8 novembre 2026 : « AU NIVEAU DE SUIVRE MA COMMANDE JE VEUX QUE
+ * SA SOIT COMME SA. AVEC UNE VRAI MAPS », captures de son autre application à
+ * l'appui.
+ *
+ * ELLE NE S'AFFICHE QUE S'IL Y A QUELQUE CHOSE À MONTRER. Sans aucun point,
+ * elle ne serait qu'un plan de Ouagadougou posé là pour faire joli, qui coûte
+ * des données à charger et qui laisse croire à un suivi. La page appelle donc
+ * ce composant seulement quand `elle` ou `livreur` existe.
+ *
+ * CE QU'ELLE MONTRE, ET DANS QUEL ORDRE DE VÉRITÉ :
+ *   - le point de la cliente, toujours, quand elle l'a donné ;
+ *   - le point du livreur, SEULEMENT s'il a appuyé sur son bouton de partage,
+ *     avec l'heure à laquelle il l'a fait. Jamais de point deviné, jamais de
+ *     point d'il y a deux heures affiché comme s'il était d'il y a deux
+ *     minutes : l'étiquette porte l'heure ;
+ *   - le trait entre les deux, qui n'est PAS un itinéraire. C'est une ligne
+ *     droite, et le libellé dit « à vol d'oiseau » pour que personne ne la
+ *     prenne pour la route que le livreur va suivre.
+ *
+ * LA CARTE EST INERTE TANT QU'ON NE L'A PAS TOUCHÉE. Sur un téléphone, une
+ * carte qui réagit tout de suite attrape le doigt qui voulait faire défiler la
+ * page : on se retrouve coincé dedans. Un voile la couvre donc, avec le mot
+ * « Toucher la carte pour la déplacer ». Il part au premier appui franc, et un
+ * glissement de défilement ne déclenche pas d'appui.
+ *
+ * LE FOND DE CARTE VIENT D'OPENSTREETMAP, et il faut le dire : chaque tuile
+ * chargée envoie à openstreetmap.org l'adresse IP de la cliente et la zone
+ * qu'elle regarde, c'est-à-dire l'endroit où elle habite. C'est pour cela que
+ * cette carte ne vit que sur cette page, pour une commande en cours.
+ */
+import Icone from './Icone.astro';
+
+interface Point {
+  lat: number;
+  lng: number;
+}
+
+interface Props {
+  /** Le point de la cliente, celui que le livreur cherche. */
+  elle?: Point | null;
+  /** Le dernier point partagé par le livreur, s'il en a partagé un. */
+  livreur?: Point | null;
+  /** « 7 nov. · 22h06 », déjà mis en forme par la page. */
+  livreurQuand?: string;
+  /** Le nom à écrire sur l'étiquette du livreur. */
+  livreurNom?: string;
+}
+
+const { elle = null, livreur = null, livreurQuand = '', livreurNom = '' } = Astro.props;
+
+// Le libellé de la pastille, qui doit dire la vérité sur ce qu'on voit.
+const legende = livreur
+  ? 'Le trajet de votre colis'
+  : 'Le point que le livreur reçoit';
+
+const etiquetteLivreur = [livreurNom || 'Le livreur', livreurQuand].filter(Boolean).join(' · ');
+---
+
+<div class="enveloppe">
+  <div
+    class="toile"
+    data-carte
+    data-elle={elle ? `${elle.lat},${elle.lng}` : ''}
+    data-livreur={livreur ? `${livreur.lat},${livreur.lng}` : ''}
+    data-etiquette={etiquetteLivreur}
+  >
+  </div>
+
+  <p class="legende">{legende}</p>
+
+  {/* Le voile : il laisse passer le défilement, et part au premier appui. */}
+  <button class="voile" type="button" data-voile>
+    <span class="voile-mot">Toucher la carte pour la déplacer</span>
+  </button>
+
+  {/* Recentrer, quand on s'est perdu en faisant glisser. */}
+  <button class="recadrer" type="button" data-recadrer hidden aria-label="Recentrer la carte">
+    <Icone nom="lieu" taille={18} />
+  </button>
+
+  {/* Ce que la carte dit quand elle n'a pas pu se charger : jamais un carré
+      gris muet. Le script retire cette phrase dès que la carte est debout. */}
+  <p class="panne" data-panne>Le plan n'a pas pu se charger.</p>
+</div>
+
+<style>
+  .enveloppe {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--bordure);
+    border-radius: var(--r-carte);
+    background: var(--surface-douce);
+  }
+
+  /* Une hauteur fixe, posée avant que la carte se charge : sans elle, la page
+     saute au moment où la carte apparaît, et le doigt appuie sur autre chose
+     que ce qu'il visait. */
+  .toile {
+    height: 230px;
+    width: 100%;
+  }
+
+  .legende {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 500;
+    margin: 0;
+    padding: 7px 12px;
+    border-radius: 999px;
+    background: var(--surface);
+    box-shadow: 0 2px 10px rgb(0 0 0 / 0.14);
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--encre);
+  }
+
+  .voile {
+    position: absolute;
+    inset: 0;
+    z-index: 600;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding-bottom: 14px;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .voile-mot {
+    padding: 8px 16px;
+    border-radius: 999px;
+    background: rgb(27 17 22 / 0.82);
+    color: #fff;
+    font-size: 12.5px;
+    font-weight: 600;
+  }
+
+  .recadrer {
+    position: absolute;
+    left: 10px;
+    bottom: 10px;
+    z-index: 500;
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    border: 1px solid var(--bordure);
+    border-radius: 10px;
+    background: var(--surface);
+    color: var(--rose);
+    box-shadow: 0 2px 10px rgb(0 0 0 / 0.14);
+    cursor: pointer;
+  }
+
+  .panne {
+    position: absolute;
+    inset: 0;
+    z-index: 400;
+    display: grid;
+    place-items: center;
+    margin: 0;
+    padding: var(--e4);
+    text-align: center;
+    font-size: 13.5px;
+    color: var(--texte-2);
+  }
+
+  /* --- Ce que Leaflet dessine, habillé aux couleurs de la maison ----------- */
+
+  /* Les boutons + et − : Leaflet les pose en haut à gauche. */
+  .enveloppe :global(.leaflet-control-zoom a) {
+    width: 34px;
+    height: 34px;
+    line-height: 34px;
+    border-radius: 9px;
+    border: 1px solid var(--bordure);
+    background: var(--surface);
+    color: var(--encre);
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  .enveloppe :global(.leaflet-control-zoom) {
+    border: 0;
+    box-shadow: none;
+  }
+
+  .enveloppe :global(.leaflet-control-zoom a + a) {
+    margin-top: 5px;
+  }
+
+  /* L'attribution. Elle est OBLIGATOIRE : les données d'OpenStreetMap sont
+     sous licence ODbL, qui exige de citer la source. On la rend discrète, on
+     ne la retire pas. */
+  .enveloppe :global(.leaflet-control-attribution) {
+    background: rgb(255 255 255 / 0.85);
+    font-size: 10px;
+  }
+
+  .enveloppe :global(.leaflet-control-attribution a) {
+    color: var(--texte-2);
+  }
+
+  /* Le point de la cliente : un rond rose avec un halo, comme un « vous êtes
+     ici ». */
+  .enveloppe :global(.point-elle) {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 3px solid #fff;
+    background: var(--rose);
+    box-shadow: 0 0 0 5px rgb(208 32 106 / 0.22);
+  }
+
+  /* Le livreur : un rond sombre, plus net, avec son étiquette à côté. Sombre
+     et non rose, pour qu'on distingue les deux points d'un coup d'oeil même
+     en plein soleil. */
+  .enveloppe :global(.point-livreur) {
+    position: relative;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 3px solid #fff;
+    background: #1b1116;
+    box-shadow: 0 1px 6px rgb(0 0 0 / 0.4);
+  }
+
+  .enveloppe :global(.point-etiquette) {
+    position: absolute;
+    left: 20px;
+    top: -6px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: var(--surface);
+    box-shadow: 0 2px 8px rgb(0 0 0 / 0.18);
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--encre);
+    white-space: nowrap;
+  }
+</style>
+
+<script>
+  import '../scripts/carte';
+</script>

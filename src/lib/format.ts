@@ -166,6 +166,32 @@ export function quandCourt(quand: string | Date | null | undefined): string {
   return `${d.getDate()} ${MOIS[d.getMonth()]}`;
 }
 
+/**
+ * Le jour et l'heure d'une étape de livraison : « 7 nov. · 22h06 ».
+ *
+ * Forme voulue par Arthur le 8 novembre 2026, d'après l'écran de son autre
+ * application, pour la liste des étapes d'une commande.
+ *
+ * POURQUOI PAS `quandCourt` ICI. Elle écrit « Hier » ou « mar. » quand c'est
+ * récent, ce qui est juste dans une liste de discussions, où l'on veut savoir
+ * si c'est frais. Dans l'historique d'un colis, on veut la date : elle sert à
+ * dire « ça fait trois jours » et, le cas échéant, à le prouver à la boutique.
+ *
+ * Rend une chaîne vide si l'étape n'a pas eu lieu, ou n'a pas d'heure
+ * enregistrée. L'appelant affiche alors l'étape sans heure plutôt qu'une heure
+ * inventée : les commandes parties avant le 8 novembre 2026 n'ont pas toutes
+ * leur horodatage.
+ */
+export function dateEtHeure(quand: string | Date | null | undefined): string {
+  if (!quand) return '';
+  const d = quand instanceof Date ? quand : new Date(quand);
+  if (Number.isNaN(d.getTime())) return '';
+  const MOIS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+  const h = String(d.getHours()).padStart(2, '0');
+  const m = String(d.getMinutes()).padStart(2, '0');
+  return `${d.getDate()} ${MOIS[d.getMonth()]} · ${h}h${m}`;
+}
+
 /** L'heure seule, pour l'horodatage sous une bulle de message. */
 export function heureCourte(quand: string | Date | null | undefined): string {
   if (!quand) return '';

@@ -45,6 +45,20 @@ export const CHEMINS_PUBLICS = [
    * accepté même sans réseau.
    */
   '/legal',
+  /*
+   * LES TUILES DU FOND DE CARTE (8 novembre 2026, avec le suivi de commande).
+   *
+   * Un carré de plan de Ouagadougou. Il ne parle de personne : c'est du
+   * terrain, pas une position, et la même tuile sert à toutes les clientes du
+   * même quartier. C'est d'ailleurs tout l'intérêt de les faire passer par
+   * notre serveur plutôt que par le téléphone de chacune (voir
+   * src/pages/tuile/) : OpenStreetMap ne voit qu'un seul visiteur, nous.
+   *
+   * Publiques et gardables, donc, et c'est ce qui fait qu'une deuxième visite
+   * sur la carte ne coûte plus rien, ni en données ni en attente. Une rue de
+   * Ouagadougou ne bouge pas d'une semaine à l'autre.
+   */
+  '/tuile',
 ];
 
 /** Un chemin qui ne parle de personne, et qu'un cache partagé peut garder. */

@@ -95,6 +95,24 @@ export default defineConfig({
     csp: {
       directives: [
         "default-src 'self'",
+        /*
+         * LES IMAGES, ET LE FOND DE CARTE.
+         *
+         * RIEN N'A ÉTÉ OUVERT ICI POUR LA CARTE DU SUIVI, le 8 novembre 2026,
+         * et c'est le point important. Le réflexe aurait été d'ajouter
+         * `https://*.tile.openstreetmap.org`, puisqu'un fond de carte est fait
+         * d'images. Mais chaque tuile chargée aurait alors envoyé à un serveur
+         * étranger l'adresse IP de la cliente ET la zone qu'elle regarde,
+         * c'est-à-dire, en pratique, l'endroit où elle habite. Dans une
+         * application où la même base contient son cycle et ses questions de
+         * santé, ce n'était pas un détail de configuration.
+         *
+         * Les tuiles passent donc par notre propre serveur
+         * (src/pages/tuile/[z]/[x]/[y].png.ts). Pour le téléphone d'une
+         * cliente, la carte vient de moussodambe.com et de nulle part
+         * ailleurs : `'self'` suffit, et OpenStreetMap ne voit jamais qu'un
+         * seul visiteur, nous.
+         */
         "img-src 'self' data: https://*.supabase.co",
         "font-src 'self'",
         // Les vocaux : ceux du médecin viennent de ce site, et celui qu'elle

@@ -2,44 +2,46 @@
 /**
  * Suivre une commande.
  *
- * Arthur, le 26 octobre 2026 : « au niveau de compte mes commandes il doit
- * avoir un bouton suivre mes commandes pour suivre les commandes ; les étapes
- * doivent être affichées ; une maps pour suivre l'avancée du livreur ; option
- * écrire à la boutique, option annuler ; et les étapes de la livraison qui sont
- * remplies et celles qui restent. »
+ * REFAITE LE 8 NOVEMBRE 2026, sur les captures de l'autre application d'Arthur,
+ * et sur sa phrase : « AU NIVEAU DE SUIVRE MA COMMANDE JE VEUX QUE SA SOIT
+ * COMME SA. AVEC UNE VRAI MAPS », puis « les icônes avec en livraison, en
+ * préparation, et j'en passe. Si quelqu'un appuie sur ça, ça doit s'afficher
+ * comme ça. »
  *
- * CE QUI EST FAIT ICI : les étapes franchies et celles qui restent, écrire à la
- * boutique, annuler, et depuis le 27 octobre 2026 le livreur par son nom et son
- * numéro, plus le bouton qui précise sa position pendant que le colis roule
- * (Arthur : « la personne peut toujours envoyer sa localisation »). Le cas est
- * réel : elle commande depuis le marché, et c'est chez elle qu'il faut livrer.
+ * CE QUI CHANGE, ET CE QUE ÇA ANNULE. Le 27 octobre 2026, entre trois
+ * propositions, il avait choisi de garder un simple bouton qui ouvre
+ * l'application de cartes du téléphone, et le commentaire d'alors disait : « ne
+ * pas la rouvrir sans qu'il la rouvre ». Il l'a rouverte, en montrant à quoi la
+ * page doit ressembler. La carte est donc dessinée ici.
  *
- * PAS DE CARTE DESSINÉE DANS LA PAGE, ET C'EST DÉCIDÉ. Arthur, le 27 octobre
- * 2026, entre trois propositions : « garder ce qui est fait, le bouton qui
- * ouvre sa carte ». Son point s'ouvre donc dans l'application de cartes du
- * téléphone, déjà installée, qui sait y aller mieux que nous. Les deux autres
- * chemins coûtaient : des images servies par notre serveur (gratuit mais une
- * demi-journée de travail et de la bande passante), ou des images prises
- * directement chez un tiers, ce qui aurait envoyé l'adresse du domicile d'une
- * femme à un serveur étranger à chaque ouverture de cette page. La question est
- * donc close : ne pas la rouvrir sans qu'il la rouvre.
+ * L'ORDRE DE L'ÉCRAN, ET POURQUOI. Il suit les captures, et chaque bloc répond
+ * à une question qu'on se pose dans cet ordre quand on attend un colis :
+ *   1. où ça en est             -> le bandeau d'état, en grand, lisible de loin
+ *   2. qu'est-ce que je fais    -> confirmer la réception, quand c'est le moment
+ *   3. où est mon colis         -> la carte
+ *   4. quel chemin il a fait    -> la frise des quatre étapes, puis leurs heures
+ *   5. qu'est-ce que j'ai pris  -> l'article et le total
+ *   6. qui vient, et où         -> la livraison
+ *   7. et si ça se passe mal    -> les recours, en dernier, jamais en premier
  *
- * CE QU'ON NE MONTRERA PAS POUR AUTANT : où se trouve le livreur. Rien ne relève
- * sa position, et une carte qui promettrait de « suivre le livreur » sans le
- * suivre serait un mensonge à l'écran. Ce qu'on sait, c'est qui il est et
- * comment l'appeler.
+ * UNE SEULE LECTURE EN BASE. La page appelait `mes_commandes()` puis cherchait
+ * la bonne avec un `.find()` : elle chargeait les vingt dernières commandes,
+ * avec toutes leurs lignes, pour en afficher une. `suivi_de_ma_commande()` rend
+ * exactement cette commande-là, et les champs qu'il faut à cet écran.
  *
- * La commande est lue parmi les siennes (`mes_commandes`), pas par une requête
- * ouverte sur un numéro : les règles d'accès de la base font qu'elle ne voit
- * que les siennes, et un numéro deviné ne donne donc rien.
+ * PAS DE NUMÉRO DE COMMANDE À L'ÉCRAN (Arthur, le 7 novembre 2026 : « JE VEUX
+ * PAS DE NUMERO DE COMMANDE »). Il reste dans l'adresse, parce que c'est la clé
+ * de la page, et dans les champs cachés des formulaires. Nulle part sous ses
+ * yeux.
  */
 import Base from '../../../layouts/Base.astro';
 import Entete from '../../../components/Entete.astro';
 import Icone from '../../../components/Icone.astro';
 import Alerte from '../../../components/Alerte.astro';
+import CarteSuivi from '../../../components/CarteSuivi.astro';
 import { clientSession, baseConfiguree } from '../../../lib/supabase';
 import { visiteuse, lirePanier, comptePanier } from '../../../lib/session';
-import { prix, dateLongue, messageErreur } from '../../../lib/format';
+import { prix, dateEtHeure, messageErreur } from '../../../lib/format';
 import { pageDeLEtat, ETATS_CLIENTE } from '../../../lib/etats-commande';
 
 export const prerender = false;
@@ -55,8 +57,9 @@ let message = '';
 if (Astro.request.method === 'POST') {
   const f = await Astro.request.formData();
   const numero = String(f.get('numero') ?? '');
+  const geste = String(f.get('geste') ?? '');
 
-  if (String(f.get('geste') ?? '') === 'position') {
+  if (geste === 'position') {
     const lat = Number(f.get('lat'));
     const lng = Number(f.get('lng'));
     if (!Number.isFinite(lat) || !Number.isFinite(lng) || (lat === 0 && lng === 0)) {
@@ -73,6 +76,14 @@ if (Astro.request.method === 'POST') {
       if (error || !data?.ok) erreur = messageErreur(data?.erreur ?? error?.message);
       else return Astro.redirect(`/commandes/suivre/${encodeURIComponent(numero)}?ok=position`, 303);
     }
+  } else if (geste === 'recue') {
+    const { data, error } = await client.rpc('confirmer_reception', { p_numero: numero });
+    if (error || !data?.ok) erreur = messageErreur(data?.erreur ?? error?.message);
+    else return Astro.redirect(`/commandes/suivre/${encodeURIComponent(numero)}?ok=recue`, 303);
+  } else if (geste === 'pas-recue') {
+    const { data, error } = await client.rpc('signaler_non_reception', { p_numero: numero });
+    if (error || !data?.ok) erreur = messageErreur(data?.erreur ?? error?.message);
+    else return Astro.redirect(`/commandes/suivre/${encodeURIComponent(numero)}?ok=signale`, 303);
   } else {
     const { data, error } = await client.rpc('annuler_ma_commande', { p_numero: numero });
     if (error || !data?.ok) erreur = messageErreur(data?.erreur);
@@ -80,394 +91,886 @@ if (Astro.request.method === 'POST') {
   }
 }
 
-if (Astro.url.searchParams.get('ok') === 'position') {
-  message = 'Ta position est enregistrée. Le livreur la verra.';
+const quoi = Astro.url.searchParams.get('ok');
+if (quoi === 'position') message = 'Ta position est enregistrée. Le livreur la verra.';
+if (quoi === 'recue') message = 'Merci. Ta commande est clôturée.';
+if (quoi === 'signale') {
+  message = "C'est signalé. Écris à la boutique pour expliquer ce qui s'est passé.";
 }
 
-const { data: brutes } = await client.rpc('mes_commandes');
-const toutes = (brutes ?? []) as {
+const { data: brut } = await client.rpc('suivi_de_ma_commande', {
+  p_numero: String(Astro.params.numero ?? ''),
+});
+
+// Un numéro qui n'est pas le sien, ou qui n'existe pas : on ne le dit pas
+// autrement qu'en la ramenant à sa liste. Répondre « cette commande n'existe
+// pas » renseignerait quelqu'un qui essaie des numéros au hasard.
+if (!brut?.ok) return Astro.redirect(`/commandes/${ETATS_CLIENTE[0].cle}`, 302);
+
+const c = brut as {
   numero: string;
   etat: string;
+  nom: string;
+  telephone: string;
+  quartier: string;
+  repere: string;
+  articles_cfa: number;
+  livraison_cfa: number;
   total: number;
   cree_le: string;
-  quartier: string;
+  preparee_le: string | null;
+  envoyee_le: string | null;
+  livree_le: string | null;
   lat: number | null;
   lng: number | null;
   livreur_nom: string | null;
   livreur_telephone: string | null;
-  articles: { nom: string; taille: string | null; quantite: number; total: number }[];
-}[];
-
-const commande = toutes.find((c) => c.numero === Astro.params.numero);
-// Un numéro qui n'est pas le sien, ou qui n'existe pas : on ne le dit pas
-// autrement qu'en la ramenant à sa liste. Répondre « cette commande n'existe
-// pas » renseignerait quelqu'un qui essaie des numéros au hasard.
-if (!commande) return Astro.redirect(`/commandes/${ETATS_CLIENTE[0].cle}`, 302);
+  livreur_lat: number | null;
+  livreur_lng: number | null;
+  livreur_position_le: string | null;
+  recue_confirmee_le: string | null;
+  probleme_signale_le: string | null;
+  articles: { nom: string; taille: string | null; quantite: number; total: number; image: string | null; slug: string | null }[];
+};
 
 /**
- * Le chemin normal d'un colis. L'annulation n'en fait pas partie : c'est une
- * sortie de route, pas une étape, et l'afficher dans la file donnerait à croire
- * que toute commande finit par être annulée.
+ * Le chemin normal d'un colis, et les quatre pastilles de la frise.
+ *
+ * L'annulation n'en fait pas partie : c'est une sortie de route, pas une
+ * étape, et l'afficher dans la file donnerait à croire que toute commande
+ * finit par être annulée. Une commande annulée n'affiche pas de frise du tout.
  */
 const CHEMIN = [
-  { etat: 'nouvelle', mot: 'Commande reçue', dit: 'On a ta commande.' },
-  { etat: 'preparee', mot: 'Colis préparé', dit: 'Emballage neutre, rien n’est écrit dessus.' },
-  { etat: 'envoyee', mot: 'En livraison', dit: 'Le livreur a ton colis.' },
-  { etat: 'livree', mot: 'Livrée', dit: 'Tu as payé à la remise.' },
+  { etat: 'nouvelle', mot: 'Commandée', quand: c.cree_le, journal: 'Commande passée' },
+  { etat: 'preparee', mot: 'En préparation', quand: c.preparee_le, journal: 'Colis préparé' },
+  { etat: 'envoyee', mot: 'En route', quand: c.envoyee_le, journal: 'Colis remis au livreur' },
+  { etat: 'livree', mot: 'Livrée', quand: c.livree_le, journal: 'Colis livré' },
 ];
 
-const annulee = commande.etat === 'annulee';
-const place = CHEMIN.findIndex((e) => e.etat === commande.etat);
-const page = pageDeLEtat(commande.etat);
+const annulee = c.etat === 'annulee';
+const place = CHEMIN.findIndex((e) => e.etat === c.etat);
+
+/**
+ * Le bandeau du haut, celui qu'on lit de loin.
+ *
+ * Chaque état dit DEUX choses : où ça en est, et ce qu'elle a à faire. Le
+ * second compte plus que le premier : « En cours de livraison » sans « vérifie
+ * le produit avant de payer » laisse quelqu'un payer un carton fermé.
+ */
+const BANDEAUX: Record<string, { icone: string; mot: string; dit: string }> = {
+  nouvelle: {
+    icone: 'carton',
+    mot: 'Commande reçue',
+    dit: 'On prépare ton colis. Tu ne paies rien avant de le recevoir.',
+  },
+  preparee: {
+    icone: 'colis',
+    mot: 'Colis préparé',
+    dit: "Emballage neutre, rien n'est écrit dessus. Il part bientôt.",
+  },
+  envoyee: {
+    icone: 'scooter',
+    mot: 'En cours de livraison',
+    dit: 'Vérifie le produit à la réception, puis paie.',
+  },
+  livree: {
+    icone: 'coche',
+    mot: 'Commande livrée',
+    dit: 'Tu as payé à la remise. Merci.',
+  },
+  annulee: {
+    icone: 'croix-cercle',
+    mot: 'Commande annulée',
+    dit: "Elle n'a pas été livrée, et tu n'as rien payé.",
+  },
+};
+const bandeau = BANDEAUX[c.etat] ?? BANDEAUX.nouvelle;
+
+// La barre de progression du bandeau : la part du chemin parcourue.
+const avancee = annulee ? 100 : Math.round(((place + 1) / CHEMIN.length) * 100);
+
+// Les étapes déjà franchies, de la plus récente à la plus ancienne, comme dans
+// un journal. Une étape sans heure enregistrée s'affiche quand même : les
+// commandes parties avant le 8 novembre 2026 n'ont pas toutes leur horodatage,
+// et une étape sans heure vaut mieux qu'une heure inventée.
+const journal = CHEMIN.slice(0, place + 1)
+  .map((e) => ({ mot: e.journal, quand: dateEtHeure(e.quand) }))
+  .reverse();
+
+const elle = c.lat != null && c.lng != null ? { lat: c.lat, lng: c.lng } : null;
+const leLivreur =
+  c.livreur_lat != null && c.livreur_lng != null ? { lat: c.livreur_lat, lng: c.livreur_lng } : null;
+const carteUtile = c.etat === 'envoyee' && (elle || leLivreur);
+
+const page = pageDeLEtat(c.etat);
 const panier = comptePanier(lirePanier(Astro));
+const paye = c.etat === 'livree';
 ---
 
-<Base titre="Suivre ma commande" nav="compte" panier={panier}>
+<Base titre="Suivi de commande" nav="compte" panier={panier}>
   <main class="page">
-    <Entete titre="Suivre ma commande" retour={`/commandes/${page?.cle ?? ETATS_CLIENTE[0].cle}`} />
+    <Entete titre="Suivi de commande" retour={`/commandes/${page?.cle ?? ETATS_CLIENTE[0].cle}`} />
 
     {erreur && <div class="marge-bas"><Alerte type="erreur" texte={erreur} /></div>}
     {message && <div class="marge-bas"><Alerte type="reussite" texte={message} /></div>}
 
-    <p class="quand">Commandée le {dateLongue(commande.cree_le)}</p>
-
-    {
-      annulee ? (
-        <div class="annulee apparait">
-          <Icone nom="croix-cercle" taille={34} />
-          <h2>Commande annulée</h2>
-          <p>Elle n'a pas été livrée, et tu n'as rien payé.</p>
+    {/* 1. OÙ ÇA EN EST ----------------------------------------------------- */}
+    <section class:list={['bandeau', annulee && 'bandeau-eteint']}>
+      <div class="bandeau-haut">
+        <span class="bandeau-icone"><Icone nom={bandeau.icone} taille={22} /></span>
+        <div>
+          <h2 class="bandeau-mot">{bandeau.mot}</h2>
+          <p class="bandeau-dit">{bandeau.dit}</p>
         </div>
-      ) : (
-        /* Les étapes franchies et celles qui restent. La file est une liste
-           ordonnée : un lecteur d'écran annonce « 2 sur 4 », et chaque étape
-           dit elle-même où elle en est plutôt que de compter sur la couleur. */
-        <ol class="file apparait">
-          {CHEMIN.map((e, i) => {
-            const faite = i <= place;
-            const courante = i === place;
-            return (
-              <li class:list={['pas', faite && 'pas-fait', courante && 'pas-courant']}>
-                <span class="pas-puce" aria-hidden="true">
-                  {faite ? <Icone nom="coche" taille={15} /> : <i class="pas-point"></i>}
-                </span>
-                <span class="pas-corps">
-                  <b>{e.mot}</b>
-                  <small>{courante ? e.dit : faite ? 'Fait' : 'À venir'}</small>
-                </span>
-              </li>
-            );
-          })}
-        </ol>
-      )
-    }
-
-    <section class="carte bloc recap">
-      <ul class="articles">
-        {commande.articles.map((a) => (
-          <li>
-            <span>
-              {a.nom}
-              {a.taille ? ` · ${a.taille}` : ''}
-              {a.quantite > 1 ? ` × ${a.quantite}` : ''}
-            </span>
-            <span class="chiffre">{prix(a.total)}</span>
-          </li>
-        ))}
-      </ul>
-      <div class="total-ligne">
-        <span class="gris">Livrée à {commande.quartier}</span>
-        <span class="total chiffre">{prix(commande.total)} FCFA</span>
+      </div>
+      <div class="jauge" role="presentation">
+        <i class="jauge-faite" data-avancee={avancee}></i>
       </div>
     </section>
 
-    <div class="boutons">
-      {/* Écrire à la boutique arrive sur le fil existant, celui que la page
-          Discussions ouvre déjà : une commande n'a pas son fil à elle, sinon
-          elle se retrouverait avec autant de conversations que de commandes. */}
-      <a class="btn btn-contour btn-plein" href="/discussions/boutique">
-        <Icone nom="bulles" taille={18} />
-        Écrire à la boutique
-      </a>
+    {/* 2. CE QU'ELLE A À FAIRE --------------------------------------------- */}
+    {
+      c.etat === 'envoyee' && (
+        <section class="action">
+          <h2 class="action-titre">
+            <Icone nom="colis" taille={18} />
+            Confirme la réception
+          </h2>
+          <p class="action-dit">
+            Confirme avoir reçu ta commande pour la clôturer. Tu pourras ensuite
+            noter ton achat.
+          </p>
+          <form method="POST">
+            <input type="hidden" name="geste" value="recue" />
+            <input type="hidden" name="numero" value={c.numero} />
+            <button class="btn btn-rose btn-plein" type="submit">
+              J'ai reçu ma commande
+            </button>
+          </form>
+          {c.probleme_signale_le ? (
+            <p class="action-signale">
+              <Icone nom="alerte" taille={15} />
+              Tu as signalé ne pas l'avoir reçue. Écris à la boutique pour
+              expliquer.
+            </p>
+          ) : (
+            <form method="POST">
+              <input type="hidden" name="geste" value="pas-recue" />
+              <input type="hidden" name="numero" value={c.numero} />
+              <button class="pas-recue" type="submit">
+                <Icone nom="alerte" taille={15} />
+                Je n'ai pas reçu ma commande
+              </button>
+            </form>
+          )}
+        </section>
+      )
+    }
 
-      {commande.etat === 'nouvelle' && (
-        <form method="POST">
-          <input type="hidden" name="numero" value={commande.numero} />
-          <button class="btn btn-texte btn-plein" type="submit">Annuler cette commande</button>
-        </form>
-      )}
-    </div>
+    {/* 3. OÙ EST LE COLIS --------------------------------------------------- */}
+    {
+      carteUtile && (
+        <CarteSuivi
+          elle={elle}
+          livreur={leLivreur}
+          livreurQuand={dateEtHeure(c.livreur_position_le)}
+          livreurNom={c.livreur_nom ?? ''}
+        />
+      )
+    }
+
+    {/* 4. LE CHEMIN PARCOURU ------------------------------------------------ */}
+    {
+      !annulee && (
+        <section class="frise-carte">
+          <div class="frise-haut">
+            <div>
+              <p class="frise-de">Commande de</p>
+              <p class="frise-qui">Mousso Dambé</p>
+            </div>
+            <span class="frise-badge">{page?.mot ?? bandeau.mot}</span>
+          </div>
+
+          <ol class="frise" aria-label="Avancement de la commande">
+            {CHEMIN.map((e, i) => {
+              const faite = i < place;
+              const courante = i === place;
+              return (
+                <li class:list={['etape', (faite || courante) && 'etape-faite', courante && 'etape-ici']}>
+                  <span class="etape-trait" aria-hidden="true"></span>
+                  <span class="etape-puce">
+                    {faite ? (
+                      <Icone nom="coche" taille={13} />
+                    ) : courante ? (
+                      <Icone nom="moins" taille={13} />
+                    ) : (
+                      <i class="etape-creux"></i>
+                    )}
+                  </span>
+                  <span class="etape-mot">{e.mot}</span>
+                </li>
+              );
+            })}
+          </ol>
+
+          <p class="frise-legende">
+            <i class="trait-plein" aria-hidden="true"></i> parcours confirmé
+            <i class="trait-creux" aria-hidden="true"></i> reste à parcourir
+          </p>
+        </section>
+      )
+    }
 
     {
-      commande.etat === 'envoyee' && (
-        <section class="course">
-          <h2 class="course-titre">Ta livraison</h2>
+      !annulee && (
+        <section class="bloc">
+          <h2 class="bloc-titre-grand">Étapes de la commande</h2>
+          <ol class="journal">
+            {journal.map((e) => (
+              <li class="jour">
+                <span class="jour-puce" aria-hidden="true"></span>
+                <span class="jour-corps">
+                  <b>{e.mot}</b>
+                  {e.quand && <small>{e.quand}</small>}
+                </span>
+              </li>
+            ))}
+          </ol>
 
-          {commande.livreur_nom ? (
-            <>
-              <p class="course-qui">
-                <b>{commande.livreur_nom}</b> apporte ton colis.
+          {c.etat === 'envoyee' &&
+            (elle ? (
+              <p class="partage">
+                <Icone nom="coche" taille={15} />
+                Ta position est partagée avec le livreur.
               </p>
-              {commande.livreur_telephone && (
-                <a class="btn btn-contour btn-plein" href={`tel:${commande.livreur_telephone}`}>
-                  <Icone nom="telephone" taille={18} />
-                  Appeler {commande.livreur_nom}
-                </a>
-              )}
-            </>
-          ) : (
-            <p class="course-qui">Ton colis est parti. Le livreur va t'appeler.</p>
-          )}
+            ) : (
+              <p class="partage partage-sans">
+                <Icone nom="info" taille={15} />
+                Tu n'as pas partagé ta position. Le livreur a ton quartier et ton
+                numéro.
+              </p>
+            ))}
+        </section>
+      )
+    }
 
-          {/* Son point, ouvert dans l'application de cartes du téléphone. Ce
-              n'est pas la position du livreur : c'est la sienne, celle que le
-              livreur cherche, et elle doit pouvoir vérifier qu'elle est juste. */}
-          {commande.lat && commande.lng ? (
-            <a
-              class="btn btn-contour btn-plein"
-              href={`https://www.google.com/maps/search/?api=1&query=${commande.lat},${commande.lng}`}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <Icone nom="lieu" taille={18} />
-              Voir le point que le livreur reçoit
-            </a>
-          ) : (
-            <p class="course-sans">
-              Tu n'as pas partagé de position. Le livreur a ton quartier et ton
-              numéro.
+    {/* 5. CE QU'ELLE A PRIS -------------------------------------------------- */}
+    <section class="bloc">
+      <h2 class="bloc-titre-grand">{c.articles.length > 1 ? 'Articles' : 'Article'}</h2>
+      <ul class="articles">
+        {c.articles.map((a) => (
+          <li class="article">
+            {a.image ? (
+              <img class="article-photo" src={a.image} alt="" width="56" height="56" loading="lazy" />
+            ) : (
+              <span class="article-photo article-sans"><Icone nom="colis" taille={20} /></span>
+            )}
+            <span class="article-corps">
+              <b>{a.nom}</b>
+              <small>
+                Mousso Dambé
+                {a.taille ? ` · ${a.taille}` : ''}
+                {` · Quantité ${a.quantite}`}
+              </small>
+            </span>
+            <span class="article-prix chiffre">{prix(a.total)} FCFA</span>
+          </li>
+        ))}
+      </ul>
+
+      <dl class="compte">
+        <div><dt>Sous-total</dt><dd class="chiffre">{prix(c.articles_cfa)} FCFA</dd></div>
+        <div><dt>Livraison</dt><dd class="chiffre">{prix(c.livraison_cfa)} FCFA</dd></div>
+        <div class="compte-total">
+          <dt>{paye ? 'Payé à la livraison' : 'À payer à la livraison'}</dt>
+          <dd class="chiffre">{prix(c.total)} FCFA</dd>
+        </div>
+      </dl>
+    </section>
+
+    {/* 6. QUI VIENT, ET OÙ --------------------------------------------------- */}
+    <section class="bloc">
+      <h2 class="bloc-titre-grand">Livraison</h2>
+      <p class="livr-qui">{c.nom}</p>
+      <p class="livr-ligne">{c.telephone}</p>
+      <p class="livr-ligne">{c.quartier}, Ouagadougou</p>
+      {c.repere && <p class="livr-repere">{c.repere}</p>}
+
+      {
+        c.etat === 'envoyee' && c.livreur_nom && (
+          <div class="livreur">
+            <p class="livreur-qui">
+              <b>{c.livreur_nom}</b> apporte ton colis.
             </p>
-          )}
+            {c.livreur_telephone && (
+              <a class="btn btn-contour btn-plein" href={`tel:${c.livreur_telephone}`}>
+                <Icone nom="telephone" taille={18} />
+                Appeler {c.livreur_nom}
+              </a>
+            )}
+          </div>
+        )
+      }
 
-          {/* Repréciser sa position pendant que le colis roule. Le bloc est
-              caché tant que le script n'a pas tourné : sans JavaScript, aucun
-              navigateur ne sait donner une position, et un bouton qui ne peut
-              rien faire vaut moins que pas de bouton. */}
+      {/* Repréciser sa position pendant que le colis roule. Arthur : « la
+          personne peut toujours envoyer sa localisation ». Le cas est réel :
+          elle commande depuis le marché, et c'est chez elle qu'il faut livrer.
+          Le bloc est caché tant que le script n'a pas tourné : sans
+          JavaScript, aucun navigateur ne sait donner une position, et un
+          bouton qui ne peut rien faire vaut moins que pas de bouton. */}
+      {
+        (c.etat === 'nouvelle' || c.etat === 'preparee' || c.etat === 'envoyee') && (
           <form class="repointer" method="POST" data-position>
             <input type="hidden" name="geste" value="position" />
-            <input type="hidden" name="numero" value={commande.numero} />
+            <input type="hidden" name="numero" value={c.numero} />
             <input type="hidden" class="position-lat" name="lat" />
             <input type="hidden" class="position-lng" name="lng" />
             <button class="btn btn-contour btn-plein position-bouton" type="button" hidden>
               <Icone nom="lieu" taille={18} />
-              <span class="position-mot">
-                {commande.lat ? 'Corriger ma position' : 'Partager ma position'}
-              </span>
+              <span class="position-mot">{elle ? 'Corriger ma position' : 'Partager ma position'}</span>
             </button>
             <p class="position-dit" hidden></p>
-            <button class="btn btn-rose btn-plein repointer-envoi" type="submit">
-              Envoyer au livreur
-            </button>
+            <button class="btn btn-rose btn-plein repointer-envoi" type="submit">Envoyer au livreur</button>
           </form>
-        </section>
-      )
-    }
+        )
+      }
+    </section>
+
+    {/* 7. ET SI ÇA SE PASSE MAL ---------------------------------------------- */}
+    <section class="bloc">
+      <h2 class="bloc-titre-grand">Un problème avec cette commande ?</h2>
+      <div class="recours">
+        <a class="btn btn-contour btn-plein" href="/discussions/boutique">
+          <Icone nom="bulles" taille={18} />
+          Écrire à la boutique
+        </a>
+
+        {
+          (c.etat === 'nouvelle' || c.etat === 'preparee') && (
+            <form method="POST">
+              <input type="hidden" name="geste" value="annuler" />
+              <input type="hidden" name="numero" value={c.numero} />
+              <button class="btn btn-texte btn-plein" type="submit">Annuler cette commande</button>
+            </form>
+          )
+        }
+
+        {/*
+          LE REMBOURSEMENT N'A DE SENS QU'APRÈS AVOIR PAYÉ, et ici on paie à la
+          remise du colis. Avant la livraison, il n'y a rien à rembourser :
+          c'est « Annuler » qu'il faut, et il est juste au-dessus. Ce lien
+          ouvre donc la discussion avec la boutique, parce que c'est ce qui se
+          passe réellement : Arthur regarde, et il rend l'argent ou non. Un
+          bouton qui déclencherait un remboursement tout seul mentirait sur ce
+          que fait l'application.
+        */}
+        {
+          c.etat === 'livree' && (
+            <a class="btn btn-contour btn-plein" href="/discussions/boutique">
+              <Icone nom="carton" taille={18} />
+              Demander un remboursement
+            </a>
+          )
+        }
+      </div>
+      <p class="depuis">Commande passée le {dateEtHeure(c.cree_le)}.</p>
+    </section>
   </main>
 </Base>
 
 <style>
-  .quand {
-    margin-bottom: var(--e4);
-    font-size: 14px;
-    color: var(--texte-3);
+  .page {
+    display: grid;
+    gap: var(--e3);
   }
 
-  /* --- La file des étapes --- */
-  .file {
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-    margin-bottom: var(--e4);
-    padding: 0;
-    list-style: none;
+  /* --- 1. Le bandeau d'état ---------------------------------------------- */
+  .bandeau {
+    display: grid;
+    gap: var(--e3);
+    padding: var(--e4);
+    border-radius: var(--r-carte);
+    background: var(--rose);
+    color: #fff;
   }
 
-  .pas {
-    position: relative;
+  /* Une commande annulée ne crie pas en rose vif : ce n'est pas une étape
+     heureuse, et l'écran n'a pas à la célébrer. */
+  .bandeau-eteint {
+    background: var(--encre);
+  }
+
+  .bandeau-haut {
     display: flex;
     gap: var(--e3);
     align-items: flex-start;
-    padding-bottom: var(--e4);
   }
 
-  /* Le trait qui relie les étapes, derrière les puces. Il ne descend pas sous
-     la dernière, sinon la file semblerait continuer après la livraison. */
-  .pas:not(:last-child)::before {
-    content: '';
-    position: absolute;
-    top: 22px;
-    left: 10px;
-    width: 2px;
-    bottom: 0;
-    background: var(--bordure);
-  }
-
-  .pas-fait:not(:last-child)::before {
-    background: var(--rose);
-  }
-
-  .pas-puce {
+  .bandeau-icone {
     display: grid;
     place-items: center;
     flex: none;
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    border: 2px solid var(--bordure);
-    background: var(--surface);
-    color: #fff;
-    z-index: 1;
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    background: rgb(255 255 255 / 0.18);
   }
 
-  .pas-fait .pas-puce {
-    border-color: var(--rose);
-    background: var(--rose);
+  .bandeau-mot {
+    margin: 0;
+    font-family: var(--titre);
+    font-size: 20px;
+    font-weight: 800;
+    line-height: 1.2;
   }
 
-  .pas-point {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--bordure-forte);
+  .bandeau-dit {
+    margin: 4px 0 0;
+    font-size: 14px;
+    line-height: 1.45;
+    color: rgb(255 255 255 / 0.9);
   }
 
-  .pas-corps {
+  .jauge {
+    height: 5px;
+    border-radius: 999px;
+    background: rgb(255 255 255 / 0.3);
+    overflow: hidden;
+  }
+
+  /* La largeur vient d'un attribut, pas d'un style en ligne : la politique de
+     sécurité du site interdit style= dans les pages, et une carte est la seule
+     exception, pour ses tuiles. On déclare donc les paliers ici. */
+  .jauge-faite {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    background: #fff;
+    width: 25%;
+  }
+
+  .jauge-faite[data-avancee='50'] { width: 50%; }
+  .jauge-faite[data-avancee='75'] { width: 75%; }
+  .jauge-faite[data-avancee='100'] { width: 100%; }
+
+  /* --- 2. Confirmer la réception ------------------------------------------ */
+  .action {
+    display: grid;
+    gap: var(--e2);
+    padding: var(--e4);
+    border: 1px solid var(--bordure-forte);
+    border-radius: var(--r-carte);
+    background: var(--surface-douce);
+  }
+
+  .action-titre {
     display: flex;
-    flex-direction: column;
-    gap: 2px;
-    padding-top: 1px;
+    gap: 8px;
+    align-items: center;
+    margin: 0;
+    font-family: var(--titre);
+    font-size: 16.5px;
+    font-weight: 800;
+    color: var(--rose-fonce);
   }
 
-  .pas-corps b {
-    font-size: 15.5px;
-    font-weight: 700;
+  .action-dit {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.5;
     color: var(--texte-2);
   }
 
-  .pas-fait .pas-corps b {
-    color: var(--encre);
+  .pas-recue {
+    display: flex;
+    gap: 7px;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 10px;
+    border: 0;
+    background: transparent;
+    color: #b3261e;
+    font-family: inherit;
+    font-size: 14.5px;
+    font-weight: 700;
+    cursor: pointer;
   }
 
-  /* L'étape en cours est la seule à être pleinement lisible : c'est là qu'on
-     veut que l'oeil tombe. */
-  .pas-courant .pas-corps b {
-    font-weight: 800;
-  }
-
-  .pas-corps small {
+  .action-signale {
+    display: flex;
+    gap: 7px;
+    align-items: flex-start;
+    margin: 0;
     font-size: 13.5px;
     line-height: 1.45;
+    color: #b3261e;
+  }
+
+  /* --- 4. La frise -------------------------------------------------------- */
+  .frise-carte {
+    display: grid;
+    gap: var(--e3);
+    padding: var(--e4);
+    border: 1px solid var(--bordure);
+    border-radius: var(--r-carte);
+    background: var(--surface);
+  }
+
+  .frise-haut {
+    display: flex;
+    gap: var(--e2);
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+
+  .frise-de {
+    margin: 0;
+    font-size: 13px;
     color: var(--texte-3);
   }
 
-  .pas-courant .pas-corps small {
-    color: var(--rose-fonce);
-    font-weight: 600;
-  }
-
-  /* --- La commande annulée --- */
-  .annulee {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--e2);
-    margin-bottom: var(--e4);
-    padding: var(--e5) var(--e4);
-    border: 1px dashed var(--bordure-forte);
-    border-radius: var(--r-carte);
-    text-align: center;
-    color: var(--texte-2);
-  }
-
-  .annulee h2 {
+  .frise-qui {
+    margin: 2px 0 0;
     font-family: var(--titre);
     font-size: 19px;
     font-weight: 800;
     color: var(--encre);
   }
 
-  /* --- Le récapitulatif --- */
-  .recap {
-    display: flex;
-    flex-direction: column;
-    gap: var(--e3);
+  .frise-badge {
+    flex: none;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: var(--rose-clair);
+    color: var(--rose-fonce);
+    font-size: 12.5px;
+    font-weight: 700;
   }
 
-  .articles {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
+  .frise {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    margin: 0;
     padding: 0;
     list-style: none;
   }
 
-  .articles li {
-    display: flex;
-    justify-content: space-between;
-    gap: var(--e2);
-    font-size: 15px;
+  .etape {
+    position: relative;
+    display: grid;
+    justify-items: center;
+    gap: 8px;
   }
 
-  .total-ligne {
+  /* Le trait qui relie les pastilles passe DERRIÈRE elles, et part du centre de
+     la pastille précédente. Il n'y en a pas avant la première, sinon la frise
+     semblerait commencer avant la commande. */
+  .etape-trait {
+    position: absolute;
+    top: 11px;
+    right: 50%;
+    left: -50%;
+    height: 2px;
+    background: var(--bordure);
+  }
+
+  .etape:first-child .etape-trait {
+    display: none;
+  }
+
+  .etape-faite .etape-trait {
+    background: var(--rose);
+  }
+
+  .etape-puce {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 2px solid var(--bordure);
+    background: var(--surface);
+    color: #fff;
+  }
+
+  .etape-faite .etape-puce {
+    border-color: var(--rose);
+    background: var(--rose);
+  }
+
+  .etape-creux {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--bordure-forte);
+  }
+
+  .etape-mot {
+    font-size: 12px;
+    line-height: 1.3;
+    text-align: center;
+    color: var(--texte-3);
+  }
+
+  .etape-ici .etape-mot {
+    font-weight: 800;
+    color: var(--rose-fonce);
+  }
+
+  .frise-legende {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    align-items: center;
+    margin: 0;
+    padding-top: var(--e2);
+    border-top: 1px solid var(--bordure);
+    font-size: 12.5px;
+    color: var(--texte-3);
+  }
+
+  .trait-plein,
+  .trait-creux {
+    display: inline-block;
+    width: 22px;
+    height: 3px;
+    border-radius: 999px;
+  }
+
+  .trait-plein {
+    background: var(--rose);
+  }
+
+  .trait-creux {
+    margin-left: var(--e2);
+    background: repeating-linear-gradient(
+      to right,
+      var(--bordure-forte) 0 5px,
+      transparent 5px 9px
+    );
+  }
+
+  /* --- Les blocs blancs --------------------------------------------------- */
+  .bloc {
+    padding: var(--e4);
+    border: 1px solid var(--bordure);
+    border-radius: var(--r-carte);
+    background: var(--surface);
+  }
+
+  .bloc-titre-grand {
+    margin: 0 0 var(--e3);
+    font-family: var(--titre);
+    font-size: 17px;
+    font-weight: 800;
+    color: var(--encre);
+  }
+
+  /* --- Le journal des étapes ---------------------------------------------- */
+  .journal {
+    display: grid;
+    gap: 0;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .jour {
+    position: relative;
+    display: flex;
+    gap: var(--e3);
+    align-items: flex-start;
+    padding-bottom: var(--e3);
+  }
+
+  .jour:last-child {
+    padding-bottom: 0;
+  }
+
+  .jour:not(:last-child)::before {
+    content: '';
+    position: absolute;
+    top: 16px;
+    left: 5px;
+    bottom: 0;
+    width: 2px;
+    background: var(--bordure);
+  }
+
+  .jour-puce {
+    flex: none;
+    width: 12px;
+    height: 12px;
+    margin-top: 4px;
+    border-radius: 50%;
+    background: var(--rose);
+  }
+
+  .jour-corps {
+    display: grid;
+    gap: 2px;
+  }
+
+  .jour-corps b {
+    font-size: 15.5px;
+    font-weight: 700;
+    color: var(--encre);
+  }
+
+  .jour-corps small {
+    font-size: 13px;
+    color: var(--texte-3);
+  }
+
+  .partage {
+    display: flex;
+    gap: 7px;
+    align-items: flex-start;
+    margin: var(--e3) 0 0;
+    padding-top: var(--e3);
+    border-top: 1px solid var(--bordure);
+    font-size: 14px;
+    line-height: 1.45;
+    color: var(--rose-fonce);
+    font-weight: 600;
+  }
+
+  .partage-sans {
+    color: var(--texte-2);
+    font-weight: 400;
+  }
+
+  /* --- 5. L'article et le compte ------------------------------------------ */
+  .articles {
+    display: grid;
+    gap: var(--e3);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .article {
+    display: flex;
+    gap: var(--e3);
+    align-items: flex-start;
+  }
+
+  .article-photo {
+    flex: none;
+    width: 56px;
+    height: 56px;
+    border-radius: 10px;
+    object-fit: cover;
+    background: var(--surface-douce);
+  }
+
+  .article-sans {
+    display: grid;
+    place-items: center;
+    color: var(--texte-3);
+  }
+
+  .article-corps {
+    display: grid;
+    gap: 3px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .article-corps b {
+    font-size: 15.5px;
+    font-weight: 700;
+    line-height: 1.3;
+  }
+
+  .article-corps small {
+    font-size: 13px;
+    color: var(--texte-3);
+  }
+
+  .article-prix {
+    flex: none;
+    font-size: 15px;
+    font-weight: 700;
+  }
+
+  .compte {
+    display: grid;
+    gap: 7px;
+    margin: var(--e3) 0 0;
+    padding-top: var(--e3);
+    border-top: 1px solid var(--bordure);
+  }
+
+  .compte div {
     display: flex;
     align-items: baseline;
     justify-content: space-between;
     gap: var(--e2);
-    padding-top: var(--e2);
+  }
+
+  .compte dt {
+    font-size: 14.5px;
+    color: var(--texte-2);
+  }
+
+  .compte dd {
+    margin: 0;
+    font-size: 14.5px;
+  }
+
+  .compte-total {
+    padding-top: 7px;
     border-top: 1px solid var(--bordure);
   }
 
-  .gris {
-    font-size: 14px;
+  .compte-total dt {
+    font-size: 15.5px;
+    font-weight: 700;
+    color: var(--encre);
+  }
+
+  .compte-total dd {
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--rose);
+  }
+
+  /* --- 6. La livraison ----------------------------------------------------- */
+  .livr-qui {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+  }
+
+  .livr-ligne {
+    margin: 3px 0 0;
+    font-size: 14.5px;
+    color: var(--texte-2);
+  }
+
+  .livr-repere {
+    margin: 3px 0 0;
+    font-size: 13.5px;
     color: var(--texte-3);
   }
 
-  .total {
-    font-size: 17px;
-    font-weight: 800;
-  }
-
-  .boutons {
-    display: flex;
-    flex-direction: column;
-    gap: var(--e2);
-    margin-top: var(--e4);
-  }
-
-  /* --- Ta livraison, pendant que le colis roule --------------------------- */
-  .course {
+  .livreur {
     display: grid;
     gap: var(--e2);
-    margin-top: var(--e4);
-    padding: var(--e4);
-    border: 1px solid var(--bordure);
-    border-radius: var(--r-carte);
-    background: var(--surface-douce);
+    margin-top: var(--e3);
+    padding-top: var(--e3);
+    border-top: 1px solid var(--bordure);
   }
 
-  .course-titre {
+  .livreur-qui {
     margin: 0;
-    font-size: 12.5px;
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    color: var(--texte-2);
+    font-size: 15px;
   }
 
-  .course-qui {
-    margin: 0;
-    font-size: 16px;
-  }
-
-  .course-sans {
-    margin: 0;
-    font-size: 13.5px;
-    color: var(--texte-2);
-  }
-
-  /* Caché tant que le script de position n'a pas tourné : sans JavaScript,
-     aucun navigateur ne sait donner une position, et ce formulaire ne pourrait
-     rien envoyer d'autre que du vide. Le script pose l'attribut sur <html>. */
   .repointer {
     display: none;
   }
@@ -475,7 +978,7 @@ const panier = comptePanier(lirePanier(Astro));
   :global(html[data-position='pret']) .repointer {
     display: grid;
     gap: var(--e2);
-    margin-top: var(--e2);
+    margin-top: var(--e3);
     padding-top: var(--e3);
     border-top: 1px solid var(--bordure);
   }
@@ -484,6 +987,19 @@ const panier = comptePanier(lirePanier(Astro));
     margin: 0;
     font-size: 13.5px;
     color: var(--texte-2);
+  }
+
+  /* --- 7. Les recours ------------------------------------------------------ */
+  .recours {
+    display: grid;
+    gap: var(--e2);
+  }
+
+  .depuis {
+    margin: var(--e3) 0 0;
+    font-size: 12.5px;
+    text-align: center;
+    color: var(--texte-3);
   }
 </style>
 

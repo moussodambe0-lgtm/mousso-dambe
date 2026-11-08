@@ -17,11 +17,19 @@
  * que ce soit d'autre que cette commande. Il porte un colis et encaisse un
  * total ; la marge de la boutique et les autres clientes ne le regardent pas.
  *
- * POURQUOI PAS DE CARTE DESSINÉE ICI. Une bibliothèque de cartes pèse environ
- * 140 Ko, et le livreur est dehors, sur un téléphone d'entrée de gamme, avec un
- * forfait compté. Surtout, il ne veut pas regarder une carte : il veut que son
- * application de navigation s'ouvre et lui dise où tourner. Le bouton fait donc
- * exactement cela, en une fois.
+ * TOUJOURS PAS DE CARTE DESSINÉE ICI, ET C'EST RÉFLÉCHI. La cliente, elle, en
+ * a une depuis le 8 novembre 2026. Lui n'en a pas besoin : une bibliothèque de
+ * cartes pèse environ 150 Ko, il est dehors, sur un téléphone d'entrée de
+ * gamme, avec un forfait compté. Surtout, il ne veut pas REGARDER une carte, il
+ * veut que son application de navigation s'ouvre et lui dise où tourner. Le
+ * bouton fait exactement cela, en une fois.
+ *
+ * CE QUI EST NOUVEAU LE 8 NOVEMBRE 2026 : il peut partager SA position. C'était
+ * le chaînon manquant de toute l'affaire. Jusque-là tout allait dans un seul
+ * sens, la cliente donnait son point et lui le recevait ; la carte de suivi
+ * n'aurait donc montré qu'un point fixe, en promettant un suivi qui n'existe
+ * pas. Un appui, une position, autant de fois qu'il veut. Jamais de relevé
+ * continu : ce serait sa batterie, son forfait, et un traceur.
  *
  * LES BOUTONS SONT GROS parce qu'on appuie dessus debout, à moto arrêtée, au
  * soleil, souvent d'une main.
@@ -29,7 +37,7 @@
 import Base from '../../layouts/Base.astro';
 import Icone from '../../components/Icone.astro';
 import { clientPublic, baseConfiguree } from '../../lib/supabase';
-import { prix, messageErreur } from '../../lib/format';
+import { prix, messageErreur, heureCourte } from '../../lib/format';
 
 export const prerender = false;
 
@@ -37,6 +45,35 @@ const jeton = String(Astro.params.jeton ?? '');
 
 let course: any = null;
 let erreur = '';
+// DEUX ERREURS DIFFÉRENTES, ET IL FALLAIT LES SÉPARER. `erreur` veut dire « ce
+// lien ne vaut plus rien », et la page n'affiche alors que cela. `ennui » veut
+// dire « ta position n'est pas partie », ce qui n'empêche pas de livrer : la
+// course doit rester affichée dessous, avec l'adresse et le numéro.
+let ennui = '';
+let partagee = '';
+
+if (Astro.request.method === 'POST' && baseConfiguree()) {
+  const f = await Astro.request.formData();
+  const lat = Number(f.get('lat'));
+  const lng = Number(f.get('lng'));
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || (lat === 0 && lng === 0)) {
+    ennui = "Appuie d'abord sur le bouton, puis laisse le téléphone répondre.";
+  } else {
+    const { data, error } = await clientPublic(Astro).rpc('livreur_partage_sa_position', {
+      p_jeton: jeton,
+      p_lat: lat,
+      p_lng: lng,
+    });
+    if (error || !data?.ok) ennui = messageErreur(data?.erreur ?? error?.message);
+    // Redirection après envoi : sans elle, un rafraîchissement renverrait la
+    // même position, et le bouton retour du téléphone reposerait la question.
+    else return Astro.redirect(`/livreur/${encodeURIComponent(jeton)}?ok=position`, 303);
+  }
+}
+
+if (Astro.url.searchParams.get('ok') === 'position') {
+  partagee = heureCourte(new Date());
+}
 
 if (!baseConfiguree()) {
   erreur = messageErreur('lien_invalide');
@@ -108,6 +145,30 @@ const titre = course ? `Course · ${course.quartier || 'Quartier non donné'}` :
               </p>
             )}
           </div>
+
+          {/* SA POSITION À LUI, POUR QU'ELLE LE VOIE APPROCHER.
+              Un appui, une position. Il peut appuyer en partant, puis en
+              arrivant dans le quartier. Rien ne se relève dans son dos, et il
+              peut livrer sans jamais appuyer : c'est un confort pour elle, pas
+              une obligation pour lui. */}
+          <form method="POST">
+            {ennui && <p class="ennui">{ennui}</p>}
+            {partagee && (
+              <p class="partagee">
+                <Icone nom="coche" taille={18} />
+                Position envoyée à {partagee}. Elle te voit arriver.
+              </p>
+            )}
+            <div class="lp" data-livreur-position hidden>
+              <input type="hidden" class="lp-lat" name="lat" />
+              <input type="hidden" class="lp-lng" name="lng" />
+              <button class="geste lp-bouton" type="button">
+                <Icone nom="lieu" taille={22} />
+                {partagee ? 'Renvoyer ma position' : 'Partager ma position avec elle'}
+              </button>
+              <p class="lp-dit" hidden></p>
+            </div>
+          </form>
 
           <section class="bloc">
             <h2 class="bloc-titre">Ce que tu portes</h2>
@@ -282,4 +343,48 @@ const titre = course ? `Course · ${course.quartier || 'Quartier non donné'}` :
     margin: var(--e2) 0 0;
     color: var(--texte-2);
   }
+
+  /* --- Sa position à lui, partagée avec elle ------------------------------ */
+  .lp {
+    display: grid;
+    gap: var(--e2);
+  }
+
+  .lp-dit {
+    margin: 0;
+    padding: var(--e2);
+    border-radius: var(--r-champ);
+    background: var(--surface-douce);
+    font-size: 14px;
+    text-align: center;
+    color: var(--texte-2);
+  }
+
+  .partagee {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: center;
+    margin: 0 0 var(--e2);
+    padding: var(--e3);
+    border-radius: var(--r-champ);
+    background: var(--surface-douce);
+    color: var(--rose-fonce);
+    font-size: 15px;
+    font-weight: 700;
+  }
+
+  .ennui {
+    margin: 0 0 var(--e2);
+    padding: var(--e3);
+    border: 1px solid var(--bordure-forte);
+    border-radius: var(--r-champ);
+    font-size: 14.5px;
+    text-align: center;
+    color: var(--texte);
+  }
 </style>
+
+<script>
+  import '../../scripts/livreur-position';
+</script>
