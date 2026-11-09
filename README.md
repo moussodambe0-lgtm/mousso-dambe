@@ -251,3 +251,7 @@ Le banc local est une imitation de Supabase : il ne reproduit fidèlement ni
 l'authentification, ni PostgREST, ni certaines règles d'accès. `dev:essai`
 parle au vrai Supabase, sur la base d'essai, avec sa propre clé serveur tirée
 au hasard. Aucune donnée d'utilisatrice n'est en jeu.
+
+## Licence
+
+Mousso Dambé est publié sous licence **GNU AGPL v3** (fichier `LICENSE`). Chacun peut lire, utiliser et modifier le code ; quiconque met en ligne une version modifiée doit publier son code sous la même licence.
